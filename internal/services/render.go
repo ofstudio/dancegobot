@@ -8,11 +8,11 @@ import (
 	tele "gopkg.in/telebot.v4"
 
 	"github.com/ofstudio/dancegobot/helpers"
-	"github.com/ofstudio/dancegobot/helpers/repeater"
-	"github.com/ofstudio/dancegobot/helpers/trace"
 	"github.com/ofstudio/dancegobot/internal/config"
 	"github.com/ofstudio/dancegobot/internal/models"
 	"github.com/ofstudio/dancegobot/internal/telegram/views"
+	"github.com/ofstudio/dancegobot/pkg/repeater"
+	"github.com/ofstudio/dancegobot/pkg/trace"
 )
 
 // RenderService renders events announcements.

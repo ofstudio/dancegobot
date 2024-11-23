@@ -7,8 +7,8 @@ import (
 	tele "gopkg.in/telebot.v4"
 
 	"github.com/ofstudio/dancegobot/helpers"
-	"github.com/ofstudio/dancegobot/helpers/telelog"
-	"github.com/ofstudio/dancegobot/helpers/trace"
+	"github.com/ofstudio/dancegobot/pkg/telelog"
+	"github.com/ofstudio/dancegobot/pkg/trace"
 )
 
 // Middleware is a collection of middlewares.

@@ -9,11 +9,11 @@ import (
 	tele "gopkg.in/telebot.v4"
 
 	"github.com/ofstudio/dancegobot/helpers"
-	"github.com/ofstudio/dancegobot/helpers/trace"
 	"github.com/ofstudio/dancegobot/internal/config"
 	"github.com/ofstudio/dancegobot/internal/locale"
 	"github.com/ofstudio/dancegobot/internal/models"
 	"github.com/ofstudio/dancegobot/internal/telegram/views"
+	"github.com/ofstudio/dancegobot/pkg/trace"
 )
 
 // NotifierService is a service that sends notifications to users.

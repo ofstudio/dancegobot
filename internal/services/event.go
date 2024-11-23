@@ -7,9 +7,9 @@ import (
 	"time"
 
 	"github.com/ofstudio/dancegobot/helpers"
-	"github.com/ofstudio/dancegobot/helpers/trace"
 	"github.com/ofstudio/dancegobot/internal/config"
 	"github.com/ofstudio/dancegobot/internal/models"
+	"github.com/ofstudio/dancegobot/pkg/trace"
 )
 
 var nowFn = time.Now

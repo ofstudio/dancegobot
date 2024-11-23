@@ -7,9 +7,9 @@ import (
 	tele "gopkg.in/telebot.v4"
 
 	"github.com/ofstudio/dancegobot/helpers"
-	"github.com/ofstudio/dancegobot/helpers/ratelimit"
-	"github.com/ofstudio/dancegobot/helpers/telelog"
 	"github.com/ofstudio/dancegobot/internal/config"
+	"github.com/ofstudio/dancegobot/pkg/ratelimit"
+	"github.com/ofstudio/dancegobot/pkg/telelog"
 )
 
 // NewBot creates a new telegram bot.

@@ -6,7 +6,7 @@ import (
 
 	tele "gopkg.in/telebot.v4"
 
-	"github.com/ofstudio/dancegobot/helpers/trace"
+	"github.com/ofstudio/dancegobot/pkg/trace"
 )
 
 // Trace returns a slog.Attr with the trace information.

@@ -208,8 +208,7 @@ func (s *EventService) updateWrapper(
 func (s *EventService) historyInsert(ctx context.Context, items ...*models.HistoryItem) {
 	for _, item := range items {
 		if err := s.store.HistoryInsert(ctx, item); err != nil {
-			s.log.Error("[event service] failed to insert history item: "+err.Error(),
-				"item", item, trace.Attr(ctx))
+			s.log.Error("[event service] failed to insert history item: "+err.Error(), trace.Attr(ctx))
 		}
 	}
 }

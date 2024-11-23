@@ -409,19 +409,19 @@ func (h *eventHandler) isSame(dancer, other *models.Dancer) bool {
 	// Compare profile IDs if both profiles are present
 	case dancer.Profile != nil && other.Profile != nil:
 		return dancer.ID == other.Profile.ID
-		// Compare dancer username (if present in profile ) and other username (if present in full name)
+	// Compare dancer username (if present in profile ) and other username (if present in full name)
 	case dancer.Profile != nil && dancer.Profile.Username != "" && other.Profile == nil:
-		ou, _ := helpers.Username(other.FullName)
-		return dancer.Profile.Username == ou
-		// Compare dancer username (if present in full name) and other username (if present in profile)
+		username, ok := helpers.Username(other.FullName)
+		return ok && (dancer.Profile.Username == username)
+	// Compare dancer username (if present in full name) and other username (if present in profile)
 	case dancer.Profile == nil && other.Profile != nil && other.Profile.Username != "":
-		du, _ := helpers.Username(dancer.FullName)
-		return du == other.Profile.Username
-		// Compare usernames (if present in full names) if both profiles are missing
+		username, ok := helpers.Username(dancer.FullName)
+		return ok && (username == other.Profile.Username)
+	// Compare usernames (if present in full names) if both profiles are missing
 	case dancer.Profile == nil && other.Profile == nil:
-		du, _ := helpers.Username(dancer.FullName)
-		ou, _ := helpers.Username(other.FullName)
-		return du == ou
+		username1, ok1 := helpers.Username(dancer.FullName)
+		username2, ok2 := helpers.Username(other.FullName)
+		return (ok1 && ok2) && (username1 == username2)
 	default:
 		return false
 	}

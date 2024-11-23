@@ -19,8 +19,8 @@ const (
 	// TmplCanceledWithSingle - someone who previously registered in couple with recipient
 	// from the singles list canceled the registration.
 	// The recipient will be returned back to the singles list.
-	TmplCanceledWithSingle = "cancelled_with_single"
+	TmplCanceledWithSingle = "canceled_with_single"
 
 	// TmplCanceledByPartner - chosen partner canceled registration
-	TmplCanceledByPartner = "cancelled_by_partner"
+	TmplCanceledByPartner = "canceled_by_partner"
 )

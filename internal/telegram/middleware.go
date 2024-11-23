@@ -53,7 +53,7 @@ func (m *Middleware) Trace() tele.MiddlewareFunc {
 	return func(next tele.HandlerFunc) tele.HandlerFunc {
 		return func(c tele.Context) error {
 			ctx := m.ctx(c)
-			ctx = trace.Context(ctx)
+			ctx = trace.Context(ctx, helpers.RandToken(8))
 			c.Set("ctx", ctx)
 			return next(c)
 		}

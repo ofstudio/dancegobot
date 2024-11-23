@@ -4,8 +4,6 @@ import (
 	"context"
 	"log/slog"
 	"time"
-
-	"github.com/ofstudio/dancegobot/helpers"
 )
 
 type callIDKeyType struct{}
@@ -17,8 +15,8 @@ var (
 )
 
 // Context returns a new context with the call ID
-func Context(ctx context.Context) context.Context {
-	ctx = context.WithValue(ctx, callIDKey, string(helpers.RandToken(8)))
+func Context(ctx context.Context, callID string) context.Context {
+	ctx = context.WithValue(ctx, callIDKey, callID)
 	return context.WithValue(ctx, startTimeKey, time.Now())
 }
 

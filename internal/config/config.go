@@ -45,7 +45,7 @@ type Bot struct {
 func NewConfig() (Config, error) {
 	c := Default
 	if err := env.Parse(&c); err != nil {
-		return Config{}, fmt.Errorf("%w: %w", ErrEnvParse, err)
+		return Config{}, fmt.Errorf("failed to parse environment variables: %w", err)
 	}
 	return c, nil
 }

@@ -3,7 +3,7 @@ package services
 import (
 	"sort"
 
-	"github.com/ofstudio/dancegobot/helpers"
+	"github.com/ofstudio/dancegobot/internal/helpers"
 	"github.com/ofstudio/dancegobot/internal/models"
 )
 

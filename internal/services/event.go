@@ -6,8 +6,8 @@ import (
 	"log/slog"
 	"time"
 
-	"github.com/ofstudio/dancegobot/helpers"
 	"github.com/ofstudio/dancegobot/internal/config"
+	"github.com/ofstudio/dancegobot/internal/helpers"
 	"github.com/ofstudio/dancegobot/internal/models"
 	"github.com/ofstudio/dancegobot/pkg/noplog"
 	"github.com/ofstudio/dancegobot/pkg/randtoken"

@@ -7,7 +7,6 @@ func (b Bot) LogValue() slog.Value {
 		slog.String("api_url", b.ApiURL),
 		slog.Int("rps", b.RPS),
 		slog.Duration("timeout", b.Timeout),
-		slog.Any("allowed_updates", b.AllowedUpdates),
 	}
 	if b.UseWebhook {
 		attrs = append(
@@ -19,6 +18,7 @@ func (b Bot) LogValue() slog.Value {
 	} else {
 		attrs = append(attrs, slog.String("poller_type", "long_poll"))
 	}
+	attrs = append(attrs, slog.Any("allowed_updates", b.AllowedUpdates))
 
 	return slog.GroupValue(attrs...)
 }

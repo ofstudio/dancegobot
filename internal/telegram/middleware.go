@@ -66,7 +66,7 @@ func (m *Middleware) PassPrivateMessages() tele.MiddlewareFunc {
 		return func(c tele.Context) error {
 			msg := c.Message()
 			if msg != nil && msg.Chat != nil && msg.Chat.Type != tele.ChatPrivate {
-				m.log.Warn("skipping non-private message", telelog.Attr(msg))
+				m.log.Warn("[bot] skipping non-private message", telelog.Attr(msg))
 				return nil
 			}
 			return next(c)
@@ -81,7 +81,7 @@ func (m *Middleware) Logger() tele.MiddlewareFunc {
 			if c.Query() != nil {
 				return next(c)
 			}
-			defer func() { m.log.Info("update handled", telelog.Trace(c)) }()
+			defer func() { m.log.Info("[bot] update handled", telelog.Trace(c)) }()
 			return next(c)
 		}
 	}

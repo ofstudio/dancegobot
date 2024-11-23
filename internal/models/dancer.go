@@ -8,10 +8,10 @@ import (
 // Dancer - is a dancer participating in the event
 type Dancer struct {
 	*Profile               // Telegram profile of the dancer (if available)
-	FullName     string    `json:"full_name"`     // Name of the dancer
-	Role         Role      `json:"role"`          // Role of the dancer
-	SingleSignup bool      `json:"single_signup"` // Signed up as single
-	CreatedAt    time.Time `json:"created_at"`    // Creation time
+	FullName     string    `json:"full_name"`               // Name of the dancer
+	Role         Role      `json:"role"`                    // Role of the dancer
+	SingleSignup bool      `json:"single_signup,omitempty"` // Signed up as single
+	CreatedAt    time.Time `json:"created_at"`              // Creation time
 	// Virtual fields
 	Status  DancerStatus `json:"-"` // Dancer status at the event. Not stored in the database.
 	Partner *Dancer      `json:"-"` // Partner of the dancer if any. Not stored in the database.

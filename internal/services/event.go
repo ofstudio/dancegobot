@@ -9,6 +9,7 @@ import (
 	"github.com/ofstudio/dancegobot/helpers"
 	"github.com/ofstudio/dancegobot/internal/config"
 	"github.com/ofstudio/dancegobot/internal/models"
+	"github.com/ofstudio/dancegobot/pkg/randtoken"
 	"github.com/ofstudio/dancegobot/pkg/trace"
 )
 
@@ -40,7 +41,7 @@ func (s *EventService) WithLogger(l *slog.Logger) *EventService {
 
 // NewID generates a new event ID
 func (s *EventService) NewID() string {
-	return string(helpers.RandToken(s.cfg.EventIDLen))
+	return string(randtoken.New(s.cfg.EventIDLen))
 }
 
 // Create creates a new event.

@@ -3,8 +3,8 @@ package deeplink
 import (
 	"strings"
 
-	"github.com/ofstudio/dancegobot/helpers"
 	"github.com/ofstudio/dancegobot/internal/models"
+	"github.com/ofstudio/dancegobot/pkg/randtoken"
 )
 
 const (
@@ -28,7 +28,7 @@ var (
 //	https://t.me/dancegobot?start=AD6s-signup-huw8HMZsOp3-leader
 func New(botName string, action models.SessionAction, params ...string) string {
 	return "https://t.me/" + botName + "?start=" +
-		helpers.RandToken(4) + "-" +
+		randtoken.New(4) + "-" +
 		string(action) + "-" +
 		strings.Join(params, "-")
 }

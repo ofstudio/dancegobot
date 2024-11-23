@@ -7,6 +7,7 @@ import (
 	tele "gopkg.in/telebot.v4"
 
 	"github.com/ofstudio/dancegobot/helpers"
+	"github.com/ofstudio/dancegobot/pkg/randtoken"
 	"github.com/ofstudio/dancegobot/pkg/telelog"
 	"github.com/ofstudio/dancegobot/pkg/trace"
 )
@@ -53,7 +54,7 @@ func (m *Middleware) Trace() tele.MiddlewareFunc {
 	return func(next tele.HandlerFunc) tele.HandlerFunc {
 		return func(c tele.Context) error {
 			ctx := m.ctx(c)
-			ctx = trace.Context(ctx, helpers.RandToken(8))
+			ctx = trace.Context(ctx, randtoken.New(8))
 			c.Set("ctx", ctx)
 			return next(c)
 		}

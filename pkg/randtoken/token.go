@@ -1,4 +1,4 @@
-package helpers
+package randtoken
 
 import (
 	"math/rand"
@@ -16,8 +16,8 @@ const (
 
 var randSrc = rand.NewSource(time.Now().UnixNano())
 
-// RandToken generates a random token of length n with 'a-zA-Z0-9' alphabet
-func RandToken(n int) string {
+// New generates a random token of length n with 'a-zA-Z0-9' alphabet
+func New(n int) string {
 	b := make([]byte, n)
 	// A rand.Int63() generates 63 random bits, enough for letterIdxMax letters!
 	for i, cache, remain := n-1, randSrc.Int63(), letterIdxMax; i >= 0; {

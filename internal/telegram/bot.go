@@ -8,6 +8,7 @@ import (
 
 	"github.com/ofstudio/dancegobot/helpers"
 	"github.com/ofstudio/dancegobot/internal/config"
+	"github.com/ofstudio/dancegobot/pkg/randtoken"
 	"github.com/ofstudio/dancegobot/pkg/ratelimit"
 	"github.com/ofstudio/dancegobot/pkg/telelog"
 )
@@ -19,7 +20,7 @@ func NewBot(cfg config.Bot, log *slog.Logger) (*tele.Bot, error) {
 			return &tele.Webhook{
 				Listen:         cfg.WebhookListen,
 				AllowedUpdates: cfg.AllowedUpdates,
-				SecretToken:    helpers.RandToken(64),
+				SecretToken:    randtoken.New(64),
 				Endpoint:       &tele.WebhookEndpoint{PublicURL: cfg.WebhookPublicURL},
 			}
 		}

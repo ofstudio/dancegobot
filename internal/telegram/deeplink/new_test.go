@@ -5,7 +5,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	"github.com/ofstudio/dancegobot/helpers"
+	"github.com/ofstudio/dancegobot/pkg/randtoken"
 )
 
 func TestNew(t *testing.T) {
@@ -15,6 +15,6 @@ func TestNew(t *testing.T) {
 
 func BenchmarkNew(b *testing.B) {
 	for i := 0; i < b.N; i++ {
-		_ = New("my_bot", "event_signup", string(helpers.RandToken(12)), "leader")
+		_ = New("my_bot", "event_signup", randtoken.New(12), "leader")
 	}
 }

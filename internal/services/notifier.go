@@ -43,6 +43,8 @@ func (s *NotifierService) Notify(ctx context.Context, n *models.Notification) {
 	if err := s.send(n); err != nil {
 		s.log.Error("[notification service] failed to send notification: "+err.Error(), trace.Attr(ctx))
 		n.Error = err.Error()
+	} else {
+		s.log.Info("[notification service] notification sent", "", n, trace.Attr(ctx))
 	}
 
 	h := &models.HistoryItem{
@@ -55,9 +57,8 @@ func (s *NotifierService) Notify(ctx context.Context, n *models.Notification) {
 
 	if err := s.store.HistoryInsert(ctx, h); err != nil {
 		s.log.Error("[notification service] failed to insert history item: "+err.Error(), trace.Attr(ctx))
-	}
 
-	s.log.Info("[notification service] notification sent", "", n, trace.Attr(ctx))
+	}
 }
 
 func (s *NotifierService) send(n *models.Notification) error {

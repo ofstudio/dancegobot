@@ -69,7 +69,7 @@ var IconSingle = roleMap{
 }
 
 var Notifications = map[models.NotificationTmpl]string{
-	models.TmplRegisteredWithSingle: "🔔 %s зарегистрировался с тобой в паре! 🎉\n\n%s",
-	models.TmplCanceledWithSingle:   "🔔 %s отменил вашу регистрацию. Я вернул тебя в список ищущих пару 🤗\n\n%s",
-	models.TmplCanceledByPartner:    "🔔 %s отменил вашу регистрацию.\n\n%s",
+	models.TmplRegisteredWithSingle: "🔔 %s\n\n%s зарегистрировался с тобой в паре! 🎉",
+	models.TmplCanceledWithSingle:   "🔔 %s\n\n%s отменил вашу регистрацию. Я вернул тебя в список ищущих пару 🤗",
+	models.TmplCanceledByPartner:    "🔔 %s\n\n%s отменил вашу регистрацию.",
 }

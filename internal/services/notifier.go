@@ -75,7 +75,7 @@ func (s *NotifierService) send(n *models.Notification) error {
 	if n.Initiator != nil {
 		initiatorName = views.FmtName(n.Initiator)
 	}
-	text := fmt.Sprintf(t, initiatorName, n.Event.Caption)
+	text := fmt.Sprintf(t, n.Event.Caption, initiatorName)
 	_, err := s.api.Send(user, text, tele.ModeHTML, tele.NoPreview, tele.RemoveKeyboard)
 
 	if err != nil && !errors.Is(err, tele.ErrTrueResult) {

@@ -16,8 +16,8 @@ type Config struct {
 
 // DB is SQLite database configuration
 type DB struct {
-	Filepath        string `env:"DB_FILEPATH,required"` // Path to database file
-	RequiredVersion uint   // Required database schema version
+	Filepath string `env:"DB_FILEPATH,required"` // Path to database file
+	Version  uint   // Required database schema version
 }
 
 // Settings - application settings
@@ -43,7 +43,7 @@ type Bot struct {
 
 // NewConfig loads configuration from [Default] and environment variables
 func NewConfig() (Config, error) {
-	c := Default
+	c := Default()
 	if err := env.Parse(&c); err != nil {
 		return Config{}, fmt.Errorf("failed to parse environment variables: %w", err)
 	}

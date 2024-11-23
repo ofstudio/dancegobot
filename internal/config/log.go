@@ -27,6 +27,6 @@ func (b DB) LogValue() slog.Value {
 	return slog.GroupValue(
 		slog.String("driver", "sqlite"),
 		slog.String("file", b.Filepath),
-		slog.Uint64("required_version", uint64(b.RequiredVersion)),
+		slog.Uint64("version", uint64(b.Version)),
 	)
 }

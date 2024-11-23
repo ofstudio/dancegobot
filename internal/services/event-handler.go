@@ -49,7 +49,7 @@ func (h *eventHandler) DancerGetByProfile(profile *models.Profile, role models.R
 		CreatedAt: nowFn(),
 	}
 
-	if found, ok := h.DancerGet(newDancer); ok {
+	if found, ok := h.dancerGet(newDancer); ok {
 		return found
 	}
 	return newDancer
@@ -65,16 +65,16 @@ func (h *eventHandler) DancerGetByName(fullname string, role models.Role) *model
 		Status:    models.StatusNotRegistered,
 		CreatedAt: nowFn(),
 	}
-	if found, ok := h.DancerGet(newDancer); ok {
+	if found, ok := h.dancerGet(newDancer); ok {
 		return found
 	}
 	return newDancer
 }
 
-// DancerGet looking for a dancer at event.
+// dancerGet looking for a dancer at event.
 // If not found, returns the provided dancer as is with [models.Dancer.Status] set to [models.StatusNotRegistered].
 // If found, [models.Dancer.Status] and [models.Dancer.Partner] fields will be filled accordingly.
-func (h *eventHandler) DancerGet(dancer *models.Dancer) (*models.Dancer, bool) {
+func (h *eventHandler) dancerGet(dancer *models.Dancer) (*models.Dancer, bool) {
 	if foundDancer, ok := h.findInCouples(dancer); ok {
 		foundDancer.Status = models.StatusInCouple
 		return foundDancer, ok

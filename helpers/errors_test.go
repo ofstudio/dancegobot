@@ -12,5 +12,5 @@ func ExampleErrors_Error() {
 	errs["third"] = errors.New("third error")
 
 	fmt.Println(errs.Filter().Error())
-	// Output: first: first error; third: third error
+	// Example output: first: first error; third: third error
 }

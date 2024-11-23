@@ -5,9 +5,9 @@ import (
 	"fmt"
 	"log/slog"
 
-	"github.com/ofstudio/dancegobot/helpers"
 	"github.com/ofstudio/dancegobot/internal/config"
 	"github.com/ofstudio/dancegobot/internal/models"
+	"github.com/ofstudio/dancegobot/pkg/noplog"
 )
 
 // UserService is a service that manages users.
@@ -21,7 +21,7 @@ func NewUserService(cfg config.Settings, store Store) *UserService {
 	return &UserService{
 		cfg:   cfg,
 		store: store,
-		log:   helpers.NopLogger(),
+		log:   noplog.Logger(),
 	}
 }
 

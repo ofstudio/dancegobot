@@ -7,12 +7,12 @@ import (
 
 	tele "gopkg.in/telebot.v4"
 
-	"github.com/ofstudio/dancegobot/helpers"
 	"github.com/ofstudio/dancegobot/internal/config"
 	"github.com/ofstudio/dancegobot/internal/locale"
 	"github.com/ofstudio/dancegobot/internal/models"
 	"github.com/ofstudio/dancegobot/internal/telegram/deeplink"
 	"github.com/ofstudio/dancegobot/internal/telegram/views"
+	"github.com/ofstudio/dancegobot/pkg/noplog"
 	"github.com/ofstudio/dancegobot/pkg/telelog"
 )
 
@@ -30,7 +30,7 @@ func NewHandlers(cfg config.Settings, es EventService, us UserService) *Handlers
 		cfg:    cfg,
 		events: es,
 		users:  us,
-		log:    helpers.NopLogger(),
+		log:    noplog.Logger(),
 	}
 }
 

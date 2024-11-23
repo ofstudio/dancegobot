@@ -7,10 +7,10 @@ import (
 
 	tele "gopkg.in/telebot.v4"
 
-	"github.com/ofstudio/dancegobot/helpers"
 	"github.com/ofstudio/dancegobot/internal/config"
 	"github.com/ofstudio/dancegobot/internal/models"
 	"github.com/ofstudio/dancegobot/internal/telegram/views"
+	"github.com/ofstudio/dancegobot/pkg/noplog"
 	"github.com/ofstudio/dancegobot/pkg/repeater"
 	"github.com/ofstudio/dancegobot/pkg/trace"
 )
@@ -30,7 +30,7 @@ func NewRenderService(cfg config.Settings, store Store, bot tele.API) *RenderSer
 		store:    store,
 		repeater: repeater.NewRepeater(cfg.RendererRepeats),
 		bot:      bot,
-		log:      helpers.NopLogger(),
+		log:      noplog.Logger(),
 	}
 }
 

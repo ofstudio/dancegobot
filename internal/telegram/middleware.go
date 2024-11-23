@@ -6,7 +6,7 @@ import (
 
 	tele "gopkg.in/telebot.v4"
 
-	"github.com/ofstudio/dancegobot/helpers"
+	"github.com/ofstudio/dancegobot/pkg/noplog"
 	"github.com/ofstudio/dancegobot/pkg/randtoken"
 	"github.com/ofstudio/dancegobot/pkg/telelog"
 	"github.com/ofstudio/dancegobot/pkg/trace"
@@ -20,7 +20,7 @@ type Middleware struct {
 // NewMiddleware creates a new middleware collection.
 func NewMiddleware() *Middleware {
 	return &Middleware{
-		log: helpers.NopLogger(),
+		log: noplog.Logger(),
 	}
 }
 

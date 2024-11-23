@@ -6,8 +6,8 @@ import (
 
 	tele "gopkg.in/telebot.v4"
 
-	"github.com/ofstudio/dancegobot/helpers"
 	"github.com/ofstudio/dancegobot/internal/config"
+	"github.com/ofstudio/dancegobot/pkg/noplog"
 	"github.com/ofstudio/dancegobot/pkg/randtoken"
 	"github.com/ofstudio/dancegobot/pkg/ratelimit"
 	"github.com/ofstudio/dancegobot/pkg/telelog"
@@ -31,7 +31,7 @@ func NewBot(cfg config.Bot, log *slog.Logger) (*tele.Bot, error) {
 	}
 
 	if log == nil {
-		log = helpers.NopLogger()
+		log = noplog.Logger()
 	}
 
 	return tele.NewBot(tele.Settings{

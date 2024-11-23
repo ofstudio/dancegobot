@@ -9,6 +9,7 @@ import (
 	"github.com/ofstudio/dancegobot/helpers"
 	"github.com/ofstudio/dancegobot/internal/config"
 	"github.com/ofstudio/dancegobot/internal/models"
+	"github.com/ofstudio/dancegobot/pkg/noplog"
 	"github.com/ofstudio/dancegobot/pkg/randtoken"
 	"github.com/ofstudio/dancegobot/pkg/trace"
 )
@@ -30,7 +31,7 @@ func NewEventService(cfg config.Settings, store Store, r *RenderService, n *Noti
 		store:    store,
 		renderer: r,
 		notifier: n,
-		log:      helpers.NopLogger(),
+		log:      noplog.Logger(),
 	}
 }
 

@@ -19,30 +19,23 @@ import (
 var nowFn = time.Now
 
 type Handlers struct {
-	cfg     config.Settings
-	botName string
-	events  EventService
-	users   UserService
-	log     *slog.Logger
+	cfg    config.Settings
+	events EventService
+	users  UserService
+	log    *slog.Logger
 }
 
-func NewHandlers(cfg config.Settings, botName string, es EventService, us UserService) *Handlers {
+func NewHandlers(cfg config.Settings, es EventService, us UserService) *Handlers {
 	return &Handlers{
-		cfg:     cfg,
-		events:  es,
-		users:   us,
-		botName: botName,
-		log:     helpers.NopLogger(),
+		cfg:    cfg,
+		events: es,
+		users:  us,
+		log:    helpers.NopLogger(),
 	}
 }
 
 func (h *Handlers) WithLogger(l *slog.Logger) *Handlers {
 	h.log = l
-	return h
-}
-
-func (h *Handlers) WithBotName(botName string) *Handlers {
-	h.botName = botName
 	return h
 }
 
@@ -111,7 +104,7 @@ func (h *Handlers) Query(c tele.Context) error {
 		return views.AnswerQueryEmpty(c, h.cfg.QueryThumbUrl)
 	}
 	eventID := h.events.NewID()
-	return views.AnswerQuery(c, h.botName, eventID, h.cfg.QueryThumbUrl)
+	return views.AnswerQuery(c, h.cfg.BotName, eventID, h.cfg.QueryThumbUrl)
 }
 
 // InlineResult - handles inline result with the event announcement.

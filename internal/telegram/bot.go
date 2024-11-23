@@ -13,7 +13,7 @@ import (
 )
 
 // NewBot creates a new telegram bot.
-func NewBot(cfg config.Bot, log *slog.Logger) (*tele.Bot, string, error) {
+func NewBot(cfg config.Bot, log *slog.Logger) (*tele.Bot, error) {
 	poller := func(cfg config.Bot) tele.Poller {
 		if cfg.UseWebhook {
 			return &tele.Webhook{
@@ -32,23 +32,21 @@ func NewBot(cfg config.Bot, log *slog.Logger) (*tele.Bot, string, error) {
 	if log == nil {
 		log = helpers.NopLogger()
 	}
-	b, err := tele.NewBot(tele.Settings{
+
+	return tele.NewBot(tele.Settings{
 		URL:     cfg.ApiURL,
 		Token:   cfg.Token,
 		Poller:  poller(cfg),
 		OnError: onError(log),
 		Client:  ratelimit.Client(cfg.RPS, cfg.Timeout),
 	})
-	if err != nil {
-		return nil, "", err
-	}
+}
 
-	var botName string
+func BotName(b *tele.Bot) string {
 	if b.Me != nil {
-		botName = b.Me.Username
+		return b.Me.Username
 	}
-
-	return b, botName, nil
+	return ""
 }
 
 // onError is a bot error handler.

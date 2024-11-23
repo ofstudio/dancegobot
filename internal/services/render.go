@@ -21,17 +21,15 @@ type RenderService struct {
 	store    Store
 	repeater *repeater.Repeater
 	bot      tele.API
-	botName  string
 	log      *slog.Logger
 }
 
-func NewRenderService(cfg config.Settings, store Store, bot tele.API, botName string) *RenderService {
+func NewRenderService(cfg config.Settings, store Store, bot tele.API) *RenderService {
 	return &RenderService{
 		cfg:      cfg,
 		store:    store,
 		repeater: repeater.NewRepeater(cfg.RendererRepeats),
 		bot:      bot,
-		botName:  botName,
 		log:      helpers.NopLogger(),
 	}
 }
@@ -62,7 +60,7 @@ func (s *RenderService) renderRepeat(ctx context.Context, eventID string) {
 }
 
 func (s *RenderService) render(event *models.Event) error {
-	err := views.Render(s.bot, s.botName, event)
+	err := views.Render(s.bot, s.cfg.BotName, event)
 	if err != nil && !errors.Is(err, tele.ErrTrueResult) {
 		return err
 	}

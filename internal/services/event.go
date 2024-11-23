@@ -77,10 +77,16 @@ func (s *EventService) Get(ctx context.Context, id string) (*models.Event, error
 	return event, nil
 }
 
+// DancerGet returns a dancer by profile and role.
+// If the dancer is not found, returns new dancer with the provided profile and role
+// with status [models.StatusNotRegistered].
+// If the dancer is found, returns the dancer with the status and the partner if any.
 func (s *EventService) DancerGet(event *models.Event, profile *models.Profile, role models.Role) *models.Dancer {
 	return newEventHandler(event).DancerGetByProfile(profile, role)
 }
 
+// CoupleAdd adds a couple to the event.
+// The other person can be either a [*models.Profile] type or a string full name.
 func (s *EventService) CoupleAdd(
 	ctx context.Context,
 	eventID string,

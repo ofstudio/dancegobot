@@ -64,6 +64,7 @@ func (a *App) Start(ctx context.Context) error {
 	bot.Use(m.PassPrivateMessages())
 
 	bot.Handle("/start", h.Start)
+	bot.Handle("/partner", h.Partner)
 	bot.Handle(tele.OnText, h.Text)
 	bot.Handle(tele.OnUserShared, h.UserShared)
 	bot.Handle(tele.OnQuery, h.Query)

@@ -155,6 +155,16 @@ func (h *Handlers) UserShared(c tele.Context) error {
 
 }
 
+// Partner - handles the /partner command (legacy).
+// This is to provide familiar user experience with github.com/Tayrinn/CoopDance bot.
+// The payload will be treated as a text message.
+func (h *Handlers) Partner(c tele.Context) error {
+	h.log.Warn("[handlers] /partner received: payload will be treated as text message", telelog.Attr(c))
+	c.Message().Text = c.Message().Payload
+	c.Message().Payload = ""
+	return h.Text(c)
+}
+
 // Text - handles text messages.
 func (h *Handlers) Text(c tele.Context) error {
 	h.log.Info("[handlers] text message received", "text", c.Text(), telelog.Attr(c))

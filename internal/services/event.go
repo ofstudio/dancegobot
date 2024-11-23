@@ -23,22 +23,18 @@ type EventService struct {
 	log      *slog.Logger
 }
 
-func NewEventService(cfg config.Settings, store Store, r *RenderService) *EventService {
+func NewEventService(cfg config.Settings, store Store, r *RenderService, n *NotifierService) *EventService {
 	return &EventService{
 		cfg:      cfg,
 		store:    store,
 		renderer: r,
+		notifier: n,
 		log:      helpers.NopLogger(),
 	}
 }
 
 func (s *EventService) WithLogger(l *slog.Logger) *EventService {
 	s.log = l
-	return s
-}
-
-func (s *EventService) WithNotifier(srv *NotifierService) *EventService {
-	s.notifier = srv
 	return s
 }
 
@@ -216,10 +212,6 @@ func (s *EventService) historyInsert(ctx context.Context, items ...*models.Histo
 
 // notify sends notifications.
 func (s *EventService) notify(ctx context.Context, items ...*models.Notification) {
-	if s.notifier == nil {
-		s.log.Warn("[event service] notifier is not set")
-		return
-	}
 	for _, item := range items {
 		s.notifier.Notify(ctx, item)
 	}

@@ -1,0 +1,11 @@
+.idea
+playground
+doc
+.env*
+.dockerignore
+.gitignore
+.bkp
+*.md
+LICENSE
+Dockerfile
+docker-compose.yml

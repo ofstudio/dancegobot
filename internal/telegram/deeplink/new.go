@@ -7,15 +7,7 @@ import (
 	"github.com/ofstudio/dancegobot/pkg/randtoken"
 )
 
-const (
-	dlSeparator = '-'
-	dlMaxLength = 13 + 32 + 7 + 64 // https://t.me/ + username + ?start= + payload
-)
-
-var (
-	dlBegin = []byte("https://t.me/")
-	dlQuery = []byte("?start=")
-)
+const dlSeparator = '-'
 
 // New creates a new deeplink to the bot.
 //

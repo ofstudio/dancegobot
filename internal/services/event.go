@@ -14,7 +14,9 @@ import (
 	"github.com/ofstudio/dancegobot/pkg/trace"
 )
 
-var nowFn = time.Now
+var nowFn = func() time.Time {
+	return time.Now().UTC()
+}
 
 // EventService is a service that manages dance events
 type EventService struct {

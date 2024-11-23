@@ -10,7 +10,7 @@ import (
 func (suite *TestStoreSuite) TestUserGet() {
 	suite.Run("found", func() {
 		// Add user to the database
-		now := time.Now().Truncate(time.Second)
+		now := time.Now().Truncate(time.Second).UTC()
 		_, err := suite.store.db.Exec(`
 INSERT INTO users (id, profile, session, created_at, updated_at)
 VALUES (1, '{"id": 1, "first_name": "Test"}', '{}', ?1, ?2)`, now, now)
@@ -48,7 +48,7 @@ func (suite *TestStoreSuite) TestUserProfileUpsert() {
 
 	suite.Run("update", func() {
 		// Add user to the database
-		now := time.Now().Truncate(time.Second).Add(-time.Minute)
+		now := time.Now().Truncate(time.Second).Add(-1 * time.Minute).UTC()
 		_, err := suite.store.db.Exec(`
 INSERT INTO users (id, profile, session, created_at, updated_at)
 VALUES (1, '{"id": 1, "first_name": "Test"}', '{"action":"event_leave"}', ?1, ?2)`, now, now)
@@ -91,7 +91,7 @@ func (suite *TestStoreSuite) TestUserSessionUpsert() {
 
 	suite.Run("update", func() {
 		// Add user to the database
-		now := time.Now().Truncate(time.Second).Add(-time.Minute)
+		now := time.Now().Truncate(time.Second).Add(-1 * time.Minute).UTC()
 		_, err := suite.store.db.Exec(`
 INSERT INTO users (id, profile, session, created_at, updated_at)
 VALUES (1, '{"id": 1, "first_name": "Test"}', '{"action":"event_leave"}', ?1, ?2)

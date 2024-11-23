@@ -16,7 +16,9 @@ import (
 	"github.com/ofstudio/dancegobot/pkg/telelog"
 )
 
-var nowFn = time.Now
+var nowFn = func() time.Time {
+	return time.Now().UTC()
+}
 
 type Handlers struct {
 	cfg    config.Settings

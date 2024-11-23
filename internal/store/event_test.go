@@ -16,7 +16,7 @@ func (suite *TestStoreSuite) TestEventUpsert() {
 				ID:        12,
 				FirstName: "Test",
 			},
-			CreatedAt: time.Now().Truncate(time.Millisecond),
+			CreatedAt: time.Now().Truncate(time.Millisecond).UTC(),
 		}
 		err := suite.store.EventUpsert(context.Background(), event)
 		suite.Require().NoError(err)
@@ -34,7 +34,7 @@ func (suite *TestStoreSuite) TestEventUpsert() {
 				ID:        12,
 				FirstName: "Test",
 			},
-			CreatedAt: time.Now().Truncate(time.Millisecond),
+			CreatedAt: time.Now().Truncate(time.Millisecond).UTC(),
 		}
 		err := suite.store.EventUpsert(context.Background(), event)
 		suite.Require().NoError(err)

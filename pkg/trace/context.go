@@ -17,7 +17,7 @@ var (
 // Context returns a new context with the call ID
 func Context(ctx context.Context, callID string) context.Context {
 	ctx = context.WithValue(ctx, callIDKey, callID)
-	return context.WithValue(ctx, startTimeKey, time.Now())
+	return context.WithValue(ctx, startTimeKey, time.Now().UTC())
 }
 
 // Attr returns a [slog.Attr] with the call ID from given context

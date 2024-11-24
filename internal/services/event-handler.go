@@ -105,7 +105,12 @@ func (h *eventHandler) CoupleAdd(dancer, partner *models.Dancer) *models.EventUp
 		result = models.ResultEventForbiddenPartner
 	}
 
-	// 2. Check if the dancer is already registered in a couple
+	// 2. Check if the partner is already registered in a couple
+	if partner.Status == models.StatusInCouple {
+		result = models.ResultPartnerTaken
+	}
+
+	// 3. Check if the dancer is already registered in a couple
 	if dancer.Status == models.StatusInCouple {
 		if h.isSame(dancer.Partner, partner) {
 			result = models.ResultAlreadyInSameCouple
@@ -114,14 +119,9 @@ func (h *eventHandler) CoupleAdd(dancer, partner *models.Dancer) *models.EventUp
 		}
 	}
 
-	// 3. Check if event is not closed for new registrations
+	// 4. Check if event is not closed for new registrations
 	if h.event.Closed {
 		result = models.ResultEventClosed
-	}
-
-	// 4. Check if the partner is already registered in a couple
-	if partner.Status == models.StatusInCouple {
-		result = models.ResultPartnerTaken
 	}
 
 	// 5. Check if the partner has the same role as the dancer
@@ -196,7 +196,7 @@ func (h *eventHandler) CoupleAdd(dancer, partner *models.Dancer) *models.EventUp
 		Action:    models.HistoryCoupleAdded,
 		Initiator: dancer.Profile,
 		EventID:   &h.event.ID,
-		Details:   couple,
+		Details:   &couple,
 		CreatedAt: nowFn(),
 	})
 
@@ -206,6 +206,7 @@ func (h *eventHandler) CoupleAdd(dancer, partner *models.Dancer) *models.EventUp
 		Result:        models.ResultSuccess,
 		Dancer:        dancer,
 		ChosenPartner: partner,
+		Couple:        &couple,
 	}
 }
 

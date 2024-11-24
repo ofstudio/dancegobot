@@ -149,7 +149,7 @@ func (h *eventHandler) CoupleAdd(dancer, partner *models.Dancer) *models.EventUp
 		h.removeFromSingles(dancer)
 		h.hist = append(h.hist, &models.HistoryItem{
 			Action:    models.HistorySingleRemoved,
-			Profile:   dancer.Profile,
+			Profile:   partner.Profile,
 			EventID:   &h.event.ID,
 			Details:   dancer,
 			CreatedAt: nowFn(),
@@ -169,9 +169,9 @@ func (h *eventHandler) CoupleAdd(dancer, partner *models.Dancer) *models.EventUp
 		})
 		h.notif = append(h.notif, &models.Notification{
 			Recipient: *partner.Profile,
+			Initiator: dancer.Profile,
 			TmplCode:  models.TmplRegisteredWithSingle,
 			Event:     h.event,
-			Initiator: dancer,
 		})
 	}
 
@@ -329,17 +329,17 @@ func (h *eventHandler) DancerRemove(dancer *models.Dancer) *models.EventUpdate {
 			// 3.3.1 If partner was signed up as a single send the partner
 			h.notif = append(h.notif, &models.Notification{
 				Recipient: *partner.Profile,
+				Initiator: dancer.Profile,
 				TmplCode:  models.TmplCanceledWithSingle,
 				Event:     h.event,
-				Initiator: dancer,
 			})
 		} else if couple.CreatedBy.ID == partner.Profile.ID {
 			// 3.3.2 Otherwise if couple was created by the partner send the partner
 			h.notif = append(h.notif, &models.Notification{
 				Recipient: *partner.Profile,
+				Initiator: dancer.Profile,
 				TmplCode:  models.TmplCanceledByPartner,
 				Event:     h.event,
-				Initiator: dancer,
 			})
 		}
 	}

@@ -49,7 +49,7 @@ func (s *NotifierService) Notify(ctx context.Context, n *models.Notification) {
 
 	h := &models.HistoryItem{
 		Action:    models.HistoryNotificationSent,
-		Profile:   n.Initiator.Profile,
+		Profile:   n.Initiator,
 		EventID:   n.EventID,
 		Details:   n,
 		CreatedAt: nowFn(),
@@ -74,7 +74,7 @@ func (s *NotifierService) send(n *models.Notification) error {
 
 	var initiatorName string
 	if n.Initiator != nil {
-		initiatorName = views.FmtName(n.Initiator)
+		initiatorName = views.FmtName(n.Initiator.FullName(), n.Initiator)
 	}
 	text := fmt.Sprintf(t, n.Event.Caption, initiatorName)
 	_, err := s.api.Send(user, text, tele.ModeHTML, tele.NoPreview, tele.RemoveKeyboard)

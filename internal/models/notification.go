@@ -1,10 +1,10 @@
 package models
 
 type Notification struct {
-	Recipient Profile          `json:"recipient"` // Receiver of the notification
-	TmplCode  NotificationTmpl `json:"template"`  // Template of the notification
-	Initiator *Dancer          `json:"initiator"` // Who initiates the notification
-	Event     *Event           `json:"-"`         // Event related to the notification (if any)
+	Recipient Profile          `json:"recipient"`           // Receiver of the notification
+	Initiator *Profile         `json:"initiator,omitempty"` // Who initiates the notification
+	TmplCode  NotificationTmpl `json:"template"`            // Template of the notification
+	Event     *Event           `json:"-"`                   // Event related to the notification (if any)
 	// Virtual fields
 	EventID *string `json:"event_id,omitempty"` // ID of the event related to the notification (if any)
 	Error   string  `json:"error,omitempty"`    // Error message during notification sending (if any)

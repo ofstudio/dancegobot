@@ -19,10 +19,10 @@ CREATE TABLE "users"
 
 CREATE TABLE "history"
 (
-    id         INTEGER PRIMARY KEY,
-    action     TEXT      NOT NULL,
-    profile_id INTEGER,
-    event_id   TEXT,
-    data       JSON      NOT NULL,
-    created_at TIMESTAMP NOT NULL DEFAULT (CURRENT_TIMESTAMP)
+    id           INTEGER PRIMARY KEY,
+    action       TEXT      NOT NULL,
+    initiator_id INTEGER,
+    event_id     TEXT,
+    data         JSON      NOT NULL,
+    created_at   TIMESTAMP NOT NULL DEFAULT (CURRENT_TIMESTAMP)
 );

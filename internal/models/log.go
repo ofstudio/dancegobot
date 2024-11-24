@@ -43,8 +43,8 @@ func (h HistoryItem) LogValue() slog.Value {
 		slog.String("action", string(h.Action)),
 	}
 
-	if h.Profile != nil {
-		attrs = append(attrs, slog.Int64("profile_id", h.Profile.ID))
+	if h.Initiator != nil {
+		attrs = append(attrs, slog.Int64("profile_id", h.Initiator.ID))
 	}
 
 	if h.EventID != nil {

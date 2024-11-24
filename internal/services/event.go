@@ -59,7 +59,7 @@ func (s *EventService) Create(ctx context.Context, event *models.Event) error {
 
 	go s.historyInsert(ctx, &models.HistoryItem{
 		Action:    models.HistoryEventCreated,
-		Profile:   &event.Owner,
+		Initiator: &event.Owner,
 		EventID:   &event.ID,
 		Details:   event,
 		CreatedAt: nowFn(),

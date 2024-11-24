@@ -11,7 +11,7 @@ func (suite *TestStoreSuite) TestStoreHistoryInsert() {
 	suite.Run("success", func() {
 		eventID := "abc"
 		item := &models.HistoryItem{
-			Profile: &models.Profile{
+			Initiator: &models.Profile{
 				ID:        123,
 				FirstName: "Test",
 			},
@@ -23,7 +23,7 @@ func (suite *TestStoreSuite) TestStoreHistoryInsert() {
 		err := suite.store.HistoryInsert(context.Background(), item)
 		suite.Require().NoError(err)
 
-		rows, err := suite.store.db.Query(`SELECT profile_id, event_id, data
+		rows, err := suite.store.db.Query(`SELECT initiator_id, event_id, data
 FROM history
 `)
 		suite.Require().NoError(err)
@@ -36,7 +36,7 @@ FROM history
 		suite.True(rows.Next())
 		err = rows.Scan(&profileID, &gotEventID, &data)
 		suite.Require().NoError(err)
-		suite.Equal(item.Profile.ID, profileID)
+		suite.Equal(item.Initiator.ID, profileID)
 		suite.Equal(item.EventID, gotEventID)
 
 		got := &models.HistoryItem{}

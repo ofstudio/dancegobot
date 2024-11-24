@@ -4,11 +4,11 @@ import "time"
 
 // HistoryItem - Event history item
 type HistoryItem struct {
-	Action    HistoryAction `json:"type"`               // Action of the action
-	Profile   *Profile      `json:"profile,omitempty"`  // Telegram profile related to the action
-	EventID   *string       `json:"event_id,omitempty"` // ID of the event related to the action
-	Details   any           `json:"details"`            // Payload of the action
-	CreatedAt time.Time     `json:"created_at"`         // Creation time
+	Action    HistoryAction `json:"type"`                // Action of the action
+	Initiator *Profile      `json:"initiator,omitempty"` // Telegram profile who initiated the action (if any)
+	EventID   *string       `json:"event_id,omitempty"`  // ID of the event related to the action (if any)
+	Details   any           `json:"details"`             // Payload of the action
+	CreatedAt time.Time     `json:"created_at"`          // Creation time
 }
 
 // HistoryAction - type of HistoryItem

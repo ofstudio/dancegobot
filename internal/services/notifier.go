@@ -49,7 +49,7 @@ func (s *NotifierService) Notify(ctx context.Context, n *models.Notification) {
 
 	h := &models.HistoryItem{
 		Action:    models.HistoryNotificationSent,
-		Profile:   n.Initiator,
+		Initiator: n.Initiator,
 		EventID:   n.EventID,
 		Details:   n,
 		CreatedAt: nowFn(),

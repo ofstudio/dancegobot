@@ -149,7 +149,7 @@ func (h *eventHandler) CoupleAdd(dancer, partner *models.Dancer) *models.EventUp
 		h.removeFromSingles(dancer)
 		h.hist = append(h.hist, &models.HistoryItem{
 			Action:    models.HistorySingleRemoved,
-			Profile:   partner.Profile,
+			Initiator: dancer.Profile,
 			EventID:   &h.event.ID,
 			Details:   dancer,
 			CreatedAt: nowFn(),
@@ -162,7 +162,7 @@ func (h *eventHandler) CoupleAdd(dancer, partner *models.Dancer) *models.EventUp
 		h.removeFromSingles(partner)
 		h.hist = append(h.hist, &models.HistoryItem{
 			Action:    models.HistorySingleRemoved,
-			Profile:   dancer.Profile,
+			Initiator: dancer.Profile,
 			EventID:   &h.event.ID,
 			Details:   partner,
 			CreatedAt: nowFn(),
@@ -194,7 +194,7 @@ func (h *eventHandler) CoupleAdd(dancer, partner *models.Dancer) *models.EventUp
 	h.event.Couples = append(h.event.Couples, couple)
 	h.hist = append(h.hist, &models.HistoryItem{
 		Action:    models.HistoryCoupleAdded,
-		Profile:   dancer.Profile,
+		Initiator: dancer.Profile,
 		EventID:   &h.event.ID,
 		Details:   couple,
 		CreatedAt: nowFn(),
@@ -247,7 +247,7 @@ func (h *eventHandler) SingleAdd(dancer *models.Dancer) *models.EventUpdate {
 	h.event.Singles = append(h.event.Singles, *dancer)
 	h.hist = append(h.hist, &models.HistoryItem{
 		Action:    models.HistorySingleAdded,
-		Profile:   dancer.Profile,
+		Initiator: dancer.Profile,
 		EventID:   &h.event.ID,
 		Details:   dancer,
 		CreatedAt: nowFn(),
@@ -279,7 +279,7 @@ func (h *eventHandler) DancerRemove(dancer *models.Dancer) *models.EventUpdate {
 		h.removeFromSingles(dancer)
 		h.hist = append(h.hist, &models.HistoryItem{
 			Action:    models.HistorySingleRemoved,
-			Profile:   dancer.Profile,
+			Initiator: dancer.Profile,
 			EventID:   &h.event.ID,
 			Details:   dancer,
 			CreatedAt: nowFn(),
@@ -295,7 +295,7 @@ func (h *eventHandler) DancerRemove(dancer *models.Dancer) *models.EventUpdate {
 	}
 	h.hist = append(h.hist, &models.HistoryItem{
 		Action:    models.HistoryCoupleRemoved,
-		Profile:   dancer.Profile,
+		Initiator: dancer.Profile,
 		EventID:   &h.event.ID,
 		Details:   couple,
 		CreatedAt: nowFn(),
@@ -316,7 +316,7 @@ func (h *eventHandler) DancerRemove(dancer *models.Dancer) *models.EventUpdate {
 		sort.Sort(SinglesSorter(h.event.Singles))
 		h.hist = append(h.hist, &models.HistoryItem{
 			Action:    models.HistorySingleAdded,
-			Profile:   dancer.Profile,
+			Initiator: dancer.Profile,
 			EventID:   &h.event.ID,
 			Details:   partner,
 			CreatedAt: nowFn(),

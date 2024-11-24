@@ -7,8 +7,8 @@ import (
 	"github.com/ofstudio/dancegobot/internal/models"
 )
 
-// FmtName formats the dancer with a link to the profile.
-// If Telegram profile is not provided, the full name is returned.
+// FmtName formats the fullname with a link to the Telegram profile.
+// If profile is not provided, the full name is returned.
 //
 // If profile has a username, the link is created to the username. Example:
 //
@@ -17,14 +17,18 @@ import (
 // If the profile has no username, the link is created to the user ID. Example:
 //
 //	<a href='tg://user?id=123456789'>Full Name</a>
-func FmtName(d *models.Dancer) string {
-	if d.Profile == nil {
-		return d.FullName
+func FmtName(fullname string, profile *models.Profile) string {
+	if profile == nil {
+		return fullname
 	}
-	if d.Profile.Username != "" {
-		return "<a href='https://t.me/" + d.Profile.Username + "'>" + d.FullName + "</a>"
+	if profile.Username != "" {
+		return "<a href='https://t.me/" + profile.Username + "'>" + fullname + "</a>"
 	}
-	return "<a href='tg://user?id=" + strconv.FormatInt(d.Profile.ID, 10) + "'>" + d.FullName + "</a>"
+	return "<a href='tg://user?id=" + strconv.FormatInt(profile.ID, 10) + "'>" + fullname + "</a>"
+}
+
+func FmtDancerName(d *models.Dancer) string {
+	return FmtName(d.FullName, d.Profile)
 }
 
 // FmtSingles makes [models.SessionSingle] from the list of singles with given role.

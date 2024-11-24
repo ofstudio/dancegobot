@@ -53,9 +53,9 @@ func sbCouples(sb *strings.Builder, couples []models.Couple) {
 	for i, c := range couples {
 		sb.WriteString(strconv.Itoa(i + 1))
 		sb.WriteString(". ")
-		sb.WriteString(FmtName(&c.Dancers[0]))
+		sb.WriteString(FmtDancerName(&c.Dancers[0]))
 		sb.WriteString(" – ")
-		sb.WriteString(FmtName(&c.Dancers[1]))
+		sb.WriteString(FmtDancerName(&c.Dancers[1]))
 		sb.WriteByte('\n')
 	}
 }
@@ -75,7 +75,7 @@ func sbSingles(sb *strings.Builder, s1, s2 []models.Dancer) {
 func sbSingle(sb *strings.Builder, i int, single models.Dancer) {
 	sb.WriteString(strconv.Itoa(i))
 	sb.WriteString(". ")
-	sb.WriteString(FmtName(&single))
+	sb.WriteString(FmtDancerName(&single))
 	sb.WriteByte('\n')
 }
 

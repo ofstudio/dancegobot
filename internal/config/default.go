@@ -16,7 +16,7 @@ func Default() Config {
 			UseWebhook:     false,
 			WebhookListen:  ":8080",
 			RPS:            30,
-			Timeout:        10 * time.Second,
+			Timeout:        30 * time.Second,
 			AllowedUpdates: []string{"message", "inline_query", "chosen_inline_result", "callback_query"},
 		},
 

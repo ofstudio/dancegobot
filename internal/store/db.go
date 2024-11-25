@@ -4,7 +4,6 @@ import (
 	"embed"
 	"errors"
 	"fmt"
-	"io/fs"
 
 	"github.com/golang-migrate/migrate/v4"
 	"github.com/golang-migrate/migrate/v4/database/sqlite"
@@ -12,32 +11,33 @@ import (
 	"github.com/jmoiron/sqlx"
 )
 
-// Migration scripts
-//
-//go:embed migration/*.sql
-var migrationFS embed.FS
-
 // NewSQLite opens new SQLite database.
 func NewSQLite(dbFilePath string, requiredVer uint) (*sqlx.DB, error) {
-	// open DB
+	// 1. Open the database
 	db, err := sqlx.Open("sqlite", dbFilePath)
 	if err != nil {
 		return nil, fmt.Errorf("error opening DB: %w", err)
 	}
 
-	// SQLite does not support multiple connections!
+	// 2. Limit number of connections due to SQLite doesn't support multiple connections
 	db.SetMaxOpenConns(1)
 
-	if err = migrateDB(db, migrationFS, "migration", requiredVer); err != nil {
+	// 3. Perform database migration
+	if err = migrateDB(db, requiredVer); err != nil {
 		return nil, fmt.Errorf("migration error: %w", err)
 	}
 
 	return db, nil
 }
 
+// Migration scripts
+//
+//go:embed migration/*.sql
+var migrationFS embed.FS
+
 // migrateDB performs database migration.
-func migrateDB(db *sqlx.DB, fs fs.FS, path string, requiredVer uint) error {
-	data, err := iofs.New(fs, path)
+func migrateDB(db *sqlx.DB, requiredVer uint) error {
+	data, err := iofs.New(migrationFS, "migration")
 	if err != nil {
 		return fmt.Errorf("failed to load migration scripts: %w", err)
 	}
@@ -55,18 +55,17 @@ func migrateDB(db *sqlx.DB, fs fs.FS, path string, requiredVer uint) error {
 		return fmt.Errorf("failed to perform migration: %w", err)
 	}
 
-	ver, isDirty, err := m.Version()
+	ver, dirty, err := m.Version()
 	if err != nil {
 		return fmt.Errorf("failed to get database version: %w", err)
 	}
 
-	if isDirty {
+	switch {
+	case dirty:
 		return errors.New("database is dirty")
-	}
-
-	if ver != requiredVer {
+	case ver != requiredVer:
 		return fmt.Errorf("unexpected database version: '%d', expected '%d'", ver, requiredVer)
+	default:
+		return nil
 	}
-
-	return nil
 }

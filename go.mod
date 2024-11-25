@@ -6,7 +6,7 @@ require (
 	github.com/caarlos0/env/v11 v11.2.2
 	github.com/golang-migrate/migrate/v4 v4.18.1
 	github.com/jmoiron/sqlx v1.4.0
-	github.com/stretchr/testify v1.9.0
+	github.com/stretchr/testify v1.10.0
 	golang.org/x/time v0.8.0
 	gopkg.in/telebot.v4 v4.0.0-beta.4
 )

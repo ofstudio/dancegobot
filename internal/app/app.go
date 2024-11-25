@@ -44,7 +44,7 @@ func (a *App) Start(ctx context.Context) error {
 	a.log.Info("Bot created", "username", bot.Me.Username, "", a.cfg.Bot)
 
 	// 2. Connect the database and store
-	db, err := store.NewSQLite("./playground/dev.db", a.cfg.DB.Version)
+	db, err := store.NewSQLite(a.cfg.DB.Filepath, a.cfg.DB.Version)
 	if err != nil {
 		return fmt.Errorf("failed to connect database: %w", err)
 	}

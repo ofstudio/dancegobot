@@ -9,7 +9,8 @@ import (
 )
 
 func TestNew(t *testing.T) {
-	deeplink := New("my_bot", "signup", "eventID", "leader")
+	SetBotName("my_bot")
+	deeplink := New("signup", "eventID", "leader")
 	assert.Regexp(t, `^https://t.me/my_bot\?start=[a-zA-Z0-9]{4}-signup-eventID-leader$`, deeplink)
 }
 

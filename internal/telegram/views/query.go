@@ -21,14 +21,14 @@ func AnswerQueryEmpty(c tele.Context, thumb string) error {
 }
 
 // AnswerQuery sends a response to the non-empty inline query.
-func AnswerQuery(c tele.Context, botName string, eventID, thumb string) error {
+func AnswerQuery(c tele.Context, eventID, thumb string) error {
 	return c.Answer(&tele.QueryResponse{
 		Results: tele.Results{
 			&tele.ArticleResult{
 				ResultBase: tele.ResultBase{
 					ID:          eventID,
 					ParseMode:   tele.ModeHTML,
-					ReplyMarkup: btnAnnouncement(botName, eventID),
+					ReplyMarkup: btnAnnouncement(eventID),
 				},
 				Title:       locale.QueryTitleEmoji + " " + c.Query().Text,
 				Text:        c.Query().Text,

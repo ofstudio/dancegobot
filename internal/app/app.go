@@ -11,6 +11,8 @@ import (
 	"github.com/ofstudio/dancegobot/internal/services"
 	"github.com/ofstudio/dancegobot/internal/store"
 	"github.com/ofstudio/dancegobot/internal/telegram"
+	"github.com/ofstudio/dancegobot/internal/telegram/deeplink"
+	"github.com/ofstudio/dancegobot/internal/telegram/views"
 	"github.com/ofstudio/dancegobot/pkg/noplog"
 )
 
@@ -38,20 +40,21 @@ func (a *App) Start(ctx context.Context) error {
 	if err != nil {
 		return fmt.Errorf("failed to create bot: %w", err)
 	}
-	a.cfg.Settings.BotName = telegram.BotName(bot)
-	a.log.Info("Bot created", "username", a.cfg.Settings.BotName, "", a.cfg.Bot)
+	deeplink.SetBotName(bot.Me.Username)
+	a.log.Info("Bot created", "username", bot.Me.Username, "", a.cfg.Bot)
 
-	// 2. Initialize the database and store
+	// 2. Connect the database and store
 	db, err := store.NewSQLite("./playground/dev.db", a.cfg.DB.Version)
 	if err != nil {
-		return fmt.Errorf("failed to initialize database: %w", err)
+		return fmt.Errorf("failed to connect database: %w", err)
 	}
-	a.log.Info("Database initialized", "", a.cfg.DB)
+	a.log.Info("Database connect", "", a.cfg.DB)
 	s := store.NewStore(db)
 	defer s.Close()
 
 	// 3. Initialize services
-	srv := services.NewServices(a.cfg.Settings, s, bot).WithLogger(a.log)
+	srv := services.NewServices(a.cfg.Settings, s, views.Render(bot), views.Notify(bot)).
+		WithLogger(a.log)
 
 	// 4. Initialize middleware and handlers
 	m := telegram.NewMiddleware().WithLogger(a.log)

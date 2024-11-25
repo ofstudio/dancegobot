@@ -3,8 +3,6 @@ package services
 import (
 	"log/slog"
 
-	tele "gopkg.in/telebot.v4"
-
 	"github.com/ofstudio/dancegobot/internal/config"
 )
 
@@ -16,9 +14,9 @@ type Services struct {
 	Render   *RenderService
 }
 
-func NewServices(cfg config.Settings, store Store, bot tele.API) *Services {
-	render := NewRenderService(cfg, store, bot)
-	notifier := NewNotifierService(cfg, store, bot)
+func NewServices(cfg config.Settings, store Store, rf RenderFunc, nf NotifyFunc) *Services {
+	render := NewRenderService(cfg, store, rf)
+	notifier := NewNotifierService(cfg, store, nf)
 	return &Services{
 		Event:    NewEventService(cfg, store, render, notifier),
 		User:     NewUserService(cfg, store),

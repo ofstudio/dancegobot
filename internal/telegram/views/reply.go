@@ -28,7 +28,7 @@ func SendSignup(c tele.Context, dancer *models.Dancer, singles []models.SessionS
 	case models.StatusSingle:
 		return c.Send(fmt.Sprintf(locale.SignupSingle, locale.IconSingle[dancer.Role]), opts)
 	case models.StatusInCouple:
-		return c.Send(fmt.Sprintf(locale.SignupInCouple, FmtDancerName(dancer.Partner)), opts)
+		return c.Send(fmt.Sprintf(locale.SignupInCouple, fmtDancerName(dancer.Partner)), opts)
 	case models.StatusForbidden:
 		return c.Send(locale.SignupForbidden, opts)
 	default:
@@ -44,7 +44,7 @@ func SendResult(c tele.Context, upd *models.EventUpdate, singles []models.Sessio
 		case models.StatusSingle:
 			return fmt.Sprintf(locale.ResultSuccessSingle, locale.IconSingle[upd.Dancer.Role])
 		case models.StatusInCouple:
-			return fmt.Sprintf(locale.ResultSuccessCouple, FmtDancerName(upd.Dancer.Partner))
+			return fmt.Sprintf(locale.ResultSuccessCouple, fmtDancerName(upd.Dancer.Partner))
 		default:
 			return locale.ResultSuccessDeleted
 		}
@@ -66,11 +66,11 @@ func SendResult(c tele.Context, upd *models.EventUpdate, singles []models.Sessio
 	case models.ResultAlreadyAsSingle:
 		return c.Send(fmt.Sprintf(locale.ResultAlreadyAsSingle, locale.IconSingle[upd.Dancer.Role]), opts)
 	case models.ResultAlreadyInCouple:
-		return c.Send(fmt.Sprintf(locale.ResultAlreadyInCouple, FmtDancerName(upd.Dancer.Partner)), opts)
+		return c.Send(fmt.Sprintf(locale.ResultAlreadyInCouple, fmtDancerName(upd.Dancer.Partner)), opts)
 	case models.ResultAlreadyInSameCouple:
 		return c.Send(locale.ResultAlreadyInSameCouple, opts)
 	case models.ResultPartnerTaken:
-		return c.Send(fmt.Sprintf(locale.ResultPartnerTaken, FmtDancerName(upd.ChosenPartner)), opts)
+		return c.Send(fmt.Sprintf(locale.ResultPartnerTaken, fmtDancerName(upd.ChosenPartner)), opts)
 	case models.ResultPartnerSameRole:
 		return c.Send(locale.ResultPartnerSameRole, opts)
 	case models.ResultSelfNotAllowed:

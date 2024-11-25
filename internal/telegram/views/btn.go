@@ -11,14 +11,14 @@ import (
 )
 
 // btnAnnouncement creates a buttons for the event announcement message.
-func btnAnnouncement(botName string, eventID string) *tele.ReplyMarkup {
+func btnAnnouncement(eventID string) *tele.ReplyMarkup {
 	rm := &tele.ReplyMarkup{}
 	rm.Inline(
 		rm.Row(
 			rm.URL(locale.RoleIcon[models.RoleLeader],
-				deeplink.New(botName, models.SessionSignup, eventID, string(models.RoleLeader))),
+				deeplink.New(models.SessionSignup, eventID, string(models.RoleLeader))),
 			rm.URL(locale.RoleIcon[models.RoleFollower],
-				deeplink.New(botName, models.SessionSignup, eventID, string(models.RoleFollower))),
+				deeplink.New(models.SessionSignup, eventID, string(models.RoleFollower))),
 		),
 	)
 

@@ -106,7 +106,7 @@ func (h *Handlers) Query(c tele.Context) error {
 		return views.AnswerQueryEmpty(c, h.cfg.QueryThumbUrl)
 	}
 	eventID := h.events.NewID()
-	return views.AnswerQuery(c, h.cfg.BotName, eventID, h.cfg.QueryThumbUrl)
+	return views.AnswerQuery(c, eventID, h.cfg.QueryThumbUrl)
 }
 
 // InlineResult - handles inline result with the event announcement.

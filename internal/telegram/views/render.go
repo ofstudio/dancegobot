@@ -1,6 +1,7 @@
 package views
 
 import (
+	"errors"
 	"strconv"
 	"strings"
 
@@ -11,18 +12,23 @@ import (
 )
 
 // Render renders the event announcement message.
-func Render(b tele.API, botName string, event *models.Event) error {
-	text := renderText(event)
-	rm := btnAnnouncement(botName, event.ID)
-	msg := &tele.InlineResult{MessageID: event.MessageID}
-	opts := &tele.SendOptions{
-		ReplyMarkup:           rm,
-		DisableWebPagePreview: true,
-		ParseMode:             tele.ModeHTML,
-		Entities:              nil,
+func Render(api tele.API) func(event *models.Event) error {
+	return func(event *models.Event) error {
+		text := renderText(event)
+		rm := btnAnnouncement(event.ID)
+		msg := &tele.InlineResult{MessageID: event.MessageID}
+		opts := &tele.SendOptions{
+			ReplyMarkup:           rm,
+			DisableWebPagePreview: true,
+			ParseMode:             tele.ModeHTML,
+			Entities:              nil,
+		}
+		_, err := api.Edit(msg, text, opts)
+		if errors.Is(err, tele.ErrTrueResult) {
+			return nil
+		}
+		return err
 	}
-	_, err := b.Edit(msg, text, opts)
-	return err
 }
 
 func renderText(event *models.Event) string {
@@ -53,9 +59,9 @@ func sbCouples(sb *strings.Builder, couples []models.Couple) {
 	for i, c := range couples {
 		sb.WriteString(strconv.Itoa(i + 1))
 		sb.WriteString(". ")
-		sb.WriteString(FmtDancerName(&c.Dancers[0]))
+		sb.WriteString(fmtDancerName(&c.Dancers[0]))
 		sb.WriteString(" – ")
-		sb.WriteString(FmtDancerName(&c.Dancers[1]))
+		sb.WriteString(fmtDancerName(&c.Dancers[1]))
 		sb.WriteByte('\n')
 	}
 }
@@ -75,7 +81,7 @@ func sbSingles(sb *strings.Builder, s1, s2 []models.Dancer) {
 func sbSingle(sb *strings.Builder, i int, single models.Dancer) {
 	sb.WriteString(strconv.Itoa(i))
 	sb.WriteString(". ")
-	sb.WriteString(FmtDancerName(&single))
+	sb.WriteString(fmtDancerName(&single))
 	sb.WriteByte('\n')
 }
 

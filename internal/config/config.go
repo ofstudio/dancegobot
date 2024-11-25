@@ -23,7 +23,6 @@ type DB struct {
 // Settings - application settings
 type Settings struct {
 	QueryThumbUrl    string          `env:"THUMBNAIL_URL"` // URL for thumbnail image for query answer
-	BotName          string          // Telegram bot username
 	EventIDLen       int             // Length of event ID
 	EventTextMaxLen  int             // Maximum length for event text in runes
 	DancerNameMaxLen int             // Maximum length for dancer name in runes

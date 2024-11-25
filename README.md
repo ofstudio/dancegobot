@@ -22,7 +22,7 @@ Configuration is done via environment variables.
 
 | Variable                 | Default value              | Description                                                                                                                                                                                                        |
 |--------------------------|----------------------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| `DB_FILEPATH`            | –                          | **_Required._** Path to SQLite database file.                                                                                                                                                                      |
+| `DB_FILEPATH`            | –                          | **_Required._** Path to SQLite database file. Note that inside Docker container, `DB_FILEPATH` is already set to `/data/dancegobot.db` by default. See Dockerfile for more details.                                |
 | `BOT_TOKEN`              | –                          | **_Required._** Telegram bot token.                                                                                                                                                                                |
 | `BOT_API_URL`            | `https://api.telegram.org` | _Optional._ Telegram bot API URL.                                                                                                                                                                                  |
 | `BOT_USE_WEBHOOK`        | `false`                    | _Optional._ Should bot use [webhook](https://core.telegram.org/bots/webhooks) or [long polling](https://core.telegram.org/bots/api#getupdates) for receiving updates. Default is `false` which means long polling. |
@@ -31,10 +31,13 @@ Configuration is done via environment variables.
 | `THUMBNAIL_URL`          | –                          | _Optional._ URL to a thumbnail image that will be used for announcement inline query answer. It should be a square image.                                                                                          |
 
 ## License
+
 Apache License 2.0
 
 ## Contributing
+
 Feel free to open an issue or a pull request.
 
 ## Author
+
 Oleg Fomin [@ofstudio](https://t.me/ofstudio)

@@ -19,7 +19,7 @@ type TestEventHandlerSuite struct {
 
 func (suite *TestEventHandlerSuite) TestDancerGetByProfile() {
 	suite.Run("dancer is not registered", func() {
-		event := sampleEventFull
+		event := sampleEvent()
 		profile := &models.Profile{ID: 100, FirstName: "Test", LastName: "User"}
 
 		dancer := newEventHandler(&event).DancerGetByProfile(profile, models.RoleLeader)
@@ -34,7 +34,7 @@ func (suite *TestEventHandlerSuite) TestDancerGetByProfile() {
 	})
 
 	suite.Run("dancer is registered in couple by username", func() {
-		event := sampleEventFull
+		event := sampleEvent()
 		profile := &models.Profile{ID: 20, FirstName: "Jill", LastName: "Smith", Username: "jillsmith"}
 
 		dancer := newEventHandler(&event).DancerGetByProfile(profile, models.RoleLeader)
@@ -49,7 +49,7 @@ func (suite *TestEventHandlerSuite) TestDancerGetByProfile() {
 	})
 
 	suite.Run("dancer is registered in couple by profile", func() {
-		event := sampleEventFull
+		event := sampleEvent()
 		profile := &models.Profile{ID: 3, FirstName: "Jack", LastName: "Smith"}
 
 		dancer := newEventHandler(&event).DancerGetByProfile(profile, models.RoleLeader)
@@ -65,7 +65,7 @@ func (suite *TestEventHandlerSuite) TestDancerGetByProfile() {
 	})
 
 	suite.Run("dancer is registered as single", func() {
-		event := sampleEventFull
+		event := sampleEvent()
 		profile := &models.Profile{ID: 5}
 
 		dancer := newEventHandler(&event).DancerGetByProfile(profile, models.RoleFollower)
@@ -82,7 +82,7 @@ func (suite *TestEventHandlerSuite) TestDancerGetByProfile() {
 
 func (suite *TestEventHandlerSuite) TestDancerGetByName() {
 	suite.Run("dancer is not registered", func() {
-		event := sampleEventFull
+		event := sampleEvent()
 		name := "@testuser"
 
 		dancer := newEventHandler(&event).DancerGetByName(name, models.RoleLeader)
@@ -97,7 +97,7 @@ func (suite *TestEventHandlerSuite) TestDancerGetByName() {
 	})
 
 	suite.Run("dancer is registered in couple by username", func() {
-		event := sampleEventFull
+		event := sampleEvent()
 		name := "@jillsmith"
 
 		dancer := newEventHandler(&event).DancerGetByName(name, models.RoleLeader)
@@ -112,7 +112,7 @@ func (suite *TestEventHandlerSuite) TestDancerGetByName() {
 	})
 
 	suite.Run("dancer is registered in couple by profile", func() {
-		event := sampleEventFull
+		event := sampleEvent()
 		name := "@johndoe"
 
 		dancer := newEventHandler(&event).DancerGetByName(name, models.RoleLeader)
@@ -130,7 +130,7 @@ func (suite *TestEventHandlerSuite) TestDancerGetByName() {
 	})
 
 	suite.Run("dancer is registered as single", func() {
-		event := sampleEventFull
+		event := sampleEvent()
 		name := "@katbrown"
 
 		dancer := newEventHandler(&event).DancerGetByName(name, models.RoleFollower)
@@ -149,7 +149,7 @@ func (suite *TestEventHandlerSuite) TestDancerGetByName() {
 
 func (suite *TestEventHandlerSuite) TestCoupleAdd() {
 	suite.Run("both dancers not registered", func() {
-		event := sampleEventFull
+		event := sampleEvent()
 		profile1 := &models.Profile{ID: 600, FirstName: "Alice", LastName: "Wonder"}
 		profile2 := &models.Profile{ID: 700, FirstName: "Bob", LastName: "Builder"}
 		handler := newEventHandler(&event)
@@ -169,6 +169,8 @@ func (suite *TestEventHandlerSuite) TestCoupleAdd() {
 		suite.Equal(dancer2.Partner, dancer1)
 
 		suite.Require().NotNil(result.Couple)
+		suite.Require().Len(event.Couples, 3)
+		suite.Equal(event.Couples[2], *result.Couple)
 		suite.Equal(dancer1, &result.Couple.Dancers[0])
 		suite.Equal(dancer2, &result.Couple.Dancers[1])
 		suite.Equal(dancer1.Profile, &result.Couple.CreatedBy)
@@ -183,7 +185,7 @@ func (suite *TestEventHandlerSuite) TestCoupleAdd() {
 	})
 
 	suite.Run("partner registered as single", func() {
-		event := sampleEventFull
+		event := sampleEvent()
 		profile1 := &models.Profile{ID: 600, FirstName: "Bob", LastName: "Sponge"}
 		profile2 := &models.Profile{ID: 5, FirstName: "Amalia", LastName: "Green"}
 		handler := newEventHandler(&event)
@@ -203,6 +205,8 @@ func (suite *TestEventHandlerSuite) TestCoupleAdd() {
 		suite.True(dancer2.SingleSignup)
 
 		suite.Require().NotNil(result.Couple)
+		suite.Require().Len(event.Couples, 3)
+		suite.Equal(event.Couples[2], *result.Couple)
 		suite.Equal(dancer1, &result.Couple.Dancers[0])
 		suite.Equal(dancer2, &result.Couple.Dancers[1])
 
@@ -222,7 +226,7 @@ func (suite *TestEventHandlerSuite) TestCoupleAdd() {
 	})
 
 	suite.Run("dancer registered as single", func() {
-		event := sampleEventFull
+		event := sampleEvent()
 		profile1 := &models.Profile{ID: 5, FirstName: "Amalia", LastName: "Green"}
 		profile2 := &models.Profile{ID: 700, FirstName: "Bob", LastName: "Builder"}
 		handler := newEventHandler(&event)
@@ -242,6 +246,8 @@ func (suite *TestEventHandlerSuite) TestCoupleAdd() {
 		suite.True(dancer1.SingleSignup)
 
 		suite.Require().NotNil(result.Couple)
+		suite.Require().Len(event.Couples, 3)
+		suite.Equal(event.Couples[2], *result.Couple)
 		suite.Equal(dancer2, &result.Couple.Dancers[0])
 		suite.Equal(dancer1, &result.Couple.Dancers[1])
 
@@ -256,8 +262,8 @@ func (suite *TestEventHandlerSuite) TestCoupleAdd() {
 		suite.Require().Len(handler.notif, 0)
 	})
 
-	suite.Run("one dancer registered in another couple", func() {
-		event := sampleEventFull
+	suite.Run("partner registered in another couple", func() {
+		event := sampleEvent()
 		profile1 := &models.Profile{ID: 100, FirstName: "Charlie", LastName: "Brown"}
 		profile2 := &models.Profile{ID: 2, FirstName: "Jane", LastName: "Doe"}
 		handler := newEventHandler(&event)
@@ -278,7 +284,7 @@ func (suite *TestEventHandlerSuite) TestCoupleAdd() {
 	})
 
 	suite.Run("dancer already registered in another couple", func() {
-		event := sampleEventFull
+		event := sampleEvent()
 		profile1 := &models.Profile{ID: 1, FirstName: "John", LastName: "Doe"}
 		handler := newEventHandler(&event)
 		dancer1 := handler.DancerGetByProfile(profile1, models.RoleLeader)
@@ -297,7 +303,7 @@ func (suite *TestEventHandlerSuite) TestCoupleAdd() {
 	})
 
 	suite.Run("dancer already registered in same couple", func() {
-		event := sampleEventFull
+		event := sampleEvent()
 		profile1 := &models.Profile{ID: 1, FirstName: "John", LastName: "Doe"}
 		profile2 := &models.Profile{ID: 2, FirstName: "Jane", LastName: "Doe"}
 		handler := newEventHandler(&event)
@@ -319,7 +325,7 @@ func (suite *TestEventHandlerSuite) TestCoupleAdd() {
 	})
 
 	suite.Run("dancer and partner have the same role", func() {
-		event := sampleEventFull
+		event := sampleEvent()
 		profile1 := &models.Profile{ID: 400, FirstName: "Eve", LastName: "Green"}
 		profile2 := &models.Profile{ID: 4, FirstName: "Kate", LastName: "Brown"}
 		handler := newEventHandler(&event)
@@ -339,7 +345,7 @@ func (suite *TestEventHandlerSuite) TestCoupleAdd() {
 	})
 
 	suite.Run("dancer tries to register with itself", func() {
-		event := sampleEventFull
+		event := sampleEvent()
 		profile1 := &models.Profile{ID: 4, FirstName: "Kate", LastName: "Brown"}
 		handler := newEventHandler(&event)
 
@@ -359,7 +365,7 @@ func (suite *TestEventHandlerSuite) TestCoupleAdd() {
 	})
 
 	suite.Run("event is closed for new registrations", func() {
-		event := sampleEventFull
+		event := sampleEvent()
 		event.Closed = true
 		profile1 := &models.Profile{ID: 600, FirstName: "Alice", LastName: "Wonder"}
 		profile2 := &models.Profile{ID: 700, FirstName: "Bob", LastName: "Builder"}
@@ -378,7 +384,7 @@ func (suite *TestEventHandlerSuite) TestCoupleAdd() {
 	})
 
 	suite.Run("event is forbidden for dancer", func() {
-		event := sampleEventFull
+		event := sampleEvent()
 		profile1 := &models.Profile{ID: 100, FirstName: "Charlie", LastName: "Brown"}
 		handler := newEventHandler(&event)
 		dancer1 := handler.DancerGetByProfile(profile1, models.RoleLeader)
@@ -396,7 +402,7 @@ func (suite *TestEventHandlerSuite) TestCoupleAdd() {
 	})
 
 	suite.Run("event is forbidden for partner", func() {
-		event := sampleEventFull
+		event := sampleEvent()
 		profile1 := &models.Profile{ID: 100, FirstName: "Charlie", LastName: "Brown"}
 		handler := newEventHandler(&event)
 		dancer1 := handler.DancerGetByProfile(profile1, models.RoleLeader)
@@ -415,65 +421,303 @@ func (suite *TestEventHandlerSuite) TestCoupleAdd() {
 
 }
 
-var sampleEventFull = models.Event{
-	ID:        "test12345678",
-	Caption:   "This is a test event",
-	MessageID: "123test456",
-	Couples: []models.Couple{
-		{
-			Dancers: []models.Dancer{
-				{
-					Profile:   &models.Profile{ID: 1, FirstName: "John", LastName: "Doe", Username: "johndoe"},
-					FullName:  "John Doe",
-					Role:      models.RoleLeader,
-					CreatedAt: nowFn(),
+func (suite *TestEventHandlerSuite) TestSingleAdd() {
+	suite.Run("dancer not registered", func() {
+		event := sampleEvent()
+		profile := &models.Profile{ID: 600, FirstName: "Alice", LastName: "Wonder"}
+		handler := newEventHandler(&event)
+		dancer := handler.DancerGetByProfile(profile, models.RoleLeader)
+
+		result := handler.SingleAdd(dancer)
+
+		suite.Require().NotNil(result)
+		suite.Equal(models.ResultSuccess, result.Result)
+		suite.Equal(models.StatusSingle, dancer.Status)
+		suite.True(dancer.SingleSignup)
+		suite.Nil(dancer.Partner)
+		suite.Equal(profile.ID, dancer.Profile.ID)
+		suite.Equal(profile.FullName(), dancer.FullName)
+		suite.Equal(models.RoleLeader, dancer.Role)
+		suite.True(dancer.SingleSignup)
+
+		suite.Require().Len(event.Singles, 3)
+		suite.Equal(event.Singles[2], *dancer)
+
+		suite.Require().Len(handler.hist, 1)
+		suite.Equal(models.HistorySingleAdded, handler.hist[0].Action)
+		suite.Equal(dancer.Profile, handler.hist[0].Initiator)
+		suite.Equal(dancer, handler.hist[0].Details)
+
+		suite.Require().Len(handler.notif, 0)
+	})
+
+	suite.Run("dancer already registered as single", func() {
+		event := sampleEvent()
+		profile := &models.Profile{ID: 5, FirstName: "Amalia", LastName: "Green"}
+		handler := newEventHandler(&event)
+		dancer := handler.DancerGetByProfile(profile, models.RoleFollower)
+
+		result := handler.SingleAdd(dancer)
+
+		suite.Require().NotNil(result)
+		suite.Equal(models.ResultAlreadyAsSingle, result.Result)
+		suite.Equal(models.StatusSingle, dancer.Status)
+		suite.True(dancer.SingleSignup)
+		suite.Nil(dancer.Partner)
+		suite.Equal(profile.ID, dancer.Profile.ID)
+		suite.Equal(profile.FullName(), dancer.FullName)
+		suite.Equal(models.RoleFollower, dancer.Role)
+		suite.True(dancer.SingleSignup)
+
+		suite.Require().Len(event.Singles, 2)
+		suite.Require().Len(handler.hist, 0)
+		suite.Require().Len(handler.notif, 0)
+	})
+
+	suite.Run("dancer already registered in couple", func() {
+		event := sampleEvent()
+		profile := &models.Profile{ID: 1, FirstName: "John", LastName: "Doe"}
+		handler := newEventHandler(&event)
+		dancer := handler.DancerGetByProfile(profile, models.RoleLeader)
+
+		result := handler.SingleAdd(dancer)
+
+		suite.Require().NotNil(result)
+		suite.Equal(models.ResultAlreadyInCouple, result.Result)
+		suite.Equal(models.StatusInCouple, dancer.Status)
+		suite.Require().NotNil(dancer.Partner)
+		suite.Equal(profile.ID, dancer.Profile.ID)
+		suite.Equal(profile.FullName(), dancer.FullName)
+		suite.Equal(models.RoleLeader, dancer.Role)
+		suite.False(dancer.SingleSignup)
+
+		suite.Require().Len(event.Singles, 2)
+		suite.Require().Len(handler.hist, 0)
+		suite.Require().Len(handler.notif, 0)
+	})
+
+	suite.Run("event is closed for new registrations", func() {
+		event := sampleEvent()
+		event.Closed = true
+		profile := &models.Profile{ID: 600, FirstName: "Alice", LastName: "Wonder"}
+		handler := newEventHandler(&event)
+		dancer := handler.DancerGetByProfile(profile, models.RoleLeader)
+
+		result := handler.SingleAdd(dancer)
+
+		suite.Require().NotNil(result)
+		suite.Equal(models.ResultEventClosed, result.Result)
+		suite.Equal(models.StatusNotRegistered, dancer.Status)
+		suite.Nil(dancer.Partner)
+		suite.Equal(profile.ID, dancer.Profile.ID)
+		suite.Equal(profile.FullName(), dancer.FullName)
+		suite.Equal(models.RoleLeader, dancer.Role)
+		suite.False(dancer.SingleSignup)
+
+		suite.Require().Len(event.Singles, 2)
+		suite.Require().Len(handler.hist, 0)
+		suite.Require().Len(handler.notif, 0)
+	})
+
+	suite.Run("event is forbidden for dancer", func() {
+		event := sampleEvent()
+		profile := &models.Profile{ID: 100, FirstName: "Charlie", LastName: "Brown"}
+		handler := newEventHandler(&event)
+		dancer := handler.DancerGetByProfile(profile, models.RoleLeader)
+		dancer.Status = models.StatusForbidden
+
+		result := handler.SingleAdd(dancer)
+
+		suite.Require().NotNil(result)
+		suite.Equal(models.ResultEventForbiddenDancer, result.Result)
+		suite.Equal(models.StatusForbidden, dancer.Status)
+		suite.Nil(dancer.Partner)
+		suite.Equal(profile.ID, dancer.Profile.ID)
+		suite.Equal(profile.FullName(), dancer.FullName)
+		suite.Equal(models.RoleLeader, dancer.Role)
+		suite.False(dancer.SingleSignup)
+
+		suite.Require().Len(event.Singles, 2)
+		suite.Require().Len(handler.hist, 0)
+		suite.Require().Len(handler.notif, 0)
+	})
+}
+
+func (suite *TestEventHandlerSuite) TestDancerRemove() {
+	suite.Run("dancer not registered", func() {
+		event := sampleEvent()
+		profile := &models.Profile{ID: 100, FirstName: "Test", LastName: "User"}
+		handler := newEventHandler(&event)
+		dancer := handler.DancerGetByProfile(profile, models.RoleLeader)
+
+		result := handler.DancerRemove(dancer)
+
+		suite.Require().NotNil(result)
+		suite.Equal(models.ResultNotRegistered, result.Result)
+		suite.Equal(models.StatusNotRegistered, dancer.Status)
+		suite.Nil(dancer.Partner)
+		suite.Require().Len(handler.hist, 0)
+		suite.Require().Len(handler.notif, 0)
+	})
+
+	suite.Run("dancer registered as single", func() {
+		event := sampleEvent()
+		profile := &models.Profile{ID: 5, FirstName: "Amalia", LastName: "Green"}
+		handler := newEventHandler(&event)
+		dancer := handler.DancerGetByProfile(profile, models.RoleFollower)
+
+		result := handler.DancerRemove(dancer)
+
+		suite.Require().NotNil(result)
+		suite.Equal(models.ResultSuccess, result.Result)
+		suite.Equal(models.StatusNotRegistered, dancer.Status)
+		suite.Nil(dancer.Partner)
+		suite.Require().Len(event.Singles, 1)
+		suite.Require().Len(handler.hist, 1)
+		suite.Equal(models.HistorySingleRemoved, handler.hist[0].Action)
+		suite.Equal(dancer.Profile, handler.hist[0].Initiator)
+		suite.Equal(dancer, handler.hist[0].Details)
+		suite.Require().Len(handler.notif, 0)
+	})
+
+	suite.Run("dancer registered in couple, partner is from singles list", func() {
+		event := sampleEvent()
+		couple := event.Couples[0]
+		profile := &models.Profile{ID: 1, FirstName: "John", LastName: "Doe"}
+		handler := newEventHandler(&event)
+		dancer := handler.DancerGetByProfile(profile, models.RoleLeader)
+		partner := dancer.Partner
+		suite.Require().NotNil(partner)
+
+		result := handler.DancerRemove(dancer)
+
+		suite.Require().NotNil(result)
+		suite.Equal(models.ResultSuccess, result.Result)
+		suite.Equal(models.StatusNotRegistered, dancer.Status)
+		suite.Nil(dancer.Partner)
+		suite.Require().Len(event.Couples, 1)
+		suite.Require().Len(event.Singles, 3)
+		suite.Equal(partner, &event.Singles[1])
+		suite.Require().Len(handler.hist, 2)
+		suite.Equal(models.HistoryCoupleRemoved, handler.hist[0].Action)
+		suite.Equal(dancer.Profile, handler.hist[0].Initiator)
+		suite.Equal(&couple, handler.hist[0].Details)
+		suite.Equal(models.HistorySingleAdded, handler.hist[1].Action)
+		suite.Equal(dancer.Profile, handler.hist[1].Initiator)
+		suite.Equal(partner, handler.hist[1].Details)
+		suite.Require().Len(handler.notif, 1)
+		suite.Equal(dancer.Profile, handler.notif[0].Initiator)
+		suite.Equal(partner.Profile, &handler.notif[0].Recipient)
+		suite.Equal(models.TmplCanceledWithSingle, handler.notif[0].TmplCode)
+	})
+
+	suite.Run("dancer registered in couple, partner is the couple creator", func() {
+		event := sampleEvent()
+		couple := event.Couples[0]
+		profile := &models.Profile{ID: 2, FirstName: "Jane", LastName: "Doe"}
+		handler := newEventHandler(&event)
+		dancer := handler.DancerGetByProfile(profile, models.RoleFollower)
+		partner := dancer.Partner
+		suite.Require().NotNil(partner)
+
+		result := handler.DancerRemove(dancer)
+
+		suite.Require().NotNil(result)
+		suite.Equal(models.ResultSuccess, result.Result)
+		suite.Equal(models.StatusNotRegistered, dancer.Status)
+		suite.Nil(dancer.Partner)
+		suite.Require().Len(event.Couples, 1)
+		suite.Require().Len(event.Singles, 2)
+		suite.Require().Len(handler.hist, 1)
+		suite.Equal(models.HistoryCoupleRemoved, handler.hist[0].Action)
+		suite.Equal(dancer.Profile, handler.hist[0].Initiator)
+		suite.Equal(&couple, handler.hist[0].Details)
+		suite.Require().Len(handler.notif, 1)
+		suite.Equal(dancer.Profile, handler.notif[0].Initiator)
+		suite.Equal(partner.Profile, &handler.notif[0].Recipient)
+		suite.Equal(models.TmplCanceledByPartner, handler.notif[0].TmplCode)
+	})
+
+	suite.Run("dancer is not registered", func() {
+		event := sampleEvent()
+		profile := &models.Profile{ID: 100, FirstName: "Test", LastName: "User"}
+		handler := newEventHandler(&event)
+		dancer := handler.DancerGetByProfile(profile, models.RoleLeader)
+
+		result := handler.DancerRemove(dancer)
+
+		suite.Require().NotNil(result)
+		suite.Equal(models.ResultNotRegistered, result.Result)
+		suite.Equal(models.StatusNotRegistered, dancer.Status)
+		suite.Len(event.Couples, 2)
+		suite.Len(event.Singles, 2)
+		suite.Nil(dancer.Partner)
+		suite.Require().Len(handler.hist, 0)
+		suite.Require().Len(handler.notif, 0)
+	})
+}
+
+func sampleEvent() models.Event {
+	return models.Event{
+		ID:        "test12345678",
+		Caption:   "This is a test event",
+		MessageID: "123test456",
+		Couples: []models.Couple{
+			{
+				Dancers: []models.Dancer{
+					{
+						Profile:   &models.Profile{ID: 1, FirstName: "John", LastName: "Doe", Username: "johndoe"},
+						FullName:  "John Doe",
+						Role:      models.RoleLeader,
+						CreatedAt: nowFn(),
+					},
+					{
+						Profile:      &models.Profile{ID: 2, FirstName: "Jane", LastName: "Doe", Username: "janedoe"},
+						FullName:     "Jane Doe",
+						Role:         models.RoleFollower,
+						SingleSignup: true,
+						CreatedAt:    nowFn().Add(-3 * time.Minute),
+					},
 				},
-				{
-					Profile:      &models.Profile{ID: 2, FirstName: "Jane", LastName: "Doe", Username: "janedoe"},
-					FullName:     "Jane Doe",
-					Role:         models.RoleFollower,
-					SingleSignup: true,
-					CreatedAt:    nowFn().Add(-1 * time.Minute),
-				},
+				CreatedBy: models.Profile{ID: 1, FirstName: "John", LastName: "Doe", Username: "johndoe"},
+				CreatedAt: nowFn(),
 			},
-			CreatedBy: models.Profile{ID: 1, FirstName: "John", LastName: "Doe", Username: "johndoe"},
-			CreatedAt: nowFn(),
-		},
-		{
-			Dancers: []models.Dancer{
-				{
-					Profile:      &models.Profile{ID: 3, FirstName: "Jack", LastName: "Smith"},
-					FullName:     "Jack Smith",
-					Role:         models.RoleLeader,
-					SingleSignup: true,
-					CreatedAt:    nowFn().Add(-3 * time.Minute),
+			{
+				Dancers: []models.Dancer{
+					{
+						Profile:      &models.Profile{ID: 3, FirstName: "Jack", LastName: "Smith"},
+						FullName:     "Jack Smith",
+						Role:         models.RoleLeader,
+						SingleSignup: true,
+						CreatedAt:    nowFn().Add(-2 * time.Minute),
+					},
+					{
+						FullName:  "@jillsmith",
+						Role:      models.RoleFollower,
+						CreatedAt: nowFn(),
+					},
 				},
-				{
-					FullName:  "@jillsmith",
-					Role:      models.RoleFollower,
-					CreatedAt: nowFn(),
-				},
+				CreatedBy: models.Profile{ID: 3, FirstName: "Jack", LastName: "Smith"},
+				CreatedAt: nowFn(),
 			},
-			CreatedBy: models.Profile{ID: 3, FirstName: "Jack", LastName: "Smith"},
-			CreatedAt: nowFn(),
 		},
-	},
-	Singles: []models.Dancer{
-		{
-			Profile:      &models.Profile{ID: 4, FirstName: "Kate", LastName: "Brown", Username: "katbrown"},
-			FullName:     "Kate Brown",
-			Role:         models.RoleFollower,
-			SingleSignup: true,
-			CreatedAt:    nowFn().Add(-2 * time.Minute),
+		Singles: []models.Dancer{
+			{
+				Profile:      &models.Profile{ID: 4, FirstName: "Kate", LastName: "Brown", Username: "katbrown"},
+				FullName:     "Kate Brown",
+				Role:         models.RoleFollower,
+				SingleSignup: true,
+				CreatedAt:    nowFn().Add(-4 * time.Minute),
+			},
+			{
+				Profile:      &models.Profile{ID: 5, FirstName: "Amalia", LastName: "Green"},
+				FullName:     "Amalia Green",
+				Role:         models.RoleFollower,
+				SingleSignup: true,
+				CreatedAt:    nowFn().Add(-1 * time.Minute),
+			},
 		},
-		{
-			Profile:      &models.Profile{ID: 5, FirstName: "Amalia", LastName: "Green"},
-			FullName:     "Amalia Green",
-			Role:         models.RoleFollower,
-			SingleSignup: true,
-			CreatedAt:    nowFn().Add(-4 * time.Minute),
-		},
-	},
-	Owner:     models.Profile{ID: 1000, FirstName: "Test", LastName: "Owner"},
-	CreatedAt: nowFn(),
+		Owner:     models.Profile{ID: 1000, FirstName: "Test", LastName: "Owner"},
+		CreatedAt: nowFn(),
+	}
 }

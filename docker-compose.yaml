@@ -1,0 +1,38 @@
+# This is an example of how to run the bot in webhook mode
+# with traefik as a reverse proxy with Let's Encrypt certificates
+
+services:
+
+  bot:
+    build: .
+    container_name: dancegobot
+    restart: always
+    volumes:
+      - /path/to/data:/data
+    environment:
+      BOT_TOKEN: ${BOT_TOKEN}
+      BOT_USE_WEBHOOK: true
+      BOT_WEBHOOK_PUBLIC_URL: https://your.domain.com/bot
+      THUMBNAIL_URL: ${THUMBNAIL_URL}
+    labels:
+      - traefik.enable=true
+      - traefik.http.routers.dancegobot.rule=Host(`your.domain.com`)
+      - traefik.http.routers.dancegobot.entrypoints=websecure
+      - traefik.http.routers.dancegobot.tls.certresolver=le
+
+  traefik:
+    image: traefik:v3.1
+    restart: always
+    container_name: traefik
+    command:
+      - --providers.docker=true
+      - --providers.docker.exposedbydefault=false
+      - --entryPoints.websecure.address=:443
+      - --certificatesresolvers.le.acme.tlschallenge=true
+      - --certificatesresolvers.le.acme.email=your@email.com
+      - --certificatesresolvers.le.acme.storage=/certificates/acme.json
+    ports:
+      - "443:443"
+    volumes:
+      - /path/to/certificates:/certificates
+      - /var/run/docker.sock:/var/run/docker.sock:ro

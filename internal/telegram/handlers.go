@@ -81,9 +81,9 @@ func (h *Handlers) sessionGet(c tele.Context) models.Session {
 // If the command has a payload, handle it as a Deeplink.
 func (h *Handlers) Start(c tele.Context) error {
 	h.log.Info("[handlers] /start received", "payload", c.Message().Payload, telelog.Attr(c))
-	h.sessionReset(c)
 
 	if c.Message().Payload != "" {
+		h.sessionReset(c)
 		action, params, err := deeplink.Parse(c.Message().Payload)
 		if err != nil {
 			h.log.Error("[handlers] failed to parse deeplink payload: "+err.Error(), telelog.Trace(c))
@@ -97,7 +97,14 @@ func (h *Handlers) Start(c tele.Context) error {
 		}
 	}
 
-	return views.SendStart(c)
+	// Send start message only if user session is empty
+	// due to some Telegram clients (ie iOS, late 2024)
+	// can "double" /start messages on very first interaction with the bot
+	session := h.sessionGet(c)
+	if session.Action == "" {
+		return views.SendStart(c)
+	}
+	return nil
 }
 
 // Query - handles inline query to the bot.

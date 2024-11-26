@@ -1,6 +1,9 @@
 package views
 
 import (
+	"fmt"
+	"unicode/utf8"
+
 	tele "gopkg.in/telebot.v4"
 
 	"github.com/ofstudio/dancegobot/internal/locale"
@@ -11,7 +14,7 @@ func AnswerQueryEmpty(c tele.Context, thumb string) error {
 	return c.Answer(&tele.QueryResponse{
 		Results: tele.Results{
 			&tele.ArticleResult{
-				Title:       locale.QueryTitleEmoji + " " + locale.QueryTextEmpty,
+				Title:       locale.QueryTextEmpty,
 				Text:        locale.QueryTextEmpty,
 				Description: locale.QueryDescriptionEmpty,
 				ThumbURL:    thumb,
@@ -22,6 +25,20 @@ func AnswerQueryEmpty(c tele.Context, thumb string) error {
 
 // AnswerQuery sends a response to the non-empty inline query.
 func AnswerQuery(c tele.Context, eventID, thumb string) error {
+	text := c.Query().Text
+	var desc string
+
+	// Show warning in description if the text is too long.
+	r := 255 - utf8.RuneCountInString(text)
+	switch {
+	case r < 0:
+		desc = locale.QueryOverflow
+	case r < 40:
+		desc = fmt.Sprintf(locale.QueryRemaining, r, locale.NumSymbols.N(r))
+	default:
+		desc = locale.QueryDescription
+	}
+
 	return c.Answer(&tele.QueryResponse{
 		Results: tele.Results{
 			&tele.ArticleResult{
@@ -30,9 +47,9 @@ func AnswerQuery(c tele.Context, eventID, thumb string) error {
 					ParseMode:   tele.ModeHTML,
 					ReplyMarkup: btnAnnouncement(eventID),
 				},
-				Title:       locale.QueryTitleEmoji + " " + c.Query().Text,
-				Text:        c.Query().Text,
-				Description: locale.QueryDescription,
+				Title:       text,
+				Text:        text,
+				Description: desc,
 				ThumbURL:    thumb,
 				HideURL:     true,
 			},

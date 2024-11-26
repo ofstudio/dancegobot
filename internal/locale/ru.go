@@ -1,6 +1,9 @@
 package locale
 
-import "github.com/ofstudio/dancegobot/internal/models"
+import (
+	"github.com/ofstudio/dancegobot/internal/models"
+	"github.com/ofstudio/dancegobot/pkg/numerals"
+)
 
 const (
 	BtnClose = "✖️Закрыть"
@@ -15,11 +18,6 @@ const (
 	ErrSingleNotFound    = "Такой танцор не найден 🤷‍♀️"
 
 	AnnouncementCouples = "👫 <b>Пары</b>\n"
-
-	QueryTitleEmoji       = "✏️"
-	QueryTextEmpty        = "Напиши текст анонса"
-	QueryDescriptionEmpty = "Например: Класс по основам танца 1 марта"
-	QueryDescription      = "Нажми для публикации анонса"
 
 	SignupPlaceholder   = "Введи имя партнера…"
 	SignupNotRegistered = "Отправь мне имя партнера или выбери из списка..."
@@ -45,6 +43,16 @@ const (
 	ResultSinglesNotAllowed     = "На это мероприятие можно записаться только в паре 😔"
 	ResultSinglesNotAllowedRole = "На это мероприятие можно записаться только в паре 😔"
 )
+
+const (
+	QueryTextEmpty        = "✏️ Напиши текст анонса"
+	QueryDescriptionEmpty = "Например: Класс по основам танца 1 марта"
+	QueryDescription      = "Нажми для публикации анонса"
+	QueryRemaining        = "Осталось %d %s"
+	QueryOverflow         = "⚠️ Длина сообщения превышена!"
+)
+
+var NumSymbols = numerals.Ru("символ", "символа", "символов")
 
 type roleMap map[models.Role]string
 

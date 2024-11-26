@@ -160,6 +160,9 @@ func (h *Handlers) UserShared(c tele.Context) error {
 // The payload will be treated as a text message.
 func (h *Handlers) Partner(c tele.Context) error {
 	h.log.Warn("[handlers] /partner received: payload will be treated as text message", telelog.Attr(c))
+	if c.Message().Payload == "" {
+		return nil
+	}
 	c.Message().Text = c.Message().Payload
 	c.Message().Payload = ""
 	return h.Text(c)

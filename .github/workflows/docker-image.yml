@@ -1,0 +1,35 @@
+name: Docker Image CI
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Image version
+        run: echo "VERSION=$(echo ${{ github.ref }} | sed -e 's/^refs\/tags\/v//')" >> $GITHUB_ENV
+
+      - name: Build image
+        run: docker build -t ${{ github.repository }}:$VERSION .
+
+      - name: Login to ghcr.io
+        uses: docker/login-action@v2
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Push image to ghcr.io
+        run:
+          docker tag ${{ github.repository }}:$VERSION ghcr.io/${{ github.repository }}:$VERSION &&
+          docker push ghcr.io/${{ github.repository }}:$VERSION

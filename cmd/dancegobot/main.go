@@ -11,23 +11,26 @@ import (
 )
 
 func main() {
+	// 1. Create logger
 	log := slog.Default()
 	log.Info("Starting", "version", config.Version())
 
-	cfg, err := config.NewConfig()
+	// 2. Load the configuration
+	cfg, err := config.Load()
 	if err != nil {
 		log.Error("Fatal: failed to load config: " + err.Error())
 		os.Exit(-1)
 	}
 
-	a := app.New(cfg).WithLogger(log)
+	// 3. Create application context
 	ctx, cancel := shutdown.Context(context.Background(), func(s os.Signal) {
 		log.Warn("Received signal: " + s.String())
 	})
 	defer cancel()
 
-	if err = a.Start(ctx); err != nil {
-		log.Error("Fatal: failed to start app: " + err.Error())
+	// 4. Start the application
+	if err = app.New(cfg).WithLogger(log).Start(ctx); err != nil {
+		log.Error("Fatal: application error: " + err.Error())
 		os.Exit(-1)
 	}
 

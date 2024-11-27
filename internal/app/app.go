@@ -20,6 +20,7 @@ type App struct {
 	log *slog.Logger
 }
 
+// New creates a new application with the given configuration.
 func New(cfg config.Config) *App {
 	return &App{
 		cfg: cfg,
@@ -47,7 +48,7 @@ func (a *App) Start(ctx context.Context) error {
 	if err != nil {
 		return fmt.Errorf("failed to connect database: %w", err)
 	}
-	a.log.Info("Database connect", "", a.cfg.DB)
+	a.log.Info("Database connected", "", a.cfg.DB)
 	s := store.NewStore(db)
 	defer s.Close()
 

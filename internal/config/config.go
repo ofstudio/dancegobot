@@ -41,8 +41,8 @@ type Bot struct {
 	AllowedUpdates   []string      // Allowed update types
 }
 
-// NewConfig loads configuration from [Default] and environment variables
-func NewConfig() (Config, error) {
+// Load loads configuration from [Default] and environment variables
+func Load() (Config, error) {
 	c := Default()
 	if err := env.Parse(&c); err != nil {
 		return Config{}, fmt.Errorf("failed to parse environment variables: %w", err)

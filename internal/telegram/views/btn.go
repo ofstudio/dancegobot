@@ -10,6 +10,15 @@ import (
 	"github.com/ofstudio/dancegobot/internal/telegram/deeplink"
 )
 
+// btnTry creates a button for the "Try" option on the start message.
+func btnTry() *tele.ReplyMarkup {
+	rm := &tele.ReplyMarkup{}
+	rm.Inline(rm.Row(
+		rm.Query(locale.BtnTry, " "),
+	))
+	return rm
+}
+
 // btnAnnouncement creates a buttons for the event announcement message.
 func btnAnnouncement(eventID string) *tele.ReplyMarkup {
 	rm := &tele.ReplyMarkup{}

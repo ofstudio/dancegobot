@@ -11,7 +11,9 @@ import (
 
 // SendStart sends a welcome message.
 func SendStart(c tele.Context) error {
-	return c.Send(locale.Start, tele.ModeHTML, tele.NoPreview, tele.RemoveKeyboard)
+	rm := btnTry()
+	text := fmt.Sprintf(locale.Start, botName)
+	return c.Send(text, rm, tele.ModeHTML, tele.NoPreview, tele.RemoveKeyboard)
 }
 
 // SendSignup sends a message on user signup request.

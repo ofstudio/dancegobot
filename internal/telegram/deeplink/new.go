@@ -7,12 +7,6 @@ import (
 	"github.com/ofstudio/dancegobot/pkg/randtoken"
 )
 
-var botName string
-
-func SetBotName(name string) {
-	botName = name
-}
-
 const dlSeparator = '-'
 
 // New creates a new deeplink to the bot.
@@ -24,7 +18,7 @@ const dlSeparator = '-'
 // Example: sign up for the event with the ID "huw8HMZsOp3" as a leader
 //
 //	https://t.me/dancegobot?start=AD6s-signup-huw8HMZsOp3-leader
-func New(action models.SessionAction, params ...string) string {
+func New(botName string, action models.SessionAction, params ...string) string {
 	return "https://t.me/" + botName + "?start=" +
 		randtoken.New(4) + "-" +
 		string(action) + "-" +

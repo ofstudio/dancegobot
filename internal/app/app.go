@@ -11,7 +11,6 @@ import (
 	"github.com/ofstudio/dancegobot/internal/services"
 	"github.com/ofstudio/dancegobot/internal/store"
 	"github.com/ofstudio/dancegobot/internal/telegram"
-	"github.com/ofstudio/dancegobot/internal/telegram/deeplink"
 	"github.com/ofstudio/dancegobot/internal/telegram/views"
 	"github.com/ofstudio/dancegobot/pkg/noplog"
 )
@@ -40,7 +39,7 @@ func (a *App) Start(ctx context.Context) error {
 	if err != nil {
 		return fmt.Errorf("failed to create bot: %w", err)
 	}
-	deeplink.SetBotName(bot.Me.Username)
+	views.SetBotName(bot.Me.Username)
 	a.log.Info("Bot created", "username", bot.Me.Username, "", a.cfg.Bot)
 
 	// 2. Connect the database and store

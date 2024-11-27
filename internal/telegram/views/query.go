@@ -43,12 +43,15 @@ func AnswerQuery(c tele.Context, eventID, thumb string) error {
 		Results: tele.Results{
 			&tele.ArticleResult{
 				ResultBase: tele.ResultBase{
-					ID:          eventID,
-					ParseMode:   tele.ModeHTML,
+					ID: eventID,
+					Content: &tele.InputTextMessageContent{
+						Text:           text,
+						ParseMode:      tele.ModeHTML,
+						PreviewOptions: &tele.PreviewOptions{Disabled: true},
+					},
 					ReplyMarkup: btnAnnouncement(eventID),
 				},
 				Title:       text,
-				Text:        text,
 				Description: desc,
 				ThumbURL:    thumb,
 				HideURL:     true,

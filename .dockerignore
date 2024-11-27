@@ -1,6 +1,7 @@
 .idea
 playground
 doc
+.run
 .env*
 .dockerignore
 .gitignore

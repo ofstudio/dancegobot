@@ -7,7 +7,7 @@ import (
 )
 
 type UserService interface {
-	Get(ctx context.Context, userID int64) (*models.User, error)
+	Get(ctx context.Context, profile models.Profile) (*models.User, error)
 	ProfileUpsert(ctx context.Context, user *models.User) error
 	SessionUpsert(ctx context.Context, user *models.User) error
 }

@@ -69,7 +69,7 @@ func (h *Handlers) sessionReset(c tele.Context) {
 // sessionGet returns the user session.
 // If the session is not found or an error occurred, returns an empty session.
 func (h *Handlers) sessionGet(c tele.Context) models.Session {
-	user, err := h.users.Get(h.ctx(c), c.Sender().ID)
+	user, err := h.users.Get(h.ctx(c), models.NewProfile(*c.Sender()))
 	if err != nil {
 		h.log.Error("[handlers] failed to get session: "+err.Error(), telelog.Trace(c))
 		return models.Session{}

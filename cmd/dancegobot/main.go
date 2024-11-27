@@ -12,11 +12,11 @@ import (
 
 func main() {
 	log := slog.Default()
-	log.Info("starting...")
+	log.Info("Starting", "version", config.Version())
 
 	cfg, err := config.NewConfig()
 	if err != nil {
-		log.Error("fatal: failed to load config: " + err.Error())
+		log.Error("Fatal: failed to load config: " + err.Error())
 		os.Exit(-1)
 	}
 
@@ -27,9 +27,9 @@ func main() {
 	defer cancel()
 
 	if err = a.Start(ctx); err != nil {
-		log.Error("fatal: failed to start app: " + err.Error())
+		log.Error("Fatal: failed to start app: " + err.Error())
 		os.Exit(-1)
 	}
 
-	log.Info("exiting...")
+	log.Info("Exiting...")
 }

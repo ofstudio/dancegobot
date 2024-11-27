@@ -1,10 +1,17 @@
+ARG MODULE=github.com/ofstudio/dancegobot
+ARG VERSION=latest
+
 FROM golang:1.23-alpine AS builder
 WORKDIR /src
 COPY go.mod go.sum ./
 RUN go mod download
 COPY . .
 RUN go test ./...
-RUN go build -ldflags "-s -w" -trimpath -o /build/dancegobot ./cmd/dancegobot
+ARG MODULE
+ARG VERSION
+RUN go build -trimpath \
+      -ldflags "-s -w -X ${MODULE}/internal/config.version=${VERSION}" \
+      -o /build/dancegobot ./cmd/dancegobot
 
 FROM alpine:3.20
 COPY --from=builder /build/dancegobot /

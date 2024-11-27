@@ -247,7 +247,7 @@ func (h *Handlers) coupleAdd(c tele.Context, eventID string, role models.Role, o
 		h.log.Error("[handlers] failed to add couple: "+err.Error(), "event_id", eventID, telelog.Trace(c))
 		return h.sendErr(c, locale.ErrSomethingWrong)
 	}
-	h.log.Info("[handlers] couple add", "event_update", upd, telelog.Trace(c))
+	h.log.Info("[handlers] couple add", "", upd, telelog.Trace(c))
 
 	// if the result is retryable, update the session
 	var singles []models.SessionSingle
@@ -276,7 +276,7 @@ func (h *Handlers) singleAdd(c tele.Context, eventID string, role models.Role) e
 		h.log.Error("[handlers] failed to add single: "+err.Error(), "event_id", eventID, telelog.Trace(c))
 		return h.sendErr(c, locale.ErrSomethingWrong)
 	}
-	h.log.Info("[handlers] single add", "event_update", upd, telelog.Trace(c))
+	h.log.Info("[handlers] single add", "", upd, telelog.Trace(c))
 
 	// if the result is retryable, update the session
 	var singles []models.SessionSingle
@@ -305,7 +305,7 @@ func (h *Handlers) dancerRemove(c tele.Context, eventID string) error {
 		h.log.Error("[handlers] failed to remove dancer: "+err.Error(), "event_id", eventID, telelog.Trace(c))
 		return h.sendErr(c, locale.ErrSomethingWrong)
 	}
-	h.log.Info("[handlers] dancer remove", "event_update", upd, telelog.Trace(c))
+	h.log.Info("[handlers] dancer remove", "", upd, telelog.Trace(c))
 
 	h.sessionReset(c)
 

@@ -12,14 +12,17 @@ func (e Event) LogValue() slog.Value {
 }
 
 func (d Dancer) LogValue() slog.Value {
-	attrs := []slog.Attr{
+	var attrs []slog.Attr
+	if d.Profile != nil {
+		attrs = append(attrs, slog.Any("profile_id", d.Profile.ID))
+	}
+	attrs = append(attrs,
 		slog.String("full_name", d.FullName),
 		slog.String("role", string(d.Role)),
 		slog.String("status", d.Status.String()),
-		slog.Bool("single_signup", d.SingleSignup),
-	}
-	if d.Profile != nil {
-		attrs = append(attrs, slog.Any("profile_id", d.Profile.ID))
+	)
+	if d.SingleSignup {
+		attrs = append(attrs, slog.Any("single_signup", d.SingleSignup))
 	}
 	return slog.GroupValue(attrs...)
 }
@@ -56,14 +59,14 @@ func (h HistoryItem) LogValue() slog.Value {
 
 func (u EventUpdate) LogValue() slog.Value {
 	attrs := []slog.Attr{
-		slog.Any("event", u.Event),
 		slog.String("result", u.Result.String()),
+		slog.Any("event_id", u.Event.ID),
 	}
 	if u.Dancer != nil {
 		attrs = append(attrs, slog.Any("dancer", u.Dancer))
 	}
-	if u.Couple != nil {
-		attrs = append(attrs, slog.Any("couple", u.Couple))
+	if u.ChosenPartner != nil {
+		attrs = append(attrs, slog.Any("chosen_partner", u.ChosenPartner))
 	}
 	return slog.GroupValue(attrs...)
 }

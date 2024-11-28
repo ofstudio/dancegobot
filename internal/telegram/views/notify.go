@@ -28,8 +28,8 @@ func Notify(api tele.API) func(n *models.Notification) error {
 			initiatorName = fmtName(n.Initiator.FullName(), n.Initiator)
 		}
 		text := fmt.Sprintf(t, n.Event.Caption, initiatorName)
-
-		_, err := api.Send(user, text, tele.ModeHTML, tele.NoPreview, tele.RemoveKeyboard)
+		rm := BtnChatLink(n.Event)
+		_, err := api.Send(user, text, rm, tele.ModeHTML, tele.NoPreview, tele.RemoveKeyboard)
 		if errors.Is(err, tele.ErrTrueResult) {
 			return nil
 		}

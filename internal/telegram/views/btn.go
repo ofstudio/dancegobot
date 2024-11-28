@@ -1,6 +1,7 @@
 package views
 
 import (
+	"fmt"
 	"math/rand"
 
 	tele "gopkg.in/telebot.v4"
@@ -74,4 +75,43 @@ func btnSignup(dancer *models.Dancer, singles []models.SessionSingle) *tele.Repl
 
 	rm.Reply(rows...)
 	return rm
+}
+
+// BtnChatLink creates an inline button with a link to the chat.
+//
+// Known Telegram limitations:
+//   - Only supergroups and channels can be linked
+//   - Supergroup or channel can be either public or private
+//   - Bot should be a member of supergroup or an admin in the channel
+//
+// Link format:
+//
+//	https://t.me/c/{chat_link_id}/{message_id}
+//
+// Where {chat_link_id} = - {chat_id} - 1000000000000
+//
+// For example:
+//
+//	message_id:     1234
+//	chat_id:       -1001234567890 (supergroup or channel)
+//	chat_link_id:  -(-1001234567890) - 1000000000000 = 1234567890
+//
+// Which gives us the link: https://t.me/c/1234567890/1234
+func BtnChatLink(event *models.Event) *tele.ReplyMarkup {
+	rm := &tele.ReplyMarkup{}
+	// skip if the chat is not set
+	if event.Chat == nil {
+		return rm
+	}
+	// skip if the chat is not a supergroup or channel
+	if event.Chat.Type != models.ChatSuper && event.Chat.Type != models.ChatChannel {
+		return rm
+	}
+	chatLinkId := -event.Chat.ID - 1000000000000
+	url := fmt.Sprintf("https://t.me/c/%d/%d", chatLinkId, event.MessageID)
+	rm.Inline(rm.Row(
+		rm.URL(locale.BtnChatLink, url),
+	))
+	return rm
+
 }

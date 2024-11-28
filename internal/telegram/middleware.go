@@ -14,13 +14,15 @@ import (
 
 // Middleware is a collection of middlewares.
 type Middleware struct {
-	log *slog.Logger
+	botUser *tele.User
+	log     *slog.Logger
 }
 
 // NewMiddleware creates a new middleware collection.
-func NewMiddleware() *Middleware {
+func NewMiddleware(botUser *tele.User) *Middleware {
 	return &Middleware{
-		log: noplog.Logger(),
+		botUser: botUser,
+		log:     noplog.Logger(),
 	}
 }
 
@@ -83,6 +85,50 @@ func (m *Middleware) Logger() tele.MiddlewareFunc {
 				return next(c)
 			}
 			defer func() { m.log.Info("[bot] update handled", telelog.Trace(c)) }()
+			return next(c)
+		}
+	}
+}
+
+// ChatLink is a middleware that adds a chat where
+// the event announcement was posted to the event.
+//
+// Known Telegram limitations:
+//   - Only supergroups and channels can be linked
+//   - Supergroup or channel can be either public or private
+//   - Bot should be a member of supergroup or an admin in the channel
+//
+// Link format:
+//
+//	https://t.me/c/{chat_link_id}/{message_id}
+//
+// Where {chat_link_id} = - {chat_id} - 1000000000000
+//
+// For example:
+//
+//	message_id:     1234
+//	chat_id:       -1001234567890 (supergroup or channel)
+//	chat_link_id:  -(-1001234567890) - 1000000000000 = 1234567890
+//
+// Which gives us the link: https://t.me/c/1234567890/1234
+//
+// See also:
+//
+//   - https://stackoverflow.com/questions/51065460/link-message-by-message-id-via-telegram-bot
+//   - https://core.telegram.org/api/links
+//   - https://core.telegram.org/bots/api#chat
+//   - https://core.telegram.org/bots/api#message
+func (m *Middleware) ChatLink() tele.MiddlewareFunc {
+	return func(next tele.HandlerFunc) tele.HandlerFunc {
+		return func(c tele.Context) error {
+			// skip if the bot user is not set
+			if m.botUser == nil {
+				return next(c)
+			}
+			// todo
+			// 1. Check if message sent via the bot
+			// 2. Find the an appropriate event by creation date
+			// 3. Add the chat to the event if event found
 			return next(c)
 		}
 	}

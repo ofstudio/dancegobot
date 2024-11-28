@@ -15,7 +15,7 @@ type Event struct {
 	Couples   []Couple  `json:"couples"`          // List of couples signed in
 	Singles   []Dancer  `json:"singles"`          // List of singles signed in
 	Owner     Profile   `json:"owner"`            // Telegram profile of the event owner
-	Chat      *Chat     `json:"chat,omitempty"`   // Chat where the event was created (if applicable)
+	Chat      *Chat     `json:"chat,omitempty"`   // Chat where the event was created (only if bot is a member)
 	CreatedAt time.Time `json:"created_at"`       // Creation time
 }
 

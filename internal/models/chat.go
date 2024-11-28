@@ -1,10 +1,12 @@
 package models
 
-// Chat is
+// Chat is information about a chat where the event announcement was posted.
+// Available only if bot is member of the chat.
 type Chat struct {
-	Profile
-	Type  ChatType `json:"type"`
-	Title string   `json:"title"`
+	Profile            // Chat profile
+	Type      ChatType `json:"type"`       // Chat type
+	Title     string   `json:"title"`      // Chat title
+	MessageID int      `json:"message_id"` // ID of the announcement message in the chat
 }
 
 type ChatType string

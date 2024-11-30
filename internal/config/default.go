@@ -22,7 +22,7 @@ func Default() Config {
 
 		// Database default configuration
 		DB: DB{
-			Version: 1,
+			Version: 2,
 		},
 
 		// Application default settings

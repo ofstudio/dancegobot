@@ -16,7 +16,7 @@ func Render(api tele.API) func(event *models.Event) error {
 	return func(event *models.Event) error {
 		text := renderText(event)
 		rm := btnAnnouncement(event.ID)
-		msg := &tele.InlineResult{MessageID: event.MessageID}
+		msg := &tele.InlineResult{MessageID: event.Post.InlineMessageID}
 		opts := &tele.SendOptions{
 			ReplyMarkup:           rm,
 			DisableWebPagePreview: true,

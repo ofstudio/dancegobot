@@ -9,13 +9,12 @@ import (
 type Event struct {
 	ID        string    `json:"id"`               // Random string to identify the event
 	Caption   string    `json:"text"`             // Announcement message text
-	MessageID string    `json:"message_id"`       // Announcement inline_message_id
+	Post      Post      `json:"post"`             // Announcement post in a Telegram chat
 	Limit     int       `json:"limit,omitempty"`  // Maximum number of couples allowed to sign-in. Zero means no limit
 	Closed    bool      `json:"closed,omitempty"` // Is event closed for new signups or modifications
 	Couples   []Couple  `json:"couples"`          // List of couples signed in
 	Singles   []Dancer  `json:"singles"`          // List of singles signed in
 	Owner     Profile   `json:"owner"`            // Telegram profile of the event owner
-	Chat      *Chat     `json:"chat,omitempty"`   // Chat where the event was created (only if bot is a member)
 	CreatedAt time.Time `json:"created_at"`       // Creation time
 }
 

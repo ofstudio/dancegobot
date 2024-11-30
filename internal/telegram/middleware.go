@@ -119,16 +119,22 @@ func (m *Middleware) Logger() tele.MiddlewareFunc {
 //   - https://core.telegram.org/bots/api#chat
 //   - https://core.telegram.org/bots/api#message
 func (m *Middleware) ChatLink() tele.MiddlewareFunc {
+	// skip if the bot user is not set
+	if m.botUser == nil {
+		return func(next tele.HandlerFunc) tele.HandlerFunc {
+			return next
+		}
+	}
 	return func(next tele.HandlerFunc) tele.HandlerFunc {
 		return func(c tele.Context) error {
-			// skip if the bot user is not set
-			if m.botUser == nil {
+			// skip non relevant messages
+			if c.Message() == nil || c.Message().Text == "" ||
+				c.Message().Via == nil || c.Message().Via.ID != m.botUser.ID {
 				return next(c)
 			}
 			// todo
-			// 1. Check if message sent via the bot
-			// 2. Find the an appropriate event by creation date
-			// 3. Add the chat to the event if event found
+			// 1. Find the an appropriate event by creation date
+			// 2. Add the chat to the event if event found
 			return next(c)
 		}
 	}

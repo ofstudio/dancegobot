@@ -129,7 +129,7 @@ func (h *Handlers) InlineResult(c tele.Context) error {
 	event := models.Event{
 		ID:        res.ResultID,
 		Caption:   res.Query,
-		MessageID: res.MessageID,
+		Post:      models.Post{InlineMessageID: res.MessageID},
 		Owner:     models.NewProfile(*res.Sender),
 		CreatedAt: nowFn(),
 	}

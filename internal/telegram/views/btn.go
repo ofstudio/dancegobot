@@ -100,15 +100,15 @@ func btnSignup(dancer *models.Dancer, singles []models.SessionSingle) *tele.Repl
 func BtnChatLink(event *models.Event) *tele.ReplyMarkup {
 	rm := &tele.ReplyMarkup{}
 	// skip if the chat is not set
-	if event.Chat == nil {
+	if event.Post.Chat == nil {
 		return rm
 	}
-	// skip if the chat is not a supergroup or channel
-	if event.Chat.Type != models.ChatSuper && event.Chat.Type != models.ChatChannel {
+	// skip if the chat is not a supergroup or channelq
+	if event.Post.Chat.Type != models.ChatSuper && event.Post.Chat.Type != models.ChatChannel {
 		return rm
 	}
-	chatLinkId := -event.Chat.ID - 1000000000000
-	url := fmt.Sprintf("https://t.me/c/%d/%d", chatLinkId, event.MessageID)
+	chatLinkId := -event.Post.Chat.ID - 1000000000000
+	url := fmt.Sprintf("https://t.me/c/%d/%d", chatLinkId, event.Post.MessageID)
 	rm.Inline(rm.Row(
 		rm.URL(locale.BtnChatLink, url),
 	))

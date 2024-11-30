@@ -236,7 +236,7 @@ func (s *EventService) validateEvent(e *models.Event) error {
 		errs["text"] = fmt.Errorf("event text must be at most %d characters long", s.cfg.EventTextMaxLen)
 	}
 
-	if e.MessageID == "" {
+	if e.Post.InlineMessageID == "" {
 		errs["message_id"] = fmt.Errorf("event message ID must be provided")
 	}
 

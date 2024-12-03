@@ -27,6 +27,7 @@ type Settings struct {
 	EventTextMaxLen  int             // Maximum length for event text in runes
 	DancerNameMaxLen int             // Maximum length for dancer name in runes
 	RendererRepeats  []time.Duration // Time intervals for event rendering repeats
+	ChatMessageDelay time.Duration   // Delay before adding chat message to ensure event is saved
 }
 
 // Bot is Telegram bot configuration

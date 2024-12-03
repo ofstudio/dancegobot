@@ -57,14 +57,15 @@ func (a *App) Start(ctx context.Context) error {
 		WithLogger(a.log)
 
 	// 4. Initialize middleware and handlers
-	m := telegram.NewMiddleware(bot.Me).WithLogger(a.log)
+	m := telegram.NewMiddleware(a.cfg.Settings, srv.Event).WithLogger(a.log)
 	h := telegram.NewHandlers(a.cfg.Settings, srv.Event, srv.User).WithLogger(a.log)
 
 	// 5. Set up bot middleware and handlers
 	bot.Use(m.Context(ctx))
 	bot.Use(m.Trace())
 	bot.Use(m.Logger())
-	bot.Use(m.ChatLink())
+	bot.Use(m.ChatMessage())
+	bot.Use(m.PassPrivateMessages())
 
 	bot.Handle("/start", h.Start)
 	bot.Handle("/partner", h.Partner)
@@ -72,6 +73,8 @@ func (a *App) Start(ctx context.Context) error {
 	bot.Handle(tele.OnUserShared, h.UserShared)
 	bot.Handle(tele.OnQuery, h.Query)
 	bot.Handle(tele.OnInlineResult, h.InlineResult)
+	// This is needed to handle channel posts
+	bot.Handle(tele.OnChannelPost, func(_ tele.Context) error { return nil })
 
 	// 6. Start the bot
 	go bot.Start()

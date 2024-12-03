@@ -3,9 +3,13 @@ package telegram
 import (
 	"context"
 	"log/slog"
+	"time"
 
 	tele "gopkg.in/telebot.v4"
 
+	"github.com/ofstudio/dancegobot/internal/config"
+	"github.com/ofstudio/dancegobot/internal/models"
+	"github.com/ofstudio/dancegobot/internal/telegram/deeplink"
 	"github.com/ofstudio/dancegobot/pkg/noplog"
 	"github.com/ofstudio/dancegobot/pkg/randtoken"
 	"github.com/ofstudio/dancegobot/pkg/telelog"
@@ -14,15 +18,17 @@ import (
 
 // Middleware is a collection of middlewares.
 type Middleware struct {
-	botUser *tele.User
-	log     *slog.Logger
+	cfg    config.Settings
+	events EventService
+	log    *slog.Logger
 }
 
 // NewMiddleware creates a new middleware collection.
-func NewMiddleware(botUser *tele.User) *Middleware {
+func NewMiddleware(cfg config.Settings, es EventService) *Middleware {
 	return &Middleware{
-		botUser: botUser,
-		log:     noplog.Logger(),
+		cfg:    cfg,
+		events: es,
+		log:    noplog.Logger(),
 	}
 }
 
@@ -69,7 +75,6 @@ func (m *Middleware) PassPrivateMessages() tele.MiddlewareFunc {
 		return func(c tele.Context) error {
 			msg := c.Message()
 			if msg != nil && msg.Chat != nil && msg.Chat.Type != tele.ChatPrivate {
-				m.log.Warn("[bot] skipping non-private message", telelog.Attr(msg))
 				return nil
 			}
 			return next(c)
@@ -90,52 +95,48 @@ func (m *Middleware) Logger() tele.MiddlewareFunc {
 	}
 }
 
-// ChatLink is a middleware that adds a chat where
-// the event announcement was posted to the event.
-//
-// Known Telegram limitations:
-//   - Only supergroups and channels can be linked
-//   - Supergroup or channel can be either public or private
-//   - Bot should be a member of supergroup or an admin in the channel
-//
-// Link format:
-//
-//	https://t.me/c/{chat_link_id}/{message_id}
-//
-// Where {chat_link_id} = - {chat_id} - 1000000000000
-//
-// For example:
-//
-//	message_id:     1234
-//	chat_id:       -1001234567890 (supergroup or channel)
-//	chat_link_id:  -(-1001234567890) - 1000000000000 = 1234567890
-//
-// Which gives us the link: https://t.me/c/1234567890/1234
-//
-// See also:
-//
-//   - https://stackoverflow.com/questions/51065460/link-message-by-message-id-via-telegram-bot
-//   - https://core.telegram.org/api/links
-//   - https://core.telegram.org/bots/api#chat
-//   - https://core.telegram.org/bots/api#message
-func (m *Middleware) ChatLink() tele.MiddlewareFunc {
-	// skip if the bot user is not set
-	if m.botUser == nil {
-		return func(next tele.HandlerFunc) tele.HandlerFunc {
-			return next
-		}
-	}
+// ChatMessage is a middleware that adds to the event
+// a message id and a chat where the event announcement was posted
+func (m *Middleware) ChatMessage() tele.MiddlewareFunc {
 	return func(next tele.HandlerFunc) tele.HandlerFunc {
 		return func(c tele.Context) error {
-			// skip non relevant messages
-			if c.Message() == nil || c.Message().Text == "" ||
-				c.Message().Via == nil || c.Message().Via.ID != m.botUser.ID {
-				return next(c)
+			// Check if the message is an event announcement
+			eventID, ok := m.isAnnouncementMsg(c.Message())
+			if ok {
+				chat := models.NewChat(c.Message().Chat)
+				go func() {
+					// Add a delay to ensure the event is saved in the database
+					time.Sleep(m.cfg.ChatMessageDelay)
+					upd, err := m.events.ChatMessageAdd(m.ctx(c), eventID, &chat, c.Message().ID)
+					if err != nil {
+						m.log.Error("[middleware] failed to add chat to the event: "+err.Error(), telelog.Trace(c))
+					} else {
+						m.log.Info("[middleware] chat message added", "", upd, telelog.Trace(c))
+					}
+				}()
 			}
-			// todo
-			// 1. Find the an appropriate event by creation date
-			// 2. Add the chat to the event if event found
 			return next(c)
 		}
 	}
+}
+
+// isAnnouncementMsg checks if Telegram message is an event announcement.
+// If the message is an event announcement, it returns the event ID and true.
+func (m *Middleware) isAnnouncementMsg(msg *tele.Message) (string, bool) {
+	if msg == nil ||
+		msg.Via == nil ||
+		msg.Via.ID != config.BotProfile().ID ||
+		msg.ReplyMarkup == nil ||
+		len(msg.ReplyMarkup.InlineKeyboard) == 0 ||
+		len(msg.ReplyMarkup.InlineKeyboard[0]) == 0 ||
+		msg.ReplyMarkup.InlineKeyboard[0][0].URL == "" {
+		return "", false
+	}
+
+	u := msg.ReplyMarkup.InlineKeyboard[0][0].URL
+	action, params, err := deeplink.Parse(u)
+	if err != nil || action != models.SessionSignup || len(params) == 0 {
+		return "", false
+	}
+	return params[0], true
 }

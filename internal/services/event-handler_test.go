@@ -659,9 +659,9 @@ func (suite *TestEventHandlerSuite) TestDancerRemove() {
 
 func sampleEvent() models.Event {
 	return models.Event{
-		ID:        "test12345678",
-		Caption:   "This is a test event",
-		MessageID: "123test456",
+		ID:      "test12345678",
+		Caption: "This is a test event",
+		Post:    models.Post{InlineMessageID: "123test456"},
 		Couples: []models.Couple{
 			{
 				Dancers: []models.Dancer{

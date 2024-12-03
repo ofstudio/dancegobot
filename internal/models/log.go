@@ -68,6 +68,9 @@ func (u EventUpdate) LogValue() slog.Value {
 	if u.ChosenPartner != nil {
 		attrs = append(attrs, slog.Any("chosen_partner", u.ChosenPartner))
 	}
+	if u.Post != nil {
+		attrs = append(attrs, slog.Any("post", u.Post))
+	}
 	return slog.GroupValue(attrs...)
 }
 
@@ -81,6 +84,30 @@ func (n Notification) LogValue() slog.Value {
 	}
 	if n.Event != nil {
 		attrs = append(attrs, slog.Any("event_id", n.Event.ID))
+	}
+	return slog.GroupValue(attrs...)
+}
+
+func (p Post) LogValue() slog.Value {
+	attrs := []slog.Attr{
+		slog.String("inline_message_id", p.InlineMessageID),
+	}
+	if p.Chat != nil {
+		attrs = append(attrs, slog.Any("chat", p.Chat), slog.Int("message_id", p.MessageID))
+	}
+	return slog.GroupValue(attrs...)
+}
+
+func (c Chat) LogValue() slog.Value {
+	attrs := []slog.Attr{
+		slog.Int64("id", c.ID),
+		slog.String("type", string(c.Type)),
+	}
+	if c.Title != "" {
+		attrs = append(attrs, slog.String("title", c.Title))
+	}
+	if c.Username != "" {
+		attrs = append(attrs, slog.String("username", c.Username))
 	}
 	return slog.GroupValue(attrs...)
 }

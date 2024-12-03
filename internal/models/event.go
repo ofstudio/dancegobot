@@ -25,6 +25,7 @@ type EventUpdate struct {
 	Dancer        *Dancer      // Information about dancer (if any) with status and partner fields filled (if applicable)
 	ChosenPartner *Dancer      // Information about chosen partner (if any)
 	Couple        *Couple      // Information about couple related to the update (if any)
+	Post          *Post        // Information about the post related to the update (if any)
 }
 
 // UpdateResult is the result of the event update.

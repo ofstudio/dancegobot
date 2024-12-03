@@ -14,4 +14,8 @@ func (r Role) Opposite() Role {
 	return RoleLeader
 }
 
+func (r Role) String() string {
+	return string(r)
+}
+
 var Roles = []Role{RoleLeader, RoleFollower}

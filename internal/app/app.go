@@ -40,8 +40,8 @@ func (a *App) Start(ctx context.Context) error {
 	if err != nil {
 		return fmt.Errorf("failed to create bot: %w", err)
 	}
-	views.SetBotName(bot.Me.Username)
-	a.log.Info("Bot created", "username", bot.Me.Username, "", a.cfg.Bot)
+	config.SetBotProfile(bot.Me)
+	a.log.Info("Bot created", "", config.BotProfile(), "", a.cfg.Bot)
 
 	// 2. Connect the database and store
 	db, err := store.NewSQLite(a.cfg.DB.Filepath, a.cfg.DB.Version)

@@ -34,20 +34,13 @@ func NewBot(cfg config.Bot, log *slog.Logger) (*tele.Bot, error) {
 		log = noplog.Logger()
 	}
 
-	b, err := tele.NewBot(tele.Settings{
+	return tele.NewBot(tele.Settings{
 		URL:     cfg.ApiURL,
 		Token:   cfg.Token,
 		Poller:  poller(cfg),
 		OnError: onError(log),
 		Client:  ratelimit.Client(cfg.RPS, cfg.Timeout),
 	})
-	if err != nil {
-		return nil, err
-	}
-	if b.Me == nil {
-		return nil, errors.New("failed to get bot info")
-	}
-	return b, nil
 }
 
 // onError is a bot error handler.

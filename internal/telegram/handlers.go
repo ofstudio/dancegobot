@@ -84,7 +84,7 @@ func (h *Handlers) Start(c tele.Context) error {
 
 	if c.Message().Payload != "" {
 		h.sessionReset(c)
-		action, params, err := deeplink.Parse(c.Message().Payload)
+		action, params, err := deeplink.ParsePayload(c.Message().Payload)
 		if err != nil {
 			h.log.Error("[handlers] failed to parse deeplink payload: "+err.Error(), telelog.Trace(c))
 			return h.sendErr(c, locale.ErrStartPayload)

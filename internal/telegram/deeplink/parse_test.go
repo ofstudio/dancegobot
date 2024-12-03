@@ -8,7 +8,7 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestParse(t *testing.T) {
+func TestParsePayload(t *testing.T) {
 	tests := []struct {
 		name     string
 		payload  string
@@ -42,7 +42,7 @@ func TestParse(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			action, params, err := Parse(tt.payload)
+			action, params, err := ParsePayload(tt.payload)
 			if tt.err {
 				assert.Error(t, err)
 			} else {

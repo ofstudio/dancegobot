@@ -25,4 +25,3 @@ WHERE json_extract(data, '$.message_id') IS NOT NULL;
 UPDATE events
 SET data = json_remove(data, '$.message_id')
 WHERE json_extract(data, '$.message_id') IS NOT NULL;
-

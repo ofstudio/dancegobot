@@ -51,7 +51,7 @@ func migrateDB(db *sqlx.DB, requiredVer uint) error {
 		return fmt.Errorf("failed to initialize migration: %w", err)
 	}
 
-	if err = m.Up(); err != nil && !errors.Is(err, migrate.ErrNoChange) {
+	if err = m.Migrate(requiredVer); err != nil && !errors.Is(err, migrate.ErrNoChange) {
 		return fmt.Errorf("failed to perform migration: %w", err)
 	}
 

@@ -44,7 +44,7 @@ func (s *EventService) WithLogger(l *slog.Logger) *EventService {
 
 // NewID generates a new event ID
 func (s *EventService) NewID() string {
-	return string(randtoken.New(s.cfg.EventIDLen))
+	return randtoken.New(s.cfg.EventIDLen)
 }
 
 // Create creates a new event.

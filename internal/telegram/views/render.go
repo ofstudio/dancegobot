@@ -21,7 +21,6 @@ func Render(api tele.API) func(event *models.Event) error {
 			ReplyMarkup:           rm,
 			DisableWebPagePreview: true,
 			ParseMode:             tele.ModeHTML,
-			Entities:              nil,
 		}
 		_, err := api.Edit(msg, text, opts)
 		if errors.Is(err, tele.ErrTrueResult) {

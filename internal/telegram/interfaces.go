@@ -16,6 +16,7 @@ type EventService interface {
 	NewID() string
 	Create(ctx context.Context, event *models.Event) error
 	Get(ctx context.Context, id string) (*models.Event, error)
+	ChatMessageAdd(ctx context.Context, eventID string, chat *models.Chat, messageID int) (*models.EventUpdate, error)
 	DancerGet(event *models.Event, profile *models.Profile, role models.Role) *models.Dancer
 	CoupleAdd(ctx context.Context, eventID string, profile *models.Profile, role models.Role, other any) (*models.EventUpdate, error)
 	SingleAdd(ctx context.Context, eventID string, profile *models.Profile, role models.Role) (*models.EventUpdate, error)

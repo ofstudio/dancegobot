@@ -85,6 +85,39 @@ func (s *EventService) DancerGet(event *models.Event, profile *models.Profile, r
 	return newEventHandler(event).DancerGetByProfile(profile, role)
 }
 
+// ChatMessageAdd adds a chat to the event.
+func (s *EventService) ChatMessageAdd(
+	ctx context.Context,
+	eventID string,
+	chat *models.Chat,
+	messageID int,
+) (*models.EventUpdate, error) {
+	if chat == nil {
+		return nil, fmt.Errorf("chat must be provided")
+	}
+	if messageID == 0 {
+		return nil, fmt.Errorf("chat message ID must be provided")
+	}
+
+	// Update the event
+	return s.updateWrapper(ctx, eventID, func(h *eventHandler) *models.EventUpdate {
+		h.Event().Post.Chat = chat
+		h.Event().Post.MessageID = messageID
+		h.hist = append(h.hist, &models.HistoryItem{
+			Action:    models.HistoryChatAdded,
+			Initiator: &h.event.Owner,
+			EventID:   &h.event.ID,
+			Details:   chat,
+		})
+		return &models.EventUpdate{
+			Result: models.ResultSuccess,
+			Event:  h.Event(),
+			Post:   &h.Event().Post,
+		}
+
+	})
+}
+
 // CoupleAdd adds a couple to the event.
 // The other person can be either a [*models.Profile] type or a string full name.
 func (s *EventService) CoupleAdd(

@@ -23,4 +23,5 @@ const (
 	HistorySingleAdded      HistoryAction = "single_added"
 	HistorySingleRemoved    HistoryAction = "single_removed"
 	HistoryNotificationSent HistoryAction = "notification_sent"
+	HistoryChatAdded        HistoryAction = "chat_added"
 )

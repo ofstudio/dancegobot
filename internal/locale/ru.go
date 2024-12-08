@@ -21,7 +21,8 @@ const (
 `
 	BtnTry   = "👉 Попробовать"
 	BtnClose = "✖️Закрыть"
-	CloseOK  = "ок"
+	BtnBack  = "🔙 Назад"
+	Ok       = "Ок"
 
 	ErrNotImplemented    = "Пока в разработке 🚧"
 	ErrSomethingWrong    = "Что-то пошло не так 👾"
@@ -87,6 +88,11 @@ var IconSingle = roleMap{
 	models.RoleLeader:   "🙋‍♂️",
 	models.RoleFollower: "🙋‍♀️",
 }
+
+var (
+	BtnWithSingleLeader   = IconSingle[models.RoleLeader] + " C партнером из списка ожидания"
+	BtnWithSingleFollower = IconSingle[models.RoleFollower] + " C партнершей из списка ожидания"
+)
 
 var Notifications = map[models.NotificationTmpl]string{
 	models.TmplRegisteredWithSingle: "🔔 %s\n\n%s зарегистрировался с тобой в паре! 🎉",

@@ -280,7 +280,7 @@ func sendResult(c tele.Context, upd *models.EventUpdate, singles []models.Sessio
 
 // sendCloseOK sends a message on user session close.
 func sendCloseOK(c tele.Context) error {
-	return c.Send(locale.CloseOK, tele.RemoveKeyboard)
+	return c.Send(locale.Ok, tele.RemoveKeyboard)
 }
 
 // answerQueryEmpty sends a response to the empty inline query.

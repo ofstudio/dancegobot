@@ -84,12 +84,12 @@ func (h *Handlers) Start(c tele.Context) error {
 		h.sessionReset(c)
 		action, params, err := deeplinkParsePayload(c.Message().Payload)
 		if err != nil {
-			h.log.Error("[handlers] failed to parse deeplink payload: "+err.Error(), telelog.Trace(c))
+			h.log.Error("[handlers] /start: failed to parse deeplink payload: "+err.Error(), telelog.Trace(c))
 			return h.sendErr(c, locale.ErrStartPayload)
 		}
 		switch action {
 		case models.SessionSignup:
-			return h.signup(c, params[0], models.Role(params[1]))
+			return h.signupScene(c, params[0], models.Role(params[1]))
 		default:
 			return h.sendErr(c, locale.ErrStartPayload)
 		}
@@ -123,7 +123,7 @@ func (h *Handlers) Query(c tele.Context) error {
 		h.log.Error("[handlers] failed to create event: "+err.Error(), "event", event, telelog.Trace(c))
 		return h.sendErr(c, locale.ErrSomethingWrong)
 	}
-	h.log.Info("[handlers] draft event created", "event", event, telelog.Trace(c))
+	h.log.Info("[handlers] event created", "event", event, telelog.Trace(c))
 	return answerQuery(c, eventID, h.cfg.QueryThumbUrl)
 }
 
@@ -142,12 +142,12 @@ func (h *Handlers) InlineResult(c tele.Context) error {
 	// Add post to the event and re-render it
 	upd, err := h.events.PostAdd(h.ctx(c), eventID, inlineMessageID)
 	if err != nil {
-		h.log.Error("[handlers] failed add event post chat: "+err.Error(),
+		h.log.Error("[handlers] chosen_inline_result: failed add event post chat: "+err.Error(),
 			"event_id", eventID,
 			telelog.Trace(c))
 		return h.sendErr(c, locale.ErrSomethingWrong)
 	}
-	h.log.Info("[handlers] event post added", "", upd, telelog.Trace(c))
+	h.log.Info("[handlers] chosen_inline_result: event post added", "", upd, telelog.Trace(c))
 	return nil
 }
 
@@ -168,12 +168,12 @@ func (h *Handlers) CbSignup(c tele.Context) error {
 	inlineMessageID := c.Callback().MessageID
 	upd, err := h.events.PostAdd(h.ctx(c), eventID, inlineMessageID)
 	if err != nil {
-		h.log.Error("[handlers] failed add event post chat: "+err.Error(),
+		h.log.Error("[handlers] signup callback: failed add event post chat: "+err.Error(),
 			"event_id", eventID,
 			telelog.Trace(c))
 		return h.sendErr(c, locale.ErrSomethingWrong)
 	}
-	h.log.Info("[handlers] event post added", "", upd, telelog.Trace(c))
+	h.log.Info("[handlers] signup callback: event post added", "", upd, telelog.Trace(c))
 	role := c.Args()[1]
 	return c.Respond(&tele.CallbackResponse{URL: deeplink(models.SessionSignup, eventID, role)})
 }
@@ -244,10 +244,11 @@ func (h *Handlers) Text(c tele.Context) error {
 	}
 }
 
-func (h *Handlers) signup(c tele.Context, eventID string, role models.Role) error {
+// signupScene returns the signup scene for the user.
+func (h *Handlers) signupScene(c tele.Context, eventID string, role models.Role) error {
 	event, err := h.events.Get(h.ctx(c), eventID)
 	if err != nil {
-		h.log.Error("[handlers] failed to get event: "+err.Error(), telelog.Trace(c))
+		h.log.Error("[handlers] signup scene: failed to get event: "+err.Error(), telelog.Trace(c))
 		return h.sendErr(c, locale.ErrSomethingWrong)
 	}
 
@@ -270,7 +271,7 @@ func (h *Handlers) signup(c tele.Context, eventID string, role models.Role) erro
 		h.sessionReset(c)
 	}
 
-	h.log.Info("[handlers] signup", "event_id", eventID, "dancer", dancer, telelog.Trace(c))
+	h.log.Info("[handlers] signup scene", "event_id", eventID, "dancer", dancer, telelog.Trace(c))
 
 	return sendSignup(c, dancer, singles)
 }
@@ -284,7 +285,7 @@ func (h *Handlers) coupleAdd(c tele.Context, eventID string, role models.Role, o
 		h.log.Error("[handlers] failed to add couple: "+err.Error(), "event_id", eventID, telelog.Trace(c))
 		return h.sendErr(c, locale.ErrSomethingWrong)
 	}
-	h.log.Info("[handlers] couple add", "", upd, telelog.Trace(c))
+	h.log.Info("[handlers] couple added", "", upd, telelog.Trace(c))
 
 	// if the result is retryable, update the session
 	var singles []models.SessionSingle
@@ -313,7 +314,7 @@ func (h *Handlers) singleAdd(c tele.Context, eventID string, role models.Role) e
 		h.log.Error("[handlers] failed to add single: "+err.Error(), "event_id", eventID, telelog.Trace(c))
 		return h.sendErr(c, locale.ErrSomethingWrong)
 	}
-	h.log.Info("[handlers] single add", "", upd, telelog.Trace(c))
+	h.log.Info("[handlers] single added", "", upd, telelog.Trace(c))
 
 	// if the result is retryable, update the session
 	var singles []models.SessionSingle
@@ -342,7 +343,7 @@ func (h *Handlers) dancerRemove(c tele.Context, eventID string) error {
 		h.log.Error("[handlers] failed to remove dancer: "+err.Error(), "event_id", eventID, telelog.Trace(c))
 		return h.sendErr(c, locale.ErrSomethingWrong)
 	}
-	h.log.Info("[handlers] dancer remove", "", upd, telelog.Trace(c))
+	h.log.Info("[handlers] dancer removed", "", upd, telelog.Trace(c))
 
 	h.sessionReset(c)
 

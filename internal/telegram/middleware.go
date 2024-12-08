@@ -3,13 +3,12 @@ package telegram
 import (
 	"context"
 	"log/slog"
-	"time"
+	"strings"
 
 	tele "gopkg.in/telebot.v4"
 
 	"github.com/ofstudio/dancegobot/internal/config"
 	"github.com/ofstudio/dancegobot/internal/models"
-	"github.com/ofstudio/dancegobot/internal/telegram/deeplink"
 	"github.com/ofstudio/dancegobot/pkg/noplog"
 	"github.com/ofstudio/dancegobot/pkg/randtoken"
 	"github.com/ofstudio/dancegobot/pkg/telelog"
@@ -96,45 +95,66 @@ func (m *Middleware) Logger() tele.MiddlewareFunc {
 }
 
 // ChatMessage is a middleware that adds to the event
-// a message id and a chat where the event announcement was posted
+// a message id and a chat where the event post is published.
 func (m *Middleware) ChatMessage() tele.MiddlewareFunc {
 	return func(next tele.HandlerFunc) tele.HandlerFunc {
 		return func(c tele.Context) error {
-			// Check if the message is an event announcement
-			eventID, ok := m.isAnnouncementMsg(c.Message())
+			// Check if the message is an event post
+			eventID, ok := m.isPost(c.Message())
 			if ok {
+				chatMessageID := c.Message().ID
 				chat := models.NewChat(c.Message().Chat)
-				go func() {
-					// Add a delay to ensure the event is saved in the database
-					time.Sleep(m.cfg.ChatMessageDelay)
-					upd, err := m.events.ChatMessageAdd(m.ctx(c), eventID, &chat, c.Message().ID)
-					if err != nil {
-						m.log.Error("[middleware] failed to add chat to the event: "+err.Error(), telelog.Trace(c))
-					} else {
-						m.log.Info("[middleware] chat message added", "", upd, telelog.Trace(c))
-					}
-				}()
+				upd, err := m.events.PostChatAdd(m.ctx(c), eventID, &chat, chatMessageID)
+				if err != nil {
+					m.log.Error("[middleware] failed to add chat to the event post: "+err.Error(), telelog.Trace(c))
+				} else {
+					m.log.Info("[middleware] chat added to the event post", "", upd, telelog.Trace(c))
+				}
 			}
 			return next(c)
 		}
 	}
 }
 
-// isAnnouncementMsg checks if Telegram message is an event announcement.
-// If the message is an event announcement, it returns the event ID and true.
-func (m *Middleware) isAnnouncementMsg(msg *tele.Message) (string, bool) {
+// isPost checks if Telegram message is an event post.
+// If the message is an event post, it returns the event ID and true.
+func (m *Middleware) isPost(msg *tele.Message) (string, bool) {
 	if msg == nil ||
 		msg.Via == nil ||
 		msg.Via.ID != config.BotProfile().ID ||
 		msg.ReplyMarkup == nil ||
 		len(msg.ReplyMarkup.InlineKeyboard) == 0 ||
-		len(msg.ReplyMarkup.InlineKeyboard[0]) == 0 ||
-		msg.ReplyMarkup.InlineKeyboard[0][0].URL == "" {
+		len(msg.ReplyMarkup.InlineKeyboard[0]) == 0 {
+		return "", false
+	}
+	btn := msg.ReplyMarkup.InlineKeyboard[0][0]
+	eventID, ok := m.btnCbSignupParse(btn)
+	if ok {
+		return eventID, true
+	}
+
+	eventID, ok = m.btnDeeplinkParse(btn)
+	if ok {
+		return eventID, true
+	}
+
+	return "", false
+}
+
+func (m *Middleware) btnCbSignupParse(btn tele.InlineButton) (string, bool) {
+	args := strings.Split(btn.Data, "|")
+	if len(args) < 3 {
+		return "", false
+	}
+	if args[0] != "\f"+BtnCbSignup.Unique {
 		return "", false
 	}
 
-	u := msg.ReplyMarkup.InlineKeyboard[0][0].URL
-	action, params, err := deeplink.Parse(u)
+	return args[1], true
+}
+
+func (m *Middleware) btnDeeplinkParse(btn tele.InlineButton) (string, bool) {
+	action, params, err := deeplinkParse(btn.URL)
 	if err != nil || action != models.SessionSignup || len(params) == 0 {
 		return "", false
 	}

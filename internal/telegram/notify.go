@@ -1,4 +1,4 @@
-package views
+package telegram
 
 import (
 	"errors"
@@ -28,7 +28,7 @@ func Notify(api tele.API) func(n *models.Notification) error {
 			initiatorName = fmtName(n.Initiator.FullName(), n.Initiator)
 		}
 		text := fmt.Sprintf(t, n.Event.Caption, initiatorName)
-		rm := BtnChatLink(n.Event)
+		rm := btnChatLink(n.Event)
 		_, err := api.Send(user, text, rm, tele.ModeHTML, tele.NoPreview, tele.RemoveKeyboard)
 		if errors.Is(err, tele.ErrTrueResult) {
 			return nil

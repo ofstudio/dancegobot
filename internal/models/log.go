@@ -93,7 +93,7 @@ func (p Post) LogValue() slog.Value {
 		slog.String("inline_message_id", p.InlineMessageID),
 	}
 	if p.Chat != nil {
-		attrs = append(attrs, slog.Any("chat", p.Chat), slog.Int("message_id", p.MessageID))
+		attrs = append(attrs, slog.Any("chat", p.Chat), slog.Int("chat_message_id", p.ChatMessageID))
 	}
 	return slog.GroupValue(attrs...)
 }

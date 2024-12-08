@@ -11,9 +11,9 @@ import (
 	"github.com/ofstudio/dancegobot/pkg/trace"
 )
 
-type RenderFunc func(event *models.Event) error
+type RenderFunc func(event *models.Event, inlineMessageID string) error
 
-// RenderService renders events announcements.
+// RenderService renders events posts.
 type RenderService struct {
 	cfg      config.Settings
 	store    Store
@@ -37,7 +37,7 @@ func (s *RenderService) WithLogger(l *slog.Logger) *RenderService {
 	return s
 }
 
-// Render renders the event announcement and schedules a render repeat.
+// Render renders the event post and schedules a render repeat.
 func (s *RenderService) Render(ctx context.Context, event *models.Event) {
 	s.render(ctx, event)
 	s.repeater.AddTask(ctx, event.ID, s.renderRepeat)
@@ -53,7 +53,22 @@ func (s *RenderService) renderRepeat(ctx context.Context, eventID string) {
 }
 
 func (s *RenderService) render(ctx context.Context, event *models.Event) {
-	if err := s.do(event); err != nil {
-		s.log.Error("[render service] failed to render event: "+err.Error(), trace.Attr(ctx))
+	if event.Post == nil {
+		s.log.Error("[render service] failed to render event: post is nil",
+			"event_id", event.ID,
+			trace.Attr(ctx))
+		return
+	}
+	if event.Post.InlineMessageID == "" {
+		s.log.Warn("[render service] skipping render: inline message ID is empty",
+			"event_id", event.ID,
+			trace.Attr(ctx))
+		return
+	}
+	if err := s.do(event, event.Post.InlineMessageID); err != nil {
+		s.log.Error(
+			"[render service] failed to render event: "+err.Error(),
+			"event_id", event.ID,
+			trace.Attr(ctx))
 	}
 }

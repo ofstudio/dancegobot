@@ -31,7 +31,6 @@ func Default() Config {
 			EventTextMaxLen:  2048,
 			DancerNameMaxLen: 64,
 			RendererRepeats:  []time.Duration{2 * time.Second, 10 * time.Second, time.Minute, 1 * time.Hour},
-			ChatMessageDelay: 500 * time.Millisecond,
 		},
 	}
 }

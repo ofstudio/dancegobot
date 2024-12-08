@@ -2,7 +2,7 @@ package models
 
 import tele "gopkg.in/telebot.v4"
 
-// Chat is information about a chat where the event announcement was posted.
+// Chat is information about a chat where the event post is published.
 type Chat struct {
 	ID       int64    `json:"id"`                 // Chat ID
 	Username string   `json:"username,omitempty"` // Chat username

@@ -29,7 +29,7 @@ const (
 	ErrDancerNameTooLong = "Имя партнера слишком длинное 🤔"
 	ErrSingleNotFound    = "Такой танцор не найден 🤷‍♀️"
 
-	AnnouncementCouples = "👫 <b>Пары</b>\n"
+	PostCouples = "👫 <b>Пары</b>\n"
 
 	SignupPlaceholder   = "Введи имя партнера…"
 	SignupNotRegistered = "Отправь мне имя партнера или выбери из списка..."
@@ -73,7 +73,7 @@ var RoleIcon = roleMap{
 	models.RoleFollower: "💃",
 }
 
-var AnnouncementSingles = roleMap{
+var PostSingles = roleMap{
 	models.RoleLeader:   "🙋‍♂️ <b>Ищут пару</b>\n",
 	models.RoleFollower: "🙋‍♀️ <b>Ищут пару</b>\n",
 }

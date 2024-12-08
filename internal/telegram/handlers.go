@@ -10,8 +10,6 @@ import (
 	"github.com/ofstudio/dancegobot/internal/config"
 	"github.com/ofstudio/dancegobot/internal/locale"
 	"github.com/ofstudio/dancegobot/internal/models"
-	"github.com/ofstudio/dancegobot/internal/telegram/deeplink"
-	"github.com/ofstudio/dancegobot/internal/telegram/views"
 	"github.com/ofstudio/dancegobot/pkg/noplog"
 	"github.com/ofstudio/dancegobot/pkg/telelog"
 )
@@ -84,7 +82,7 @@ func (h *Handlers) Start(c tele.Context) error {
 
 	if c.Message().Payload != "" {
 		h.sessionReset(c)
-		action, params, err := deeplink.ParsePayload(c.Message().Payload)
+		action, params, err := deeplinkParsePayload(c.Message().Payload)
 		if err != nil {
 			h.log.Error("[handlers] failed to parse deeplink payload: "+err.Error(), telelog.Trace(c))
 			return h.sendErr(c, locale.ErrStartPayload)
@@ -102,43 +100,82 @@ func (h *Handlers) Start(c tele.Context) error {
 	// can "double" /start messages on very first interaction with the bot
 	session := h.sessionGet(c)
 	if session.Action == "" {
-		return views.SendStart(c)
+		return sendStart(c)
 	}
 	return nil
 }
 
-// Query - handles inline query to the bot.
+// Query - handles inline query.
+// If query is not empty creates draft event.
 func (h *Handlers) Query(c tele.Context) error {
 	if c.Query().Text == "" {
-		return views.AnswerQueryEmpty(c, h.cfg.QueryThumbUrl)
+		return answerQueryEmpty(c, h.cfg.QueryThumbUrl)
 	}
 	eventID := h.events.NewID()
-	return views.AnswerQuery(c, eventID, h.cfg.QueryThumbUrl)
-}
-
-// InlineResult - handles inline result with the event announcement.
-func (h *Handlers) InlineResult(c tele.Context) error {
-	h.log.Info("[handlers] chosen_inline_result received", telelog.Attr(c))
-	res := c.InlineResult()
-
-	// If no message ID, do not create an event
-	if res.MessageID == "" {
-		return nil
-	}
 
 	event := models.Event{
-		ID:        res.ResultID,
-		Caption:   res.Query,
-		Post:      models.Post{InlineMessageID: res.MessageID},
-		Owner:     models.NewProfile(*res.Sender),
+		ID:        eventID,
+		Caption:   c.Query().Text,
+		Owner:     models.NewProfile(*c.Sender()),
 		CreatedAt: nowFn(),
 	}
 	if err := h.events.Create(h.ctx(c), &event); err != nil {
 		h.log.Error("[handlers] failed to create event: "+err.Error(), "event", event, telelog.Trace(c))
 		return h.sendErr(c, locale.ErrSomethingWrong)
 	}
-	h.log.Info("[handlers] event created", "event", event, telelog.Trace(c))
+	h.log.Info("[handlers] draft event created", "event", event, telelog.Trace(c))
+	return answerQuery(c, eventID, h.cfg.QueryThumbUrl)
+}
+
+// InlineResult handles chosen inline result.
+// Adds post to the event and re-renders event post.
+func (h *Handlers) InlineResult(c tele.Context) error {
+	h.log.Info("[handlers] chosen_inline_result received", telelog.Attr(c))
+	eventID := c.InlineResult().ResultID
+	inlineMessageID := c.InlineResult().MessageID
+
+	// Skip if no message ID or empty query
+	if inlineMessageID == "" || c.InlineResult().Query == "" {
+		return nil
+	}
+
+	// Add post to the event and re-render it
+	upd, err := h.events.PostAdd(h.ctx(c), eventID, inlineMessageID)
+	if err != nil {
+		h.log.Error("[handlers] failed add event post chat: "+err.Error(),
+			"event_id", eventID,
+			telelog.Trace(c))
+		return h.sendErr(c, locale.ErrSomethingWrong)
+	}
+	h.log.Info("[handlers] event post added", "", upd, telelog.Trace(c))
 	return nil
+}
+
+// CbSignup handles signup callback buttons.
+// Adds post to the event, re-renders event post, redirects user to signup deeplink
+func (h *Handlers) CbSignup(c tele.Context) error {
+	h.log.Info("[handlers] signup callback received", telelog.Attr(c))
+
+	if len(c.Args()) < 2 {
+		h.log.Error("[handlers] signup callback: not enough arguments",
+			"args", c.Args(),
+			telelog.Attr(c))
+		return c.RespondAlert(locale.ErrSomethingWrong)
+	}
+
+	// Add post to the event and re-render it
+	eventID := c.Args()[0]
+	inlineMessageID := c.Callback().MessageID
+	upd, err := h.events.PostAdd(h.ctx(c), eventID, inlineMessageID)
+	if err != nil {
+		h.log.Error("[handlers] failed add event post chat: "+err.Error(),
+			"event_id", eventID,
+			telelog.Trace(c))
+		return h.sendErr(c, locale.ErrSomethingWrong)
+	}
+	h.log.Info("[handlers] event post added", "", upd, telelog.Trace(c))
+	role := c.Args()[1]
+	return c.Respond(&tele.CallbackResponse{URL: deeplink(models.SessionSignup, eventID, role)})
 }
 
 // UserShared - handles the user shared event.
@@ -188,12 +225,12 @@ func (h *Handlers) Text(c tele.Context) error {
 		return nil // todo maybe some help message or random joke or facts?
 	case text == locale.BtnClose:
 		h.sessionReset(c)
-		return views.SendCloseOK(c)
+		return sendCloseOK(c)
 	case text == locale.BtnRemove:
 		return h.dancerRemove(c, s.EventID)
 	case text == locale.BtnSingle[s.Role]:
 		return h.singleAdd(c, s.EventID, s.Role)
-	case views.IsSingleCaption(text):
+	case isSingleCaption(text):
 		for _, single := range s.Singles {
 			if single.Caption == text {
 				return h.coupleAdd(c, s.EventID, s.Role, &single.Profile)
@@ -221,7 +258,7 @@ func (h *Handlers) signup(c tele.Context, eventID string, role models.Role) erro
 	// if the dancer can signup, update the session
 	var singles []models.SessionSingle
 	if dancer.Status.SignupAvailable() || dancer.Status.SignedUp() {
-		singles = views.FmtSingles(event.Singles, role.Opposite())
+		singles = fmtSingles(event.Singles, role.Opposite())
 		h.sessionSet(c, models.Session{
 			Action:  models.SessionSignup,
 			EventID: eventID,
@@ -235,7 +272,7 @@ func (h *Handlers) signup(c tele.Context, eventID string, role models.Role) erro
 
 	h.log.Info("[handlers] signup", "event_id", eventID, "dancer", dancer, telelog.Trace(c))
 
-	return views.SendSignup(c, dancer, singles)
+	return sendSignup(c, dancer, singles)
 }
 
 // coupleAdd handles the couple signup action
@@ -252,7 +289,7 @@ func (h *Handlers) coupleAdd(c tele.Context, eventID string, role models.Role, o
 	// if the result is retryable, update the session
 	var singles []models.SessionSingle
 	if upd.Result.Retryable() {
-		singles = views.FmtSingles(upd.Event.Singles, role.Opposite())
+		singles = fmtSingles(upd.Event.Singles, role.Opposite())
 		h.sessionSet(c, models.Session{
 			Action:  models.SessionSignup,
 			EventID: eventID,
@@ -264,7 +301,7 @@ func (h *Handlers) coupleAdd(c tele.Context, eventID string, role models.Role, o
 		h.sessionReset(c)
 	}
 
-	return views.SendResult(c, upd, singles)
+	return sendResult(c, upd, singles)
 }
 
 // singleAdd handles the single signup action
@@ -281,7 +318,7 @@ func (h *Handlers) singleAdd(c tele.Context, eventID string, role models.Role) e
 	// if the result is retryable, update the session
 	var singles []models.SessionSingle
 	if upd.Result.Retryable() {
-		singles = views.FmtSingles(upd.Event.Singles, role.Opposite())
+		singles = fmtSingles(upd.Event.Singles, role.Opposite())
 		h.sessionSet(c, models.Session{
 			Action:  models.SessionSignup,
 			EventID: eventID,
@@ -293,7 +330,7 @@ func (h *Handlers) singleAdd(c tele.Context, eventID string, role models.Role) e
 		h.sessionReset(c)
 	}
 
-	return views.SendResult(c, upd, singles)
+	return sendResult(c, upd, singles)
 }
 
 // dancerRemove handles the dancer remove action
@@ -309,7 +346,7 @@ func (h *Handlers) dancerRemove(c tele.Context, eventID string) error {
 
 	h.sessionReset(c)
 
-	return views.SendResult(c, upd, nil)
+	return sendResult(c, upd, nil)
 }
 
 // sendErr sends an error message.

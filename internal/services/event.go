@@ -85,26 +85,54 @@ func (s *EventService) DancerGet(event *models.Event, profile *models.Profile, r
 	return newEventHandler(event).DancerGetByProfile(profile, role)
 }
 
-// ChatMessageAdd adds a chat to the event.
-func (s *EventService) ChatMessageAdd(
+// PostAdd adds information about the post where the event is published.
+func (s *EventService) PostAdd(
+	ctx context.Context,
+	eventID string,
+	inlineMessageID string,
+) (*models.EventUpdate, error) {
+	if inlineMessageID == "" {
+		return nil, fmt.Errorf("inline message ID must be provided")
+	}
+	return s.updateWrapper(ctx, eventID, func(h *eventHandler) *models.EventUpdate {
+		h.Event().Post = &models.Post{InlineMessageID: inlineMessageID}
+		h.hist = append(h.hist, &models.HistoryItem{
+			Action:    models.HistoryPostAdded,
+			Initiator: &h.event.Owner,
+			EventID:   &h.event.ID,
+			Details:   h.event.Post,
+		})
+		return &models.EventUpdate{
+			Result: models.ResultSuccess,
+			Event:  h.Event(),
+			Post:   h.Event().Post,
+		}
+	})
+}
+
+// PostChatAdd adds information about a chat where the event is published.
+func (s *EventService) PostChatAdd(
 	ctx context.Context,
 	eventID string,
 	chat *models.Chat,
-	messageID int,
+	chatMessageID int,
 ) (*models.EventUpdate, error) {
 	if chat == nil {
 		return nil, fmt.Errorf("chat must be provided")
 	}
-	if messageID == 0 {
+	if chatMessageID == 0 {
 		return nil, fmt.Errorf("chat message ID must be provided")
 	}
 
 	// Update the event
 	return s.updateWrapper(ctx, eventID, func(h *eventHandler) *models.EventUpdate {
+		if h.Event().Post == nil {
+			h.Event().Post = &models.Post{}
+		}
 		h.Event().Post.Chat = chat
-		h.Event().Post.MessageID = messageID
+		h.Event().Post.ChatMessageID = chatMessageID
 		h.hist = append(h.hist, &models.HistoryItem{
-			Action:    models.HistoryChatAdded,
+			Action:    models.HistoryPostChatAdded,
 			Initiator: &h.event.Owner,
 			EventID:   &h.event.ID,
 			Details:   chat,
@@ -112,7 +140,7 @@ func (s *EventService) ChatMessageAdd(
 		return &models.EventUpdate{
 			Result: models.ResultSuccess,
 			Event:  h.Event(),
-			Post:   &h.Event().Post,
+			Post:   h.Event().Post,
 		}
 
 	})
@@ -227,7 +255,7 @@ func (s *EventService) updateWrapper(
 	// If the update is successful,
 	// - update the event
 	// - commit the transaction
-	// - render event announcement
+	// - render event post
 	// - add history items
 	// - send the notifications
 	if err = tx.EventUpsert(ctx, upd.Event); err != nil {
@@ -268,13 +296,7 @@ func (s *EventService) validateEvent(e *models.Event) error {
 	if len(e.Caption) > s.cfg.EventTextMaxLen {
 		errs["text"] = fmt.Errorf("event text must be at most %d characters long", s.cfg.EventTextMaxLen)
 	}
-
-	if e.Post.InlineMessageID == "" {
-		errs["message_id"] = fmt.Errorf("event message ID must be provided")
-	}
-
 	errs["owner"] = s.validateProfile(&e.Owner)
-
 	return errs.Filter()
 }
 

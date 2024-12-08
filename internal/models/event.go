@@ -8,8 +8,8 @@ import (
 // Event - is a dance event
 type Event struct {
 	ID        string    `json:"id"`               // Random string to identify the event
-	Caption   string    `json:"text"`             // Announcement message text
-	Post      Post      `json:"post"`             // Announcement post in a Telegram chat
+	Caption   string    `json:"caption"`          // Event caption
+	Post      *Post     `json:"post"`             // Event post in a Telegram chat
 	Limit     int       `json:"limit,omitempty"`  // Maximum number of couples allowed to sign-in. Zero means no limit
 	Closed    bool      `json:"closed,omitempty"` // Is event closed for new signups or modifications
 	Couples   []Couple  `json:"couples"`          // List of couples signed in

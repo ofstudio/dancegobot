@@ -11,12 +11,12 @@ import (
 	"github.com/ofstudio/dancegobot/internal/services"
 	"github.com/ofstudio/dancegobot/internal/store"
 	"github.com/ofstudio/dancegobot/internal/telegram"
-	"github.com/ofstudio/dancegobot/internal/telegram/views"
 	"github.com/ofstudio/dancegobot/pkg/noplog"
 )
 
 type App struct {
 	cfg config.Config
+	srv *services.Services
 	log *slog.Logger
 }
 
@@ -53,12 +53,12 @@ func (a *App) Start(ctx context.Context) error {
 	defer s.Close()
 
 	// 3. Initialize services
-	srv := services.NewServices(a.cfg.Settings, s, views.Render(bot), views.Notify(bot)).
+	a.srv = services.NewServices(a.cfg.Settings, s, telegram.RenderPost(bot), telegram.Notify(bot)).
 		WithLogger(a.log)
 
 	// 4. Initialize middleware and handlers
-	m := telegram.NewMiddleware(a.cfg.Settings, srv.Event).WithLogger(a.log)
-	h := telegram.NewHandlers(a.cfg.Settings, srv.Event, srv.User).WithLogger(a.log)
+	m := telegram.NewMiddleware(a.cfg.Settings, a.srv.Event).WithLogger(a.log)
+	h := telegram.NewHandlers(a.cfg.Settings, a.srv.Event, a.srv.User).WithLogger(a.log)
 
 	// 5. Set up bot middleware and handlers
 	bot.Use(m.Context(ctx))
@@ -73,8 +73,8 @@ func (a *App) Start(ctx context.Context) error {
 	bot.Handle(tele.OnUserShared, h.UserShared)
 	bot.Handle(tele.OnQuery, h.Query)
 	bot.Handle(tele.OnInlineResult, h.InlineResult)
-	// This is needed to handle channel posts
-	bot.Handle(tele.OnChannelPost, func(_ tele.Context) error { return nil })
+	bot.Handle(&telegram.BtnCbSignup, h.CbSignup)
+	bot.Handle(tele.OnChannelPost, func(_ tele.Context) error { return nil }) // This is needed to handle channel posts
 
 	// 6. Start the bot
 	go bot.Start()

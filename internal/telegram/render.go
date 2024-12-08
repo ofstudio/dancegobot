@@ -1,4 +1,4 @@
-package views
+package telegram
 
 import (
 	"errors"
@@ -11,23 +11,28 @@ import (
 	"github.com/ofstudio/dancegobot/internal/models"
 )
 
-// Render renders the event announcement message.
-func Render(api tele.API) func(event *models.Event) error {
-	return func(event *models.Event) error {
-		text := renderText(event)
-		rm := btnAnnouncement(event.ID)
-		msg := &tele.InlineResult{MessageID: event.Post.InlineMessageID}
-		opts := &tele.SendOptions{
-			ReplyMarkup:           rm,
-			DisableWebPagePreview: true,
-			ParseMode:             tele.ModeHTML,
-		}
-		_, err := api.Edit(msg, text, opts)
-		if errors.Is(err, tele.ErrTrueResult) {
-			return nil
-		}
-		return err
+// RenderPost renders the event post with the given inline message ID.
+func RenderPost(api tele.API) func(*models.Event, string) error {
+	return func(event *models.Event, inlineMessageID string) error {
+		return render(api, event, inlineMessageID)
 	}
+}
+
+// render renders the event post.
+func render(api tele.API, event *models.Event, inlineMessageID string) error {
+	text := renderText(event)
+	rm := btnPostURL(event.ID)
+	msg := &tele.InlineResult{MessageID: inlineMessageID}
+	opts := &tele.SendOptions{
+		ReplyMarkup:           rm,
+		DisableWebPagePreview: true,
+		ParseMode:             tele.ModeHTML,
+	}
+	_, err := api.Edit(msg, text, opts)
+	if errors.Is(err, tele.ErrTrueResult) {
+		return nil
+	}
+	return err
 }
 
 func renderText(event *models.Event) string {
@@ -36,7 +41,7 @@ func renderText(event *models.Event) string {
 	sb.WriteString("\n\n")
 
 	if len(event.Couples) > 0 {
-		sb.WriteString(locale.AnnouncementCouples)
+		sb.WriteString(locale.PostCouples)
 		sbCouples(sb, event.Couples)
 		sb.WriteByte('\n')
 	}
@@ -44,10 +49,10 @@ func renderText(event *models.Event) string {
 	if len(event.Singles) > 0 {
 		leaders, followers := singlesByRole(event.Singles)
 		if len(leaders) > len(followers) {
-			sb.WriteString(locale.AnnouncementSingles[models.RoleLeader])
+			sb.WriteString(locale.PostSingles[models.RoleLeader])
 			sbSingles(sb, leaders, followers)
 		} else {
-			sb.WriteString(locale.AnnouncementSingles[models.RoleFollower])
+			sb.WriteString(locale.PostSingles[models.RoleFollower])
 			sbSingles(sb, followers, leaders)
 		}
 	}

@@ -21,65 +21,65 @@ func (suite *TestMiddlewareSuite) SetupSuite() {
 	config.SetBotProfile(&tele.User{ID: 123, Username: "my_bot"})
 }
 
-func (suite *TestMiddlewareSuite) Test_isAnnouncementMsg() {
-	suite.Run("is announcement message", func() {
+func (suite *TestMiddlewareSuite) Test_isPost() {
+	suite.Run("is post message", func() {
 		m := NewMiddleware(config.Settings{}, nil)
-		eventID, ok := m.isAnnouncementMsg(&msgIsAnnounce)
+		eventID, ok := m.isPost(&msgIsPost)
 		suite.True(ok)
 		suite.Equal("event123", eventID)
 	})
 
 	suite.Run("not via bot", func() {
 		m := NewMiddleware(config.Settings{}, nil)
-		_, ok := m.isAnnouncementMsg(&msgNotViaBot)
+		_, ok := m.isPost(&msgNotViaBot)
 		suite.False(ok)
 	})
 
 	suite.Run("via another bot", func() {
 		m := NewMiddleware(config.Settings{}, nil)
-		_, ok := m.isAnnouncementMsg(&msgViaAnotherBot)
+		_, ok := m.isPost(&msgViaAnotherBot)
 		suite.False(ok)
 	})
 
 	suite.Run("no reply markup", func() {
 		m := NewMiddleware(config.Settings{}, nil)
-		_, ok := m.isAnnouncementMsg(&msgNoReplyMarkup)
+		_, ok := m.isPost(&msgNoReplyMarkup)
 		suite.False(ok)
 	})
 
 	suite.Run("no inline keyboard", func() {
 		m := NewMiddleware(config.Settings{}, nil)
-		_, ok := m.isAnnouncementMsg(&msgNoInlineKeyboard)
+		_, ok := m.isPost(&msgNoInlineKeyboard)
 		suite.False(ok)
 	})
 
 	suite.Run("no inline button", func() {
 		m := NewMiddleware(config.Settings{}, nil)
-		_, ok := m.isAnnouncementMsg(&msgNoInlineButton)
+		_, ok := m.isPost(&msgNoInlineButton)
 		suite.False(ok)
 	})
 
 	suite.Run("no URL", func() {
 		m := NewMiddleware(config.Settings{}, nil)
-		_, ok := m.isAnnouncementMsg(&msgNoURL)
+		_, ok := m.isPost(&msgNoURL)
 		suite.False(ok)
 	})
 
 	suite.Run("unknown URL", func() {
 		m := NewMiddleware(config.Settings{}, nil)
-		_, ok := m.isAnnouncementMsg(&msgUnknownURL)
+		_, ok := m.isPost(&msgUnknownURL)
 		suite.False(ok)
 	})
 
 	suite.Run("not signup URL", func() {
 		m := NewMiddleware(config.Settings{}, nil)
-		_, ok := m.isAnnouncementMsg(&msgNotSignupURL)
+		_, ok := m.isPost(&msgNotSignupURL)
 		suite.False(ok)
 	})
 }
 
 var (
-	msgIsAnnounce = tele.Message{
+	msgIsPost = tele.Message{
 		Via: &tele.User{ID: 123},
 		ReplyMarkup: &tele.ReplyMarkup{InlineKeyboard: [][]tele.InlineButton{{
 			{URL: "https://t.me/my_bot?start=1a2b-signup-event123-leader"},

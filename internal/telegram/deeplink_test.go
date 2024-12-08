@@ -1,14 +1,30 @@
-package deeplink
+package telegram
 
 import (
-	"github.com/ofstudio/dancegobot/internal/models"
-
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	tele "gopkg.in/telebot.v4"
+
+	"github.com/ofstudio/dancegobot/internal/config"
+	"github.com/ofstudio/dancegobot/internal/models"
+	"github.com/ofstudio/dancegobot/pkg/randtoken"
 )
 
-func TestParsePayload(t *testing.T) {
+func Test_deeplink(t *testing.T) {
+	config.SetBotProfile(&tele.User{Username: "my_bot"})
+	deeplink := deeplink("signup", "eventID", "leader")
+	assert.Regexp(t, `^https://t.me/my_bot\?start=[a-zA-Z0-9]{4}-signup-eventID-leader$`, deeplink)
+}
+
+func Benchmark_deeplink(b *testing.B) {
+	config.SetBotProfile(&tele.User{Username: "my_bot"})
+	for i := 0; i < b.N; i++ {
+		_ = deeplink("event_signup", randtoken.New(12), "leader")
+	}
+}
+
+func Test_deeplinkParsePayload(t *testing.T) {
 	tests := []struct {
 		name     string
 		payload  string
@@ -42,7 +58,7 @@ func TestParsePayload(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			action, params, err := ParsePayload(tt.payload)
+			action, params, err := deeplinkParsePayload(tt.payload)
 			if tt.err {
 				assert.Error(t, err)
 			} else {

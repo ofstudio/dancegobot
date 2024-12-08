@@ -6,7 +6,7 @@ Inspired by [Tayrinn/CoopDance](https://github.com/Tayrinn/CoopDance).
 
 ## Features
 
-- ✅ Announcement publishing via bot inline query: `@dancegobot <announcement text>`.
+- ✅ Publishing via bot inline query: `@dancegobot <announcement text>`.
 - ✅ Dancer can sign up in a couple with a partner or as single looking for a partner.
 - ✅ Partner can be selected from the contact list or by username or by name as a free text.
 - ✅ Partner can be selected from the list of single dancers.
@@ -28,7 +28,7 @@ Configuration is done via environment variables.
 | `BOT_USE_WEBHOOK`        | `false`                    | _Optional._ Should bot use [webhook](https://core.telegram.org/bots/webhooks) or [long polling](https://core.telegram.org/bots/api#getupdates) for receiving updates. Default is `false` which means long polling. |
 | `BOT_WEBHOOK_LISTEN`     | `:8080 `                   | _Optional._ Host and port to listen for incoming webhooks. Only used if BOT_USE_WEBHOOK is true.                                                                                                                   |
 | `BOT_WEBHOOK_PUBLIC_URL` | –                          | _Optional._ Public URL for the webhook. Only used if BOT_USE_WEBHOOK is true. Note that bot doesn't implement TLS termination, so it should be done by a reverse proxy like Nginx or Traefik.                      |
-| `THUMBNAIL_URL`          | –                          | _Optional._ URL to a thumbnail image that will be used for announcement inline query answer. It should be a square image.                                                                                          |
+| `THUMBNAIL_URL`          | –                          | _Optional._ URL to a thumbnail image that will be used for post inline query answer. It should be a square image.                                                                                                  |
 
 ## License
 

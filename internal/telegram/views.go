@@ -139,7 +139,7 @@ func btnSignup(dancer *models.Dancer, singles []models.SessionSingle) *tele.Repl
 
 	// add "signup as single" button if there are no singles in opposite role
 	if len(singles) == 0 && dancer.Status == models.StatusNotRegistered {
-		rows = append(rows, rm.Row(rm.Text(locale.BtnSingle[dancer.Role])))
+		rows = append(rows, rm.Row(rm.Text(locale.BtnAsSingle[dancer.Role])))
 	}
 
 	// Add "remove" button if the dancer is signed up
@@ -200,8 +200,8 @@ func sendStart(c tele.Context) error {
 	return c.Send(text, rm, tele.ModeHTML, tele.NoPreview, tele.RemoveKeyboard)
 }
 
-// sendSignup sends a message on user signup request.
-func sendSignup(c tele.Context, dancer *models.Dancer, singles []models.SessionSingle) error {
+// sendSignupScene sends a signup scene to the user.
+func sendSignupScene(c tele.Context, dancer *models.Dancer, singles []models.SessionSingle) error {
 	opts := &tele.SendOptions{
 		ReplyMarkup:           btnSignup(dancer, singles),
 		DisableWebPagePreview: true,
@@ -220,6 +220,16 @@ func sendSignup(c tele.Context, dancer *models.Dancer, singles []models.SessionS
 	default:
 		return c.Send(locale.ErrSomethingWrong, tele.RemoveKeyboard)
 	}
+}
+
+func sendChooseSingleScene(c tele.Context, singles []models.SessionSingle) error {
+	// todo implement this
+	return c.Send(locale.ErrNotImplemented)
+}
+
+func sendNoSinglesAvailable(c tele.Context) error {
+	// todo implement this
+	return c.Send(locale.ErrNotImplemented)
 }
 
 // sendResult sends a message on user signup result.

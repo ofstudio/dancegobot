@@ -240,6 +240,9 @@ func (h *eventHandler) SingleAdd(dancer *models.Dancer) *models.EventUpdate {
 		return &models.EventUpdate{Event: h.event, Result: result, Dancer: dancer}
 	}
 
+	// todo signup as a couple with the first dancer in the singles list of opposite role if any
+	// todo add tests for this case
+
 	// 6. Set the dancer as a single
 	dancer.SingleSignup = true
 	dancer.Status = models.StatusSingle
@@ -311,6 +314,8 @@ func (h *eventHandler) DancerRemove(dancer *models.Dancer) *models.EventUpdate {
 	partner.Partner = nil
 
 	// 3.2 If partner was signed up as a single, move back to singles
+	// todo check if any single dancer available in opposite role and register a partner in a couple with
+	// todo add tests for this case
 	if partner.SingleSignup {
 		partner.Status = models.StatusSingle
 		h.event.Singles = append(h.event.Singles, *partner)

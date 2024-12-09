@@ -228,8 +228,10 @@ func (h *Handlers) Text(c tele.Context) error {
 		return sendCloseOK(c)
 	case text == locale.BtnRemove:
 		return h.dancerRemove(c, s.EventID)
-	case text == locale.BtnSingle[s.Role]:
+	case text == locale.BtnAsSingle[s.Role]:
 		return h.singleAdd(c, s.EventID, s.Role)
+	case text == locale.BtnChooseSingle[s.Role]:
+		return h.chooseSingleScene(c)
 	case isSingleCaption(text):
 		for _, single := range s.Singles {
 			if single.Caption == text {
@@ -273,7 +275,43 @@ func (h *Handlers) signupScene(c tele.Context, eventID string, role models.Role)
 
 	h.log.Info("[handlers] signup scene", "event_id", eventID, "dancer", dancer, telelog.Trace(c))
 
-	return sendSignup(c, dancer, singles)
+	return sendSignupScene(c, dancer, singles)
+}
+
+// chooseSingleScene returns the scene of choosing a single partner to sign up as a couple with
+func (h *Handlers) chooseSingleScene(c tele.Context) error {
+	// 1. Get the user session
+	s := h.sessionGet(c)
+	if s.Action != models.SessionSignup {
+		h.log.Info("[handlers] choose single scene unexpected", telelog.Trace(c))
+		return h.sendErr(c, locale.ErrSomethingWrong)
+	}
+
+	// 2. Get the event
+	event, err := h.events.Get(h.ctx(c), s.EventID)
+	if err != nil {
+		h.log.Error("[handlers] choose single scene: failed to get event: "+err.Error(), telelog.Trace(c))
+		return h.sendErr(c, locale.ErrSomethingWrong)
+	}
+
+	// 3. Get the singles for the dancer's role
+	singles := fmtSingles(event.Singles, s.Role.Opposite())
+	if len(singles) == 0 {
+		h.log.Info("[handlers] choose single scene: no singles available", telelog.Trace(c))
+		return sendNoSinglesAvailable(c)
+	}
+
+	// 4. Update the session
+	h.log.Info("[handlers] choose single scene", "event_id", s.EventID, telelog.Trace(c))
+	h.sessionSet(c, models.Session{
+		Action:  models.SessionSignup,
+		EventID: s.EventID,
+		Role:    s.Role,
+		Singles: singles,
+	})
+
+	// 5. Send the scene
+	return sendChooseSingleScene(c, singles)
 }
 
 // coupleAdd handles the couple signup action

@@ -45,17 +45,9 @@ func (s *UserService) Get(ctx context.Context, profile models.Profile) (*models.
 	return user, nil
 }
 
-// ProfileUpsert upserts the user profile.
-func (s *UserService) ProfileUpsert(ctx context.Context, user *models.User) error {
-	if err := s.store.UserProfileUpsert(ctx, user); err != nil {
-		return fmt.Errorf("failed to upsert user profile: %w", err)
-	}
-	return nil
-}
-
-// SessionUpsert upserts the user session as well as the user profile.
-func (s *UserService) SessionUpsert(ctx context.Context, user *models.User) error {
-	if err := s.store.UserSessionUpsert(ctx, user); err != nil {
+// Upsert inserts or updates a user.
+func (s *UserService) Upsert(ctx context.Context, user *models.User) error {
+	if err := s.store.UserUpsert(ctx, user); err != nil {
 		return fmt.Errorf("failed to upsert user: %w", err)
 	}
 	return nil

@@ -44,13 +44,13 @@ func (suite *TestStoreSuite) TestStoreTx() {
 			suite.Require().NoError(err)
 
 			time.Sleep(700 * time.Millisecond)
-			err = tx.UserProfileUpsert(context.Background(), &models.User{})
+			err = tx.UserUpsert(context.Background(), &models.User{})
 			suite.Require().NoError(err)
 			suite.Require().NoError(tx.Commit())
 		}()
 
 		time.Sleep(300 * time.Millisecond)
-		err = store.UserProfileUpsert(context.Background(), &models.User{})
+		err = store.UserUpsert(context.Background(), &models.User{})
 		suite.Require().NoError(err)
 
 	})

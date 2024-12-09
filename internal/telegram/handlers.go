@@ -49,39 +49,36 @@ func (h *Handlers) ctx(c tele.Context) context.Context {
 	return ctx
 }
 
-// sessionSet saves the user session.
-func (h *Handlers) sessionSet(c tele.Context, session models.Session) {
-	if err := h.users.SessionUpsert(h.ctx(c), &models.User{
-		Profile: models.NewProfile(*c.Sender()),
-		Session: session,
-	}); err != nil {
-		h.log.Error("[handlers] failed to set session: "+err.Error(), telelog.Trace(c))
+// userGet returns [models.User] from [tele.Context].
+// If the user is not found in the context, logs an error
+// and returns user with current profile and empty session and settings.
+func (h *Handlers) userGet(c tele.Context) *models.User {
+	user, ok := c.Get("user").(*models.User)
+	if !ok {
+		h.log.Error("[handlers] user not found in context. This can cause unexpected behavior", telelog.Trace(c))
+		user = &models.User{
+			Profile: models.NewProfile(*c.Sender()),
+		}
 	}
+	return user
 }
 
-// sessionReset resets the user session.
-func (h *Handlers) sessionReset(c tele.Context) {
-	h.sessionSet(c, models.Session{})
-}
-
-// sessionGet returns the user session.
-// If the session is not found or an error occurred, returns an empty session.
-func (h *Handlers) sessionGet(c tele.Context) models.Session {
-	user, err := h.users.Get(h.ctx(c), models.NewProfile(*c.Sender()))
-	if err != nil {
-		h.log.Error("[handlers] failed to get session: "+err.Error(), telelog.Trace(c))
-		return models.Session{}
+// userUpsert saves the user.
+func (h *Handlers) userUpsert(c tele.Context, user *models.User) {
+	if err := h.users.Upsert(h.ctx(c), user); err != nil {
+		h.log.Error("[handlers] failed to upsert user: "+err.Error(), telelog.Trace(c))
 	}
-	return user.Session
 }
 
 // Start - handle /start command.
 // If the command has a payload, handle it as a Deeplink.
 func (h *Handlers) Start(c tele.Context) error {
 	h.log.Info("[handlers] /start received", "payload", c.Message().Payload, telelog.Attr(c))
+	u := h.userGet(c)
 
 	if c.Message().Payload != "" {
-		h.sessionReset(c)
+		u.Session = models.Session{}
+		h.userUpsert(c, u)
 		action, params, err := deeplinkParsePayload(c.Message().Payload)
 		if err != nil {
 			h.log.Error("[handlers] /start: failed to parse deeplink payload: "+err.Error(), telelog.Trace(c))
@@ -98,8 +95,7 @@ func (h *Handlers) Start(c tele.Context) error {
 	// Send start message only if user session is empty
 	// due to some Telegram clients (ie iOS, late 2024)
 	// can "double" /start messages on very first interaction with the bot
-	session := h.sessionGet(c)
-	if session.Action == "" {
+	if u.Session.Action == "" {
 		return sendStart(c)
 	}
 	return nil
@@ -108,15 +104,19 @@ func (h *Handlers) Start(c tele.Context) error {
 // Query - handles inline query.
 // If query is not empty creates draft event.
 func (h *Handlers) Query(c tele.Context) error {
+	u := h.userGet(c)
 	if c.Query().Text == "" {
 		return answerQueryEmpty(c, h.cfg.QueryThumbUrl)
 	}
 	eventID := h.events.NewID()
 
 	event := models.Event{
-		ID:        eventID,
-		Caption:   c.Query().Text,
-		Owner:     models.NewProfile(*c.Sender()),
+		ID:      eventID,
+		Caption: c.Query().Text,
+		Settings: models.EventsSettings{
+			DisableChooseSingle: u.Settings.Events.DisableChooseSingle,
+		},
+		Owner:     u.Profile,
 		CreatedAt: nowFn(),
 	}
 	if err := h.events.Create(h.ctx(c), &event); err != nil {
@@ -181,8 +181,8 @@ func (h *Handlers) CbSignup(c tele.Context) error {
 // UserShared - handles the user shared event.
 func (h *Handlers) UserShared(c tele.Context) error {
 	h.log.Info("[handlers] users_shared received", telelog.Attr(c))
-	s := h.sessionGet(c)
-	if s.Action != models.SessionSignup {
+	u := h.userGet(c)
+	if u.Session.Action != models.SessionSignup {
 		h.log.Error("[handlers] unexpected user_shared", telelog.Trace(c))
 		return nil
 	}
@@ -195,7 +195,7 @@ func (h *Handlers) UserShared(c tele.Context) error {
 		Username:  userShared.Username,
 	}
 
-	return h.coupleAdd(c, s.EventID, s.Role, &other)
+	return h.coupleAdd(c, u.Session.EventID, u.Session.Role, &other)
 
 }
 
@@ -216,39 +216,41 @@ func (h *Handlers) Partner(c tele.Context) error {
 func (h *Handlers) Text(c tele.Context) error {
 	h.log.Info("[handlers] text message received", "text", c.Text(), telelog.Attr(c))
 
-	s := h.sessionGet(c)
+	u := h.userGet(c)
 	text := c.Text()
 
 	switch {
-	case s.Action != models.SessionSignup:
+	case u.Session.Action != models.SessionSignup:
 		h.log.Info("[handlers] unexpected text", telelog.Trace(c))
 		return nil // todo maybe some help message or random joke or facts?
 	case text == locale.BtnClose:
-		h.sessionReset(c)
+		u.Session = models.Session{}
+		h.userUpsert(c, u)
 		return sendCloseOK(c)
 	case text == locale.BtnRemove:
-		return h.dancerRemove(c, s.EventID)
-	case text == locale.BtnAsSingle[s.Role]:
-		return h.singleAdd(c, s.EventID, s.Role)
-	case text == locale.BtnChooseSingle[s.Role]:
+		return h.dancerRemove(c, u.Session.EventID)
+	case text == locale.BtnAsSingle[u.Session.Role]:
+		return h.singleAdd(c, u.Session.EventID, u.Session.Role)
+	case text == locale.BtnChooseSingle[u.Session.Role]:
 		return h.chooseSingleScene(c)
 	case isSingleCaption(text):
-		for _, single := range s.Singles {
+		for _, single := range u.Session.Singles {
 			if single.Caption == text {
-				return h.coupleAdd(c, s.EventID, s.Role, &single.Profile)
+				return h.coupleAdd(c, u.Session.EventID, u.Session.Role, &single.Profile)
 			}
 		}
 		return h.sendErr(c, locale.ErrSingleNotFound)
 	case len(text) > h.cfg.DancerNameMaxLen:
 		return h.sendErr(c, locale.ErrDancerNameTooLong)
 	default:
-		return h.coupleAdd(c, s.EventID, s.Role, text)
+		return h.coupleAdd(c, u.Session.EventID, u.Session.Role, text)
 	}
 }
 
 // signupScene returns the signup scene for the user.
 func (h *Handlers) signupScene(c tele.Context, eventID string, role models.Role) error {
 	event, err := h.events.Get(h.ctx(c), eventID)
+	u := h.userGet(c)
 	if err != nil {
 		h.log.Error("[handlers] signup scene: failed to get event: "+err.Error(), telelog.Trace(c))
 		return h.sendErr(c, locale.ErrSomethingWrong)
@@ -262,16 +264,18 @@ func (h *Handlers) signupScene(c tele.Context, eventID string, role models.Role)
 	var singles []models.SessionSingle
 	if dancer.Status.SignupAvailable() || dancer.Status.SignedUp() {
 		singles = fmtSingles(event.Singles, role.Opposite())
-		h.sessionSet(c, models.Session{
+		u.Session = models.Session{
 			Action:  models.SessionSignup,
 			EventID: eventID,
 			Role:    dancer.Role,
 			Singles: singles,
-		})
+		}
+
 	} else {
 		// otherwise, reset the session
-		h.sessionReset(c)
+		u.Session = models.Session{}
 	}
+	h.userUpsert(c, u)
 
 	h.log.Info("[handlers] signup scene", "event_id", eventID, "dancer", dancer, telelog.Trace(c))
 
@@ -281,34 +285,35 @@ func (h *Handlers) signupScene(c tele.Context, eventID string, role models.Role)
 // chooseSingleScene returns the scene of choosing a single partner to sign up as a couple with
 func (h *Handlers) chooseSingleScene(c tele.Context) error {
 	// 1. Get the user session
-	s := h.sessionGet(c)
-	if s.Action != models.SessionSignup {
+	u := h.userGet(c)
+	if u.Session.Action != models.SessionSignup {
 		h.log.Info("[handlers] choose single scene unexpected", telelog.Trace(c))
 		return h.sendErr(c, locale.ErrSomethingWrong)
 	}
 
 	// 2. Get the event
-	event, err := h.events.Get(h.ctx(c), s.EventID)
+	event, err := h.events.Get(h.ctx(c), u.Session.EventID)
 	if err != nil {
 		h.log.Error("[handlers] choose single scene: failed to get event: "+err.Error(), telelog.Trace(c))
 		return h.sendErr(c, locale.ErrSomethingWrong)
 	}
 
 	// 3. Get the singles for the dancer's role
-	singles := fmtSingles(event.Singles, s.Role.Opposite())
+	singles := fmtSingles(event.Singles, u.Session.Role.Opposite())
 	if len(singles) == 0 {
 		h.log.Info("[handlers] choose single scene: no singles available", telelog.Trace(c))
 		return sendNoSinglesAvailable(c)
 	}
 
 	// 4. Update the session
-	h.log.Info("[handlers] choose single scene", "event_id", s.EventID, telelog.Trace(c))
-	h.sessionSet(c, models.Session{
+	h.log.Info("[handlers] choose single scene", "event_id", u.Session.EventID, telelog.Trace(c))
+	u.Session = models.Session{
 		Action:  models.SessionSignup,
-		EventID: s.EventID,
-		Role:    s.Role,
+		EventID: u.Session.EventID,
+		Role:    u.Session.Role,
 		Singles: singles,
-	})
+	}
+	h.userUpsert(c, u)
 
 	// 5. Send the scene
 	return sendChooseSingleScene(c, singles)
@@ -316,6 +321,7 @@ func (h *Handlers) chooseSingleScene(c tele.Context) error {
 
 // coupleAdd handles the couple signup action
 func (h *Handlers) coupleAdd(c tele.Context, eventID string, role models.Role, other any) error {
+	u := h.userGet(c)
 	profile := models.NewProfile(*c.Sender())
 
 	upd, err := h.events.CoupleAdd(h.ctx(c), eventID, &profile, role, other)
@@ -329,22 +335,23 @@ func (h *Handlers) coupleAdd(c tele.Context, eventID string, role models.Role, o
 	var singles []models.SessionSingle
 	if upd.Result.Retryable() {
 		singles = fmtSingles(upd.Event.Singles, role.Opposite())
-		h.sessionSet(c, models.Session{
+		u.Session = models.Session{
 			Action:  models.SessionSignup,
 			EventID: eventID,
 			Role:    role,
 			Singles: singles,
-		})
+		}
 	} else {
 		// otherwise, reset the session
-		h.sessionReset(c)
+		u.Session = models.Session{}
 	}
-
+	h.userUpsert(c, u)
 	return sendResult(c, upd, singles)
 }
 
 // singleAdd handles the single signup action
 func (h *Handlers) singleAdd(c tele.Context, eventID string, role models.Role) error {
+	u := h.userGet(c)
 	profile := models.NewProfile(*c.Sender())
 
 	upd, err := h.events.SingleAdd(h.ctx(c), eventID, &profile, role)
@@ -358,22 +365,23 @@ func (h *Handlers) singleAdd(c tele.Context, eventID string, role models.Role) e
 	var singles []models.SessionSingle
 	if upd.Result.Retryable() {
 		singles = fmtSingles(upd.Event.Singles, role.Opposite())
-		h.sessionSet(c, models.Session{
+		u.Session = models.Session{
 			Action:  models.SessionSignup,
 			EventID: eventID,
 			Role:    role,
 			Singles: singles,
-		})
+		}
 	} else {
 		// otherwise, reset the session
-		h.sessionReset(c)
+		u.Session = models.Session{}
 	}
-
+	h.userUpsert(c, u)
 	return sendResult(c, upd, singles)
 }
 
 // dancerRemove handles the dancer remove action
 func (h *Handlers) dancerRemove(c tele.Context, eventID string) error {
+	u := h.userGet(c)
 	profile := models.NewProfile(*c.Sender())
 
 	upd, err := h.events.DancerRemove(h.ctx(c), eventID, &profile)
@@ -383,14 +391,16 @@ func (h *Handlers) dancerRemove(c tele.Context, eventID string) error {
 	}
 	h.log.Info("[handlers] dancer removed", "", upd, telelog.Trace(c))
 
-	h.sessionReset(c)
-
+	u.Session = models.Session{}
+	h.userUpsert(c, u)
 	return sendResult(c, upd, nil)
 }
 
 // sendErr sends an error message.
 // It resets user session and removes the reply keyboard.
 func (h *Handlers) sendErr(c tele.Context, msg string) error {
-	h.sessionReset(c)
+	u := h.userGet(c)
+	u.Session = models.Session{}
+	h.userUpsert(c, u)
 	return c.Send(msg, tele.RemoveKeyboard)
 }

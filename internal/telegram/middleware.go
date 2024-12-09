@@ -19,14 +19,16 @@ import (
 type Middleware struct {
 	cfg    config.Settings
 	events EventService
+	users  UserService
 	log    *slog.Logger
 }
 
 // NewMiddleware creates a new middleware collection.
-func NewMiddleware(cfg config.Settings, es EventService) *Middleware {
+func NewMiddleware(cfg config.Settings, es EventService, us UserService) *Middleware {
 	return &Middleware{
 		cfg:    cfg,
 		events: es,
+		users:  us,
 		log:    noplog.Logger(),
 	}
 }
@@ -81,6 +83,7 @@ func (m *Middleware) PassPrivateMessages() tele.MiddlewareFunc {
 	}
 }
 
+// Logger is a middleware that logs the update.
 func (m *Middleware) Logger() tele.MiddlewareFunc {
 	return func(next tele.HandlerFunc) tele.HandlerFunc {
 		return func(c tele.Context) error {
@@ -89,6 +92,24 @@ func (m *Middleware) Logger() tele.MiddlewareFunc {
 				return next(c)
 			}
 			defer func() { m.log.Info("[bot] update handled", telelog.Trace(c)) }()
+			return next(c)
+		}
+	}
+}
+
+// User is a middleware that adds the user to the context.
+func (m *Middleware) User() tele.MiddlewareFunc {
+	return func(next tele.HandlerFunc) tele.HandlerFunc {
+		return func(c tele.Context) error {
+			if c.Sender() != nil {
+				profile := models.NewProfile(*c.Sender())
+				user, err := m.users.Get(m.ctx(c), profile)
+				if err != nil {
+					m.log.Error("[middleware] failed to get user: "+err.Error(), telelog.Trace(c))
+					return next(c)
+				}
+				c.Set("user", user)
+			}
 			return next(c)
 		}
 	}
@@ -141,6 +162,8 @@ func (m *Middleware) isPost(msg *tele.Message) (string, bool) {
 	return "", false
 }
 
+// btnCbSignupParse parses the inline button data and returns the event ID.
+// If the button data is not a signup button, it returns an empty string and false.
 func (m *Middleware) btnCbSignupParse(btn tele.InlineButton) (string, bool) {
 	args := strings.Split(btn.Data, "|")
 	if len(args) < 3 {
@@ -153,6 +176,8 @@ func (m *Middleware) btnCbSignupParse(btn tele.InlineButton) (string, bool) {
 	return args[1], true
 }
 
+// btnDeeplinkParse parses the inline button URL and returns the event ID.
+// If the button URL is not a signup deeplink, it returns an empty string and false.
 func (m *Middleware) btnDeeplinkParse(btn tele.InlineButton) (string, bool) {
 	action, params, err := deeplinkParse(btn.URL)
 	if err != nil || action != models.SessionSignup || len(params) == 0 {

@@ -4,6 +4,8 @@ import (
 	"time"
 
 	tele "gopkg.in/telebot.v4"
+
+	"github.com/ofstudio/dancegobot/internal/locale"
 )
 
 // Default returns default configuration
@@ -18,6 +20,10 @@ func Default() Config {
 			RPS:            30,
 			Timeout:        30 * time.Second,
 			AllowedUpdates: []string{"message", "channel_post", "inline_query", "chosen_inline_result", "callback_query"},
+			CommandsPrivate: []tele.Command{
+				{Text: "start", Description: locale.CmdDescriptionStart},
+				{Text: "settings", Description: locale.CmdDescriptionSettings},
+			},
 		},
 
 		// Database default configuration

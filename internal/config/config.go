@@ -4,7 +4,8 @@ import (
 	"fmt"
 	"time"
 
-	env "github.com/caarlos0/env/v11"
+	"github.com/caarlos0/env/v11"
+	tele "gopkg.in/telebot.v4"
 )
 
 // Config is application configuration
@@ -31,14 +32,15 @@ type Settings struct {
 
 // Bot is Telegram bot configuration
 type Bot struct {
-	ApiURL           string        `env:"BOT_API_URL"`
-	Token            string        `env:"BOT_TOKEN,required,unset"`
-	UseWebhook       bool          `env:"BOT_USE_WEBHOOK"`
-	WebhookListen    string        `env:"BOT_WEBHOOK_LISTEN"`
-	WebhookPublicURL string        `env:"BOT_WEBHOOK_PUBLIC_URL"`
-	RPS              int           // Requests per second
-	Timeout          time.Duration // Poller and http-client timeouts
-	AllowedUpdates   []string      // Allowed update types
+	ApiURL           string         `env:"BOT_API_URL"`
+	Token            string         `env:"BOT_TOKEN,required,unset"`
+	UseWebhook       bool           `env:"BOT_USE_WEBHOOK"`
+	WebhookListen    string         `env:"BOT_WEBHOOK_LISTEN"`
+	WebhookPublicURL string         `env:"BOT_WEBHOOK_PUBLIC_URL"`
+	RPS              int            // Requests per second
+	Timeout          time.Duration  // Poller and http-client timeouts
+	AllowedUpdates   []string       // Allowed update types
+	CommandsPrivate  []tele.Command // Bot commands for private chats
 }
 
 // Load loads configuration from [Default] and environment variables

@@ -19,6 +19,9 @@ const (
 
 …и нажми «Опубликовать»
 `
+	CmdDescriptionStart    = "📖 Справка"
+	CmdDescriptionSettings = "⚙️ Настройки"
+
 	BtnTry   = "👉 Попробовать"
 	BtnClose = "✖️Закрыть"
 	BtnBack  = "🔙 Назад"

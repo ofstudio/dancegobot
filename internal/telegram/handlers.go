@@ -79,14 +79,14 @@ func (h *Handlers) Start(c tele.Context) error {
 	if c.Message().Payload != "" {
 		u.Session = models.Session{}
 		h.userUpsert(c, u)
-		action, params, err := deeplinkParsePayload(c.Message().Payload)
+		dl, err := DeeplinkParsePayload(c.Message().Payload)
 		if err != nil {
 			h.log.Error("[handlers] /start: failed to parse deeplink payload: "+err.Error(), telelog.Trace(c))
 			return h.sendErr(c, locale.ErrStartPayload)
 		}
-		switch action {
+		switch dl.Action {
 		case models.SessionSignup:
-			return h.signupScene(c, params[0], models.Role(params[1]))
+			return h.signupScene(c, dl.EventID, dl.Role)
 		default:
 			return h.sendErr(c, locale.ErrStartPayload)
 		}
@@ -175,7 +175,8 @@ func (h *Handlers) CbSignup(c tele.Context) error {
 	}
 	h.log.Info("[handlers] signup callback: event post added", "", upd, telelog.Trace(c))
 	role := c.Args()[1]
-	return c.Respond(&tele.CallbackResponse{URL: deeplink(models.SessionSignup, eventID, role)})
+	dl := Deeplink{Action: models.SessionSignup, EventID: eventID, Role: models.Role(role)}
+	return c.Respond(&tele.CallbackResponse{URL: dl.String()})
 }
 
 // UserShared - handles the user shared event.

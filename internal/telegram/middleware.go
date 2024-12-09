@@ -179,9 +179,9 @@ func (m *Middleware) btnCbSignupParse(btn tele.InlineButton) (string, bool) {
 // btnDeeplinkParse parses the inline button URL and returns the event ID.
 // If the button URL is not a signup deeplink, it returns an empty string and false.
 func (m *Middleware) btnDeeplinkParse(btn tele.InlineButton) (string, bool) {
-	action, params, err := deeplinkParse(btn.URL)
-	if err != nil || action != models.SessionSignup || len(params) == 0 {
+	dl, err := DeeplinkParse(btn.URL)
+	if err != nil || dl.Action != models.SessionSignup {
 		return "", false
 	}
-	return params[0], true
+	return dl.EventID, true
 }

@@ -23,56 +23,56 @@ func (suite *TestMiddlewareSuite) SetupSuite() {
 
 func (suite *TestMiddlewareSuite) Test_isPost() {
 	suite.Run("is post message", func() {
-		m := NewMiddleware(config.Settings{}, nil)
+		m := NewMiddleware(config.Settings{}, nil, nil)
 		eventID, ok := m.isPost(&msgIsPost)
 		suite.True(ok)
 		suite.Equal("event123", eventID)
 	})
 
 	suite.Run("not via bot", func() {
-		m := NewMiddleware(config.Settings{}, nil)
+		m := NewMiddleware(config.Settings{}, nil, nil)
 		_, ok := m.isPost(&msgNotViaBot)
 		suite.False(ok)
 	})
 
 	suite.Run("via another bot", func() {
-		m := NewMiddleware(config.Settings{}, nil)
+		m := NewMiddleware(config.Settings{}, nil, nil)
 		_, ok := m.isPost(&msgViaAnotherBot)
 		suite.False(ok)
 	})
 
 	suite.Run("no reply markup", func() {
-		m := NewMiddleware(config.Settings{}, nil)
+		m := NewMiddleware(config.Settings{}, nil, nil)
 		_, ok := m.isPost(&msgNoReplyMarkup)
 		suite.False(ok)
 	})
 
 	suite.Run("no inline keyboard", func() {
-		m := NewMiddleware(config.Settings{}, nil)
+		m := NewMiddleware(config.Settings{}, nil, nil)
 		_, ok := m.isPost(&msgNoInlineKeyboard)
 		suite.False(ok)
 	})
 
 	suite.Run("no inline button", func() {
-		m := NewMiddleware(config.Settings{}, nil)
+		m := NewMiddleware(config.Settings{}, nil, nil)
 		_, ok := m.isPost(&msgNoInlineButton)
 		suite.False(ok)
 	})
 
 	suite.Run("no URL", func() {
-		m := NewMiddleware(config.Settings{}, nil)
+		m := NewMiddleware(config.Settings{}, nil, nil)
 		_, ok := m.isPost(&msgNoURL)
 		suite.False(ok)
 	})
 
 	suite.Run("unknown URL", func() {
-		m := NewMiddleware(config.Settings{}, nil)
+		m := NewMiddleware(config.Settings{}, nil, nil)
 		_, ok := m.isPost(&msgUnknownURL)
 		suite.False(ok)
 	})
 
 	suite.Run("not signup URL", func() {
-		m := NewMiddleware(config.Settings{}, nil)
+		m := NewMiddleware(config.Settings{}, nil, nil)
 		_, ok := m.isPost(&msgNotSignupURL)
 		suite.False(ok)
 	})

@@ -101,14 +101,12 @@ func btnPostCb(eventID string) *tele.ReplyMarkup {
 // btnPostURL creates URL buttons for the event post.
 func btnPostURL(eventID string) *tele.ReplyMarkup {
 	rm := &tele.ReplyMarkup{}
-	rm.Inline(
-		rm.Row(
-			rm.URL(locale.RoleIcon[models.RoleLeader],
-				deeplink(models.SessionSignup, eventID, models.RoleLeader.String())),
-			rm.URL(locale.RoleIcon[models.RoleFollower],
-				deeplink(models.SessionSignup, eventID, models.RoleFollower.String())),
-		),
-	)
+	dlLeader := Deeplink{Action: models.SessionSignup, EventID: eventID, Role: models.RoleLeader}
+	dlFollower := Deeplink{Action: models.SessionSignup, EventID: eventID, Role: models.RoleFollower}
+	rm.Inline(rm.Row(
+		rm.URL(locale.RoleIcon[models.RoleLeader], dlLeader.String()),
+		rm.URL(locale.RoleIcon[models.RoleFollower], dlFollower.String()),
+	))
 	return rm
 }
 

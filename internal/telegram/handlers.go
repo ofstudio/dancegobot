@@ -113,7 +113,7 @@ func (h *Handlers) Query(c tele.Context) error {
 	event := models.Event{
 		ID:      eventID,
 		Caption: c.Query().Text,
-		Settings: models.EventsSettings{
+		Settings: models.EventSettings{
 			DisableChooseSingle: u.Settings.Events.DisableChooseSingle,
 		},
 		Owner:     u.Profile,

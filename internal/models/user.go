@@ -15,10 +15,10 @@ type User struct {
 
 // UserSettings - is a user settings
 type UserSettings struct {
-	Events EventsSettings `json:"events"` // Settings for events created by user
+	Events UserEventSettings `json:"events"` // Settings for events created by user
 }
 
-// EventsSettings - is a settings for events created by user
-type EventsSettings struct {
+// UserEventSettings - is a settings for events created by user
+type UserEventSettings struct {
 	DisableChooseSingle bool `json:"disable_choose_single,omitempty"` // Disable choose specific single dancer from the list
 }

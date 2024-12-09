@@ -157,9 +157,9 @@ func btnSignup(dancer *models.Dancer, singles []models.SessionSingle) *tele.Repl
 // btnChatLink creates an inline button with a link to the chat.
 //
 // Known Telegram limitations:
-//   - Only supergroups and channels can be linked
+//   - Only messages in supergroups or channels can be linked
 //   - Supergroup or channel can be either public or private
-//   - Bot should be a member of supergroup or an admin in the channel
+//   - Bot should be a member of supergroup or an admin of the channel
 //
 // Link format:
 //

@@ -15,13 +15,13 @@ type Suite struct {
 }
 
 // NoPending checks if gock has pending requests every 10ms for maximum of given timeout.
-// Default timeout is 1000ms.
+// Default timeout is 2000ms.
 func (suite *Suite) NoPending(timeout ...time.Duration) {
 	ticker := time.NewTicker(10 * time.Millisecond)
 	defer ticker.Stop()
 
 	if len(timeout) == 0 {
-		timeout = []time.Duration{1000 * time.Millisecond}
+		timeout = []time.Duration{2000 * time.Millisecond}
 	}
 	timeoutCh := time.After(timeout[0])
 

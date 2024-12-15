@@ -95,7 +95,6 @@ func (s *RenderService) queueHandler(ctx context.Context) {
 					"event", event.LogValue(),
 					trace.Attr(ctx))
 			}
-			s.render(ctx, event)
 		case <-ctx.Done():
 			s.log.Info("[render service] render queue stopped")
 			return

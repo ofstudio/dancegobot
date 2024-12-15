@@ -236,7 +236,7 @@ func (h *Handlers) UserShared(c tele.Context) error {
 // This is to provide familiar user experience with github.com/Tayrinn/CoopDance bot.
 // The payload will be treated as a text message.
 func (h *Handlers) Partner(c tele.Context) error {
-	h.log.Warn("[handlers] /partner received: payload will be treated as text message", telelog.Attr(c))
+	h.log.Info("[handlers] /partner received: payload will be treated as text message", telelog.Attr(c))
 	if c.Message().Payload == "" {
 		return nil
 	}

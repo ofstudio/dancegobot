@@ -61,7 +61,7 @@ ON CONFLICT (id) DO UPDATE SET owner_id   = excluded.owner_id,
 	return nil
 }
 
-// EventGetUpdatedAfter returns all events updated after the specified time.
+// EventGetUpdatedAfter returns all non-draft events updated after the specified time.
 func (s *SQLiteStore) EventGetUpdatedAfter(ctx context.Context, after time.Time) ([]*models.Event, error) {
 	// language=SQLite
 	const query = `SELECT data
@@ -106,6 +106,8 @@ func (s *SQLiteStore) EventRemoveDraftsBefore(ctx context.Context, before time.T
 FROM events
 WHERE updated_at < ?1
   AND json_extract(data, '$.post.inline_message_id') IS NULL
+  AND json_extract(data, '$.couples') IS NULL
+  AND json_extract(data, '$.singles') IS NULL
 RETURNING id;`
 
 	stmt, err := s.stmt(ctx, query)

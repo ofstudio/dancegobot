@@ -104,12 +104,14 @@ func (suite *TestStoreSuite) TestEventRemoveDraftsBefore() {
 	suite.Run("success", func() {
 		_, err := suite.store.db.Exec(`
 INSERT INTO events (id, owner_id, data, updated_at)
-VALUES ('abc', 1, '{"id": "abc", "post": {"inline_message_id": "qwe"} }', '2021-01-01 00:00:00'),
-       ('def', 1, '{"id": "def" }', '2021-01-02 00:00:01'),
-       ('ghi', 1, '{"id": "ghi"}', '2021-01-03 00:00:00'),
-       ('jkl', 1, '{"id": "jkl", "post": {"inline_message_id": "zxc"} }', '2021-01-04 00:00:00'),
-       ('mno', 1, '{"id": "mno" }', '2021-01-05 00:00:01'),
-       ('pqr', 1, '{"id": "pqr", "post": {"inline_message_id": "rty"} }', '2021-01-06 00:00:00')
+VALUES ('abc', 1, '{"id": "abc", "post": {"inline_message_id": "qwe"} }', '2021-01-01 00:00:00'), -- This should NOT be removed
+       ('xxx', 1, '{"id": "def", "couples": [1,2,3] }', '2021-01-02 00:00:01'),                   -- This should NOT be removed
+       ('yyy', 1, '{"id": "def", "singles": [5,6,7] }', '2021-01-02 00:00:01'),                   -- This should NOT be removed
+       ('def', 1, '{"id": "def" }', '2021-01-02 00:00:01'),                                       -- This should BE removed
+       ('ghi', 1, '{"id": "ghi"}', '2021-01-03 00:00:00'),                                        -- This should BE removed
+       ('jkl', 1, '{"id": "jkl", "post": {"inline_message_id": "zxc"} }', '2021-01-04 00:00:00'), -- This should NOT be removed
+       ('mno', 1, '{"id": "mno" }', '2021-01-05 00:00:01'),                                       -- This should NOT be removed
+       ('pqr', 1, '{"id": "pqr", "post": {"inline_message_id": "rty"} }', '2021-01-06 00:00:00')  -- This should NOT be removed
 `)
 		suite.Require().NoError(err)
 
@@ -133,10 +135,12 @@ VALUES ('abc', 1, '{"id": "abc", "post": {"inline_message_id": "qwe"} }', '2021-
 			suite.Require().NoError(err)
 			idsFromDB = append(idsFromDB, id)
 		}
-		suite.Require().Len(idsFromDB, 4)
+		suite.Require().Len(idsFromDB, 6)
 		suite.Contains(idsFromDB, "abc")
 		suite.Contains(idsFromDB, "jkl")
 		suite.Contains(idsFromDB, "mno")
 		suite.Contains(idsFromDB, "pqr")
+		suite.Contains(idsFromDB, "xxx")
+		suite.Contains(idsFromDB, "yyy")
 	})
 }

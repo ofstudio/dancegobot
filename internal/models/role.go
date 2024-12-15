@@ -1,5 +1,6 @@
 package models
 
+// Role is a Dancer role at the Event
 type Role string
 
 const (

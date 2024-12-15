@@ -8,12 +8,12 @@ import (
 
 var botProfile models.Profile
 
-// BotProfile - returns bot profile
-func BotProfile() models.Profile {
-	return botProfile
+// BotProfile returns bot profile
+func BotProfile() *models.Profile {
+	return &botProfile
 }
 
-// SetBotProfile - sets bot profile
+// SetBotProfile sets bot profile
 func SetBotProfile(u *tele.User) {
 	if u != nil {
 		botProfile = models.NewProfile(*u)

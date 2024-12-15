@@ -3,7 +3,6 @@ package app
 import (
 	"context"
 	"log/slog"
-	"os"
 	"testing"
 
 	"github.com/h2non/gock"
@@ -12,10 +11,6 @@ import (
 	"github.com/ofstudio/dancegobot/internal/config"
 	"github.com/ofstudio/dancegobot/pkg/telegock"
 )
-
-func TestMain(m *testing.M) {
-	os.Exit(m.Run())
-}
 
 func TestApp(t *testing.T) {
 	suite.Run(t, new(AppTestSuite))
@@ -42,6 +37,8 @@ func (suite *AppTestSuite) SetupTest() {
 	gock.New(telegock.GetMe).
 		Reply(200).
 		JSON(telegock.Result(&botUser))
+	gock.New(telegock.SetMyCommands).
+		Reply(200)
 	suite.NoPending()
 	suite.NoUnmatched()
 }

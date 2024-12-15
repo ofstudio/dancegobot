@@ -15,28 +15,29 @@ import (
 	"github.com/ofstudio/dancegobot/pkg/randtoken"
 )
 
-// fmtName formats the fullname with a link to the Telegram profile.
-// If profile is not provided, the full name is returned.
+// fmtProfileURL formats the Telegram profile URL.
 //
-// If profile has a username, the link is created to the username. Example:
+// If profile has a username, the link is created to the username.
+// Example: https://t.me/username
 //
-//	<a href='https://t.me/username'>Full Name</a>
-//
-// If the profile has no username, the link is created to the user ID. Example:
-//
-//	<a href='tg://user?id=123456789'>Full Name</a>
-func fmtName(fullname string, profile *models.Profile) string {
+// If the profile has no username, the link is created to the user ID.
+// Example: tg://user?id=123456789
+func fmtProfileURL(profile *models.Profile) string {
 	if profile == nil {
-		return fullname
+		return ""
 	}
 	if profile.Username != "" {
-		return "<a href='https://t.me/" + profile.Username + "'>" + fullname + "</a>"
+		return "https://t.me/" + profile.Username
 	}
-	return "<a href='tg://user?id=" + strconv.FormatInt(profile.ID, 10) + "'>" + fullname + "</a>"
+	return "tg://user?id=" + strconv.FormatInt(profile.ID, 10)
 }
 
-func fmtDancerName(d *models.Dancer) string {
-	return fmtName(d.FullName, d.Profile)
+// fmtDancer formats the dancer with a link to the Telegram profile.
+func fmtDancer(d *models.Dancer) string {
+	if d.Profile == nil {
+		return d.FullName
+	}
+	return "<a href='" + fmtProfileURL(d.Profile) + "'>" + d.FullName + "</a>"
 }
 
 // fmtSingles makes [models.SessionSingle] from the list of singles with given role.

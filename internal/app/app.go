@@ -55,9 +55,10 @@ func (a *App) Start(ctx context.Context) error {
 	// 3. Initialize services
 	a.srv = services.NewServices(a.cfg.Settings, s, telegram.RenderPost(bot), telegram.Notify(bot)).
 		WithLogger(a.log)
+	a.srv.Render.Start(ctx)
 
 	// 4. Initialize middleware and handlers
-	m := telegram.NewMiddleware(a.cfg.Settings, a.srv.Event).WithLogger(a.log)
+	m := telegram.NewMiddleware(a.cfg.Settings, a.srv.Event, a.srv.User).WithLogger(a.log)
 	h := telegram.NewHandlers(a.cfg.Settings, a.srv.Event, a.srv.User).WithLogger(a.log)
 
 	// 5. Set up bot middleware and handlers
@@ -66,15 +67,22 @@ func (a *App) Start(ctx context.Context) error {
 	bot.Use(m.Logger())
 	bot.Use(m.ChatMessage())
 	bot.Use(m.PassPrivateMessages())
+	bot.Use(m.User())
 
 	bot.Handle("/start", h.Start)
 	bot.Handle("/partner", h.Partner)
+	bot.Handle("/settings", h.Settings)
+
 	bot.Handle(tele.OnText, h.Text)
 	bot.Handle(tele.OnUserShared, h.UserShared)
 	bot.Handle(tele.OnQuery, h.Query)
 	bot.Handle(tele.OnInlineResult, h.InlineResult)
+
 	bot.Handle(&telegram.BtnCbSignup, h.CbSignup)
-	bot.Handle(tele.OnChannelPost, func(_ tele.Context) error { return nil }) // This is needed to handle channel posts
+	bot.Handle(&telegram.BtnCbSettingsToggleChooseSingle, h.CbSettingsToggleChooseSingle)
+
+	// This is needed to handle channel posts
+	bot.Handle(tele.OnChannelPost, func(_ tele.Context) error { return nil })
 
 	// 6. Start the bot
 	go bot.Start()

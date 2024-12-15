@@ -23,7 +23,7 @@ type AppTestSuite struct {
 	cancel context.CancelFunc
 }
 
-func (suite *AppTestSuite) SetupTest() {
+func (suite *AppTestSuite) SetupSubTest() {
 	suite.ctx, suite.cancel = context.WithCancel(context.Background())
 	cfg := config.Default()
 	cfg.Bot.Token = "123456:ABCDEF"
@@ -36,14 +36,14 @@ func (suite *AppTestSuite) SetupTest() {
 
 	gock.New(telegock.GetMe).
 		Reply(200).
-		JSON(telegock.Result(&botUser))
+		JSON(telegock.Result(botUser))
 	gock.New(telegock.SetMyCommands).
 		Reply(200)
 	suite.NoPending()
 	suite.NoUnmatched()
 }
 
-func (suite *AppTestSuite) TearDownTest() {
+func (suite *AppTestSuite) TearDownSubTest() {
 	suite.cancel()
 	gock.Off()
 }

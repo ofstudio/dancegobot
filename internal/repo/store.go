@@ -1,4 +1,4 @@
-package store
+package repo
 
 import (
 	"context"
@@ -9,8 +9,8 @@ import (
 	"github.com/jmoiron/sqlx"
 )
 
-// Store is bot data storage.
-type Store struct {
+// SQLiteStore is bot data store.
+type SQLiteStore struct {
 	db            *sqlx.DB                   // Database connection
 	execer        execer                     // Database query interface
 	stmtsIdx      map[string]*sqlx.Stmt      // Prepared statements cache
@@ -18,9 +18,9 @@ type Store struct {
 	mu            sync.Mutex                 // Mutex for prepared statements caches
 }
 
-// NewStore creates a new data storage.
-func NewStore(db *sqlx.DB) *Store {
-	return &Store{
+// NewSQLiteStore creates a new SQLite data store.
+func NewSQLiteStore(db *sqlx.DB) *SQLiteStore {
+	return &SQLiteStore{
 		db:            db,
 		execer:        db,
 		stmtsIdx:      make(map[string]*sqlx.Stmt),
@@ -29,19 +29,19 @@ func NewStore(db *sqlx.DB) *Store {
 }
 
 // DB returns a connection to the database.
-func (s *Store) DB() *sqlx.DB {
+func (s *SQLiteStore) DB() *sqlx.DB {
 	return s.db
 }
 
 // Close closes the storage.
-func (s *Store) Close() {
+func (s *SQLiteStore) Close() {
 	s.closeAllStmts()
 	_ = s.db.Close()
 }
 
 // Commit commits the transaction.
-// If the Store is not within a transaction, an error is returned.
-func (s *Store) Commit() error {
+// If the store is not within a transaction, an error is returned.
+func (s *SQLiteStore) Commit() error {
 	tx, ok := s.execer.(txer)
 	if !ok {
 		return fmt.Errorf("unable to commit non-existent transaction")
@@ -51,8 +51,8 @@ func (s *Store) Commit() error {
 }
 
 // Rollback aborts the transaction.
-// If the Store is not within a transaction, an error is returned.
-func (s *Store) Rollback() error {
+// If the store is not within a transaction, an error is returned.
+func (s *SQLiteStore) Rollback() error {
 	tx, ok := s.execer.(txer)
 	if !ok {
 		return fmt.Errorf("unable to rollback non-existent transaction")
@@ -61,8 +61,8 @@ func (s *Store) Rollback() error {
 	return tx.Rollback()
 }
 
-// BeginTx returns a new [Store] within a transaction.
-func (s *Store) BeginTx(ctx context.Context) (*Store, error) {
+// BeginTx returns a new [SQLiteStore] within a transaction.
+func (s *SQLiteStore) BeginTx(ctx context.Context) (Store, error) {
 	if s.execer != s.db {
 		return nil, fmt.Errorf("unable to start a transaction within another transaction")
 	}
@@ -70,7 +70,7 @@ func (s *Store) BeginTx(ctx context.Context) (*Store, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &Store{
+	return &SQLiteStore{
 		db:            s.db,
 		execer:        &txExt{Tx: tx},
 		stmtsIdx:      make(map[string]*sqlx.Stmt),
@@ -80,7 +80,7 @@ func (s *Store) BeginTx(ctx context.Context) (*Store, error) {
 
 // stmt returns a prepared statement.
 // If the statement was prepared previously, it will be returned from the cache.
-func (s *Store) stmt(ctx context.Context, query string) (*sqlx.Stmt, error) {
+func (s *SQLiteStore) stmt(ctx context.Context, query string) (*sqlx.Stmt, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	stmt, ok := s.stmtsIdx[query]
@@ -97,7 +97,7 @@ func (s *Store) stmt(ctx context.Context, query string) (*sqlx.Stmt, error) {
 
 // namedStmt returns a prepared named statement.
 // If the statement was prepared previously, it will be returned from the cache.
-func (s *Store) namedStmt(ctx context.Context, query string) (*sqlx.NamedStmt, error) {
+func (s *SQLiteStore) namedStmt(ctx context.Context, query string) (*sqlx.NamedStmt, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	stmt, ok := s.namedStmtsIdx[query]
@@ -113,7 +113,7 @@ func (s *Store) namedStmt(ctx context.Context, query string) (*sqlx.NamedStmt, e
 }
 
 // closeAllStmts closes all prepared statements.
-func (s *Store) closeAllStmts() {
+func (s *SQLiteStore) closeAllStmts() {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	for query, stmt := range s.stmtsIdx {

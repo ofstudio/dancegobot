@@ -1,4 +1,4 @@
-package store
+package repo
 
 import (
 	"context"
@@ -12,7 +12,7 @@ import (
 
 // EventGet returns an event by its id.
 // If the event does not exist, returns ErrNotFound.
-func (s *Store) EventGet(ctx context.Context, eventID string) (*models.Event, error) {
+func (s *SQLiteStore) EventGet(ctx context.Context, eventID string) (*models.Event, error) {
 	const query = `SELECT data FROM events WHERE id = ?1`
 	stmt, err := s.stmt(ctx, query)
 	if err != nil {
@@ -35,7 +35,7 @@ func (s *Store) EventGet(ctx context.Context, eventID string) (*models.Event, er
 }
 
 // EventUpsert inserts or updates an event.
-func (s *Store) EventUpsert(ctx context.Context, event *models.Event) error {
+func (s *SQLiteStore) EventUpsert(ctx context.Context, event *models.Event) error {
 	// language=SQLite
 	const query = `
 INSERT INTO events (id, owner_id, data)

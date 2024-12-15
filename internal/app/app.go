@@ -8,8 +8,8 @@ import (
 	tele "gopkg.in/telebot.v4"
 
 	"github.com/ofstudio/dancegobot/internal/config"
+	"github.com/ofstudio/dancegobot/internal/repo"
 	"github.com/ofstudio/dancegobot/internal/services"
-	"github.com/ofstudio/dancegobot/internal/store"
 	"github.com/ofstudio/dancegobot/internal/telegram"
 	"github.com/ofstudio/dancegobot/pkg/noplog"
 )
@@ -44,17 +44,21 @@ func (a *App) Start(ctx context.Context) error {
 	a.log.Info("Bot created", "", config.BotProfile(), "", a.cfg.Bot)
 
 	// 2. Connect the database and store
-	db, err := store.NewSQLite(a.cfg.DB.Filepath, a.cfg.DB.Version)
+	db, err := repo.NewSQLite(a.cfg.DB.Filepath, a.cfg.DB.Version)
 	if err != nil {
 		return fmt.Errorf("failed to connect database: %w", err)
 	}
 	a.log.Info("Database connected", "", a.cfg.DB)
-	s := store.NewStore(db)
-	defer s.Close()
+	store := repo.NewSQLiteStore(db)
+	defer store.Close()
 
 	// 3. Initialize services
-	a.srv = services.NewServices(a.cfg.Settings, s, telegram.RenderPost(bot), telegram.Notify(bot)).
-		WithLogger(a.log)
+	a.srv = services.NewServices(
+		a.cfg.Settings,
+		store,
+		telegram.RenderPost(bot),
+		telegram.Notify(bot),
+	).WithLogger(a.log)
 	a.srv.Render.Start(ctx)
 
 	// 4. Initialize middleware and handlers

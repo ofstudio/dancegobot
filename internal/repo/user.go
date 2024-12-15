@@ -1,4 +1,4 @@
-package store
+package repo
 
 import (
 	"context"
@@ -22,7 +22,7 @@ type userRow struct {
 
 // UserGet returns user by its id.
 // If the user does not exist, returns ErrNotFound.
-func (s *Store) UserGet(ctx context.Context, id int64) (*models.User, error) {
+func (s *SQLiteStore) UserGet(ctx context.Context, id int64) (*models.User, error) {
 	const query = `SELECT profile, session, settings, created_at, updated_at
 FROM users
 WHERE id = ?1
@@ -50,7 +50,7 @@ WHERE id = ?1
 
 // UserUpsert inserts or updates a user.
 // If the user with given Profile.ID already exists, updates its profile, session, and settings.
-func (s *Store) UserUpsert(ctx context.Context, user *models.User) error {
+func (s *SQLiteStore) UserUpsert(ctx context.Context, user *models.User) error {
 	// language=SQLite
 	const query = `INSERT INTO users (id, profile, session, settings)
 VALUES (?1, ?2, ?3, ?4)
@@ -89,7 +89,7 @@ RETURNING id, profile, session, settings, created_at, updated_at
 	return s.userUnmarshalRow(row, user)
 }
 
-func (s *Store) userUnmarshalRow(row userRow, user *models.User) error {
+func (s *SQLiteStore) userUnmarshalRow(row userRow, user *models.User) error {
 	if user == nil {
 		return errors.New("user is nil")
 	}

@@ -8,7 +8,7 @@ import (
 
 	"github.com/ofstudio/dancegobot/internal/config"
 	"github.com/ofstudio/dancegobot/internal/models"
-	"github.com/ofstudio/dancegobot/internal/store"
+	"github.com/ofstudio/dancegobot/internal/repo"
 	"github.com/ofstudio/dancegobot/pkg/noplog"
 )
 
@@ -37,7 +37,7 @@ func (s *UserService) WithLogger(l *slog.Logger) *UserService {
 func (s *UserService) Get(ctx context.Context, profile models.Profile) (*models.User, error) {
 	user, err := s.store.UserGet(ctx, profile.ID)
 	if err != nil {
-		if errors.Is(err, store.ErrNotFound) {
+		if errors.Is(err, repo.ErrNotFound) {
 			return &models.User{Profile: profile, CreatedAt: nowFn()}, nil
 		}
 		return nil, fmt.Errorf("failed to get user: %w", err)

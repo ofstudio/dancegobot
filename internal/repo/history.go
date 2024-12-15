@@ -1,4 +1,4 @@
-package store
+package repo
 
 import (
 	"context"
@@ -8,7 +8,7 @@ import (
 	"github.com/ofstudio/dancegobot/internal/models"
 )
 
-func (s *Store) HistoryInsert(ctx context.Context, item *models.HistoryItem) error {
+func (s *SQLiteStore) HistoryInsert(ctx context.Context, item *models.HistoryItem) error {
 	// language=SQLite
 	const query = `INSERT INTO history (action, initiator_id, event_id, data)
 VALUES (?1, ?2, ?3, $4);`

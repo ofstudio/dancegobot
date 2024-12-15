@@ -1,4 +1,4 @@
-package store
+package repo
 
 import (
 	"context"
@@ -16,13 +16,13 @@ func TestStore(t *testing.T) {
 
 type TestStoreSuite struct {
 	suite.Suite
-	store *Store
+	store *SQLiteStore
 }
 
 func (suite *TestStoreSuite) SetupSubTest() {
 	db, err := NewSQLite(":memory:", 1)
 	suite.Require().NoError(err)
-	suite.store = NewStore(db)
+	suite.store = NewSQLiteStore(db)
 }
 
 func (suite *TestStoreSuite) TearDownSubTest() {
@@ -36,7 +36,7 @@ func (suite *TestStoreSuite) TestStoreTx() {
 		db, err := NewSQLite(":memory:", 1)
 		suite.Require().NoError(err)
 
-		store := NewStore(db)
+		store := NewSQLiteStore(db)
 		defer store.Close()
 
 		go func() {

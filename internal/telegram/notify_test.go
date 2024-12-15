@@ -38,7 +38,7 @@ func TestExecTmpl(t *testing.T) {
 		require.NoError(t, err)
 		assert.Equal(t,
 			"🔔 Test Event\n\n<a href=\"tg://user?id=1\">Test Partner</a> зарегистрировался с тобой в паре! 🎉",
-			text)
+			text.String())
 	})
 
 	t.Run("TmplCanceledWithSingle", func(t *testing.T) {
@@ -50,7 +50,7 @@ func TestExecTmpl(t *testing.T) {
 		require.NoError(t, err)
 		assert.Equal(t,
 			"🔔 Test Event\n\n<a href=\"tg://user?id=1\">Test Partner</a> отменил вашу регистрацию. Я вернул тебя в список ищущих пару 🤗",
-			text)
+			text.String())
 	})
 
 	t.Run("TmplCanceledByPartner", func(t *testing.T) {
@@ -62,7 +62,7 @@ func TestExecTmpl(t *testing.T) {
 		require.NoError(t, err)
 		assert.Equal(t,
 			"🔔 Test Event\n\n<a href=\"tg://user?id=1\">Test Partner</a> отменил вашу регистрацию.",
-			text)
+			text.String())
 	})
 
 	t.Run("TmplAutoPairPartnerFound", func(t *testing.T) {
@@ -74,7 +74,7 @@ func TestExecTmpl(t *testing.T) {
 		require.NoError(t, err)
 		assert.Equal(t,
 			"🔔 Test Event\n\nЯ подобрал тебе в пару <a href=\"tg://user?id=1\">Test Partner</a> 👌",
-			text)
+			text.String())
 	})
 
 	t.Run("TmplAutoPairPartnerChanged", func(t *testing.T) {
@@ -86,6 +86,6 @@ func TestExecTmpl(t *testing.T) {
 		require.NoError(t, err)
 		assert.Equal(t,
 			"🔔 Test Event\n\n<a href=\"tg://user?id=1\">Test Partner</a> отменил вашу регистрацию. \nЯ записал тебя вместе с <a href=\"https://t.me/new_partner\">New Partner</a> 👌",
-			text)
+			text.String())
 	})
 }

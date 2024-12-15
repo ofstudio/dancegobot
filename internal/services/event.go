@@ -77,12 +77,14 @@ func (s *EventService) Get(ctx context.Context, id string) (*models.Event, error
 	return event, nil
 }
 
-// DancerGet returns a dancer by profile and role.
-// If the dancer is not found, returns new dancer with the provided profile and role
-// with status [models.StatusNotRegistered].
-// If the dancer is found, returns the dancer with the status and the partner if any.
-func (s *EventService) DancerGet(event *models.Event, profile *models.Profile, role models.Role) *models.Dancer {
-	return newEventHandler(event).DancerGetByProfile(profile, role)
+// RegistrationGet returns registration for the given event by profile and role.
+func (s *EventService) RegistrationGet(event *models.Event, profile *models.Profile, role models.Role) *models.Registration {
+	return NewEventHandler(event).RegistrationGet(&models.Dancer{
+		Profile:   profile,
+		FullName:  profile.FullName(),
+		Role:      role,
+		CreatedAt: nowFn(),
+	})
 }
 
 // PostAdd adds information about the post where the event is published.
@@ -90,24 +92,24 @@ func (s *EventService) PostAdd(
 	ctx context.Context,
 	eventID string,
 	inlineMessageID string,
-) (*models.EventUpdate, error) {
+) (*models.Event, *models.Post, error) {
 	if inlineMessageID == "" {
-		return nil, fmt.Errorf("inline message ID must be provided")
+		return nil, nil, fmt.Errorf("inline message ID must be provided")
 	}
-	return s.updateWrapper(ctx, eventID, func(h *eventHandler) *models.EventUpdate {
-		h.Event().Post = &models.Post{InlineMessageID: inlineMessageID}
+
+	var event *models.Event
+	post := &models.Post{InlineMessageID: inlineMessageID}
+	err := s.handle(ctx, eventID, func(h *EventHandler) {
+		h.Event().Post = post
+		event = h.Event()
 		h.hist = append(h.hist, &models.HistoryItem{
 			Action:    models.HistoryPostAdded,
 			Initiator: &h.event.Owner,
 			EventID:   &h.event.ID,
 			Details:   h.event.Post,
 		})
-		return &models.EventUpdate{
-			Result: models.ResultSuccess,
-			Event:  h.Event(),
-			Post:   h.Event().Post,
-		}
 	})
+	return event, post, err
 }
 
 // PostChatAdd adds information about a chat where the event is published.
@@ -116,123 +118,148 @@ func (s *EventService) PostChatAdd(
 	eventID string,
 	chat *models.Chat,
 	chatMessageID int,
-) (*models.EventUpdate, error) {
+) (*models.Event, *models.Post, error) {
 	if chat == nil {
-		return nil, fmt.Errorf("chat must be provided")
+		return nil, nil, fmt.Errorf("chat must be provided")
 	}
 	if chatMessageID == 0 {
-		return nil, fmt.Errorf("chat message ID must be provided")
+		return nil, nil, fmt.Errorf("chat message ID must be provided")
 	}
 
 	// Update the event
-	return s.updateWrapper(ctx, eventID, func(h *eventHandler) *models.EventUpdate {
+	var event *models.Event
+	var post *models.Post
+	err := s.handle(ctx, eventID, func(h *EventHandler) {
 		if h.Event().Post == nil {
 			h.Event().Post = &models.Post{}
 		}
 		h.Event().Post.Chat = chat
 		h.Event().Post.ChatMessageID = chatMessageID
+		event = h.Event()
+		post = h.Event().Post
 		h.hist = append(h.hist, &models.HistoryItem{
 			Action:    models.HistoryPostChatAdded,
 			Initiator: &h.event.Owner,
 			EventID:   &h.event.ID,
 			Details:   chat,
 		})
-		return &models.EventUpdate{
-			Result: models.ResultSuccess,
-			Event:  h.Event(),
-			Post:   h.Event().Post,
-		}
-
 	})
+	return event, post, err
 }
 
-// CoupleAdd adds a couple to the event.
-// The other person can be either a [*models.Profile] type or a string full name.
+// CoupleAdd registers a couple for the event.
+// If the partner initially was registered as a single, the partner will be notified.
+// The partner can be either specified by a profile or a full name.
 func (s *EventService) CoupleAdd(
 	ctx context.Context,
 	eventID string,
 	profile *models.Profile,
 	role models.Role,
 	other any,
-) (*models.EventUpdate, error) {
+) (*models.Registration, error) {
 
 	if err := s.validateProfile(profile); err != nil {
 		return nil, fmt.Errorf("failed to validate profile: %w", err)
 	}
 
-	var (
-		otherProfile *models.Profile
-		otherName    string
-	)
+	dancer := &models.Dancer{
+		Profile:   profile,
+		FullName:  profile.FullName(),
+		Role:      role,
+		CreatedAt: nowFn(),
+	}
+	var partner *models.Dancer
 	switch v := other.(type) {
 	case *models.Profile:
 		if err := s.validateProfile(v); err != nil {
 			return nil, fmt.Errorf("failed to validate other person profile: %w", err)
 		}
-		otherProfile = v
+		partner = &models.Dancer{
+			Profile:   v,
+			FullName:  v.FullName(),
+			Role:      role.Opposite(),
+			CreatedAt: nowFn(),
+		}
 	case string:
 		if err := s.validateFullname(v); err != nil {
 			return nil, fmt.Errorf("failed to validate other person name: %w", err)
 		}
-		otherName = v
+		partner = &models.Dancer{
+			FullName:  v,
+			Role:      role.Opposite(),
+			CreatedAt: nowFn(),
+		}
 	default:
 		return nil, fmt.Errorf("invalid type of other person: %T", other)
 	}
 
-	return s.updateWrapper(ctx, eventID, func(h *eventHandler) *models.EventUpdate {
-		dancer := h.DancerGetByProfile(profile, role)
-		var partner *models.Dancer
-		if otherProfile != nil {
-			partner = h.DancerGetByProfile(otherProfile, role.Opposite())
-		} else {
-			partner = h.DancerGetByName(otherName, role.Opposite())
-		}
-
-		return h.CoupleAdd(dancer, partner)
+	var reg *models.Registration
+	err := s.handle(ctx, eventID, func(h *EventHandler) {
+		reg = h.CoupleAdd(dancer, partner)
 	})
+	return reg, err
 }
 
 // SingleAdd adds a single dancer to the event.
+// If auto pair is enabled, tries to pair the dancer with another single dancer.
 func (s *EventService) SingleAdd(
 	ctx context.Context,
 	eventID string,
 	profile *models.Profile,
 	role models.Role,
-) (*models.EventUpdate, error) {
+) (*models.Registration, error) {
 	if err := s.validateProfile(profile); err != nil {
 		return nil, fmt.Errorf("failed to validate profile: %w", err)
 	}
-	return s.updateWrapper(ctx, eventID, func(h *eventHandler) *models.EventUpdate {
-		dancer := h.DancerGetByProfile(profile, role)
-		return h.SingleAdd(dancer)
+	var reg *models.Registration
+	err := s.handle(ctx, eventID, func(h *EventHandler) {
+		reg = h.SingleAdd(&models.Dancer{
+			Profile:   profile,
+			FullName:  profile.FullName(),
+			Role:      role,
+			CreatedAt: nowFn(),
+		})
 	})
+	return reg, err
 }
 
-// DancerRemove removes  the dancer (and couple if any) from the event.
+// DancerRemove removes the dancer from the event.
+//
+// If the dancer is in a couple, and the partner initially signed up as a single,
+// the partner will be moved to the singles list back (or auto paired if enabled)
+// and a notification will be created.
+// Otherwise, the partner will be removed from the event as well.
+//
+// If the dancer is in a couple, and a couple was created by the partner,
+// the partner will be notified that the dancer has left the event.
 func (s *EventService) DancerRemove(
 	ctx context.Context,
 	eventID string,
 	profile *models.Profile,
-) (*models.EventUpdate, error) {
+) (*models.Registration, error) {
 	if err := s.validateProfile(profile); err != nil {
 		return nil, fmt.Errorf("failed to validate profile: %w", err)
 	}
-	return s.updateWrapper(ctx, eventID, func(h *eventHandler) *models.EventUpdate {
-		dancer := h.DancerGetByProfile(profile, models.RoleLeader)
-		return h.DancerRemove(dancer)
+	var reg *models.Registration
+	err := s.handle(ctx, eventID, func(h *EventHandler) {
+		reg = h.DancerRemove(&models.Dancer{
+			Profile:  profile,
+			FullName: profile.FullName(),
+		})
 	})
+	return reg, err
 }
 
-// updateWrapper is a wrapper for the event updates
-func (s *EventService) updateWrapper(
+// handle is a wrapper for the event handler.
+func (s *EventService) handle(
 	ctx context.Context,
 	eventID string,
-	updateFn func(*eventHandler) *models.EventUpdate,
-) (*models.EventUpdate, error) {
+	handlerFunc func(*EventHandler),
+) error {
 	// Begin tx
 	tx, err := s.store.BeginTx(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("failed to begin tx: %w", err)
+		return fmt.Errorf("failed to begin tx: %w", err)
 	}
 	//goland:noinspection ALL
 	defer tx.Rollback()
@@ -240,35 +267,32 @@ func (s *EventService) updateWrapper(
 	// Get event
 	event, err := tx.EventGet(ctx, eventID)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get event: %w", err)
+		return fmt.Errorf("failed to get event: %w", err)
 	}
 
 	// Create event handler
-	handler := newEventHandler(event)
+	handler := NewEventHandler(event)
 
 	// Run update function
-	upd := updateFn(handler)
-	if upd.Result != models.ResultSuccess {
-		return upd, nil
-	}
+	handlerFunc(handler)
 
-	// If the update is successful,
-	// - update the event
+	// After event handling is done, we need to:
+	// - upsert the event in the store
 	// - commit the transaction
 	// - render event post
 	// - add history items
 	// - send the notifications
-	if err = tx.EventUpsert(ctx, upd.Event); err != nil {
-		return nil, fmt.Errorf("failed to upsert event: %w", err)
+	if err = tx.EventUpsert(ctx, handler.Event()); err != nil {
+		return fmt.Errorf("failed to upsert event: %w", err)
 	}
 	if err = tx.Commit(); err != nil {
-		return nil, fmt.Errorf("failed to commit tx: %w", err)
+		return fmt.Errorf("failed to commit tx: %w", err)
 	}
 	go s.renderer.Render(ctx, event)
 	go s.historyInsert(ctx, handler.History()...)
 	go s.notify(ctx, handler.Notifications()...)
 
-	return upd, nil
+	return nil
 }
 
 // historyInsert inserts a history item.

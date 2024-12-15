@@ -1,53 +1,33 @@
 package models
 
 import (
-	"fmt"
+	"log/slog"
 	"time"
 )
 
 // Dancer - is a dancer participating in the event
 type Dancer struct {
-	*Profile               // Telegram profile of the dancer (if available)
-	FullName     string    `json:"full_name"`               // Name of the dancer
-	Role         Role      `json:"role"`                    // Role of the dancer
-	SingleSignup bool      `json:"single_signup,omitempty"` // Signed up as single
-	CreatedAt    time.Time `json:"created_at"`              // Creation time
-	// Virtual fields
-	Status  DancerStatus `json:"-"` // Dancer status at the event. Not stored in the database.
-	Partner *Dancer      `json:"-"` // Partner of the dancer if any. Not stored in the database.
+	*Profile            // Telegram profile of the dancer (if available)
+	FullName  string    `json:"full_name"`           // Name of the dancer
+	Role      Role      `json:"role"`                // Role of the dancer
+	AsSingle  bool      `json:"as_single,omitempty"` // If dancer was registered as single
+	CreatedAt time.Time `json:"created_at"`          // Creation time
 }
 
-type DancerStatus int
-
-const (
-	StatusNotRegistered DancerStatus = iota // Not registered yet
-	StatusSingle                            // Registered as a single
-	StatusInCouple                          // Registered in a couple with a partner
-	StatusForbidden                         // Forbidden to register for the event
-)
-
-// SignupAvailable returns true if the dancer can sign up for the event.
-// The dancer can sign up if they are not registered yet or signed up as single.
-func (s DancerStatus) SignupAvailable() bool {
-	return s == StatusNotRegistered || s == StatusSingle
-}
-
-// SignedUp returns true if the dancer is signed up for the event as single or in a couple.
-func (s DancerStatus) SignedUp() bool {
-	return s == StatusSingle || s == StatusInCouple
-}
-
-func (s DancerStatus) String() string {
-	switch s {
-	case StatusNotRegistered:
-		return "not registered"
-	case StatusSingle:
-		return "single"
-	case StatusInCouple:
-		return "in couple"
-	case StatusForbidden:
-		return "forbidden"
-	default:
-		return fmt.Sprintf("unknown status: %d", s)
+// LogValue implements the slog.Valuer interface for Dancer model.
+func (d Dancer) LogValue() slog.Value {
+	var attrs []slog.Attr
+	if d.Profile != nil {
+		attrs = append(attrs, slog.Any("profile", slog.GroupValue(
+			slog.Int64("id", d.Profile.ID),
+		)))
 	}
+	attrs = append(attrs,
+		slog.String("full_name", d.FullName),
+		slog.String("role", d.Role.String()),
+	)
+	if d.AsSingle {
+		attrs = append(attrs, slog.Bool("as_single", d.AsSingle))
+	}
+	return slog.GroupValue(attrs...)
 }

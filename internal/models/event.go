@@ -1,7 +1,7 @@
 package models
 
 import (
-	"fmt"
+	"log/slog"
 	"time"
 )
 
@@ -27,9 +27,9 @@ func (e Event) LogValue() slog.Value {
 
 // EventSettings - is a settings for the event
 type EventSettings struct {
-	Limit               int       `json:"limit,omitempty"`                 // Maximum number of couples allowed to sign-in. Zero means no limit
-	ClosedFor           ClosedFor `json:"closed_for,omitempty"`            // Is event closed for new signups or modifications
-	DisableChooseSingle bool      `json:"disable_choose_single,omitempty"` // Disable choose specific single dancer from the wait list
+	Limit       int       `json:"limit,omitempty"`        // Maximum number of couples allowed to sign-in. Zero means no limit
+	ClosedFor   ClosedFor `json:"closed_for,omitempty"`   // Is event closed for new signups or modifications
+	AutoPairing bool      `json:"auto_pairing,omitempty"` // Automatically pair single dancers
 }
 
 type ClosedFor string

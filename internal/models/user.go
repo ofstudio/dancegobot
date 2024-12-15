@@ -20,5 +20,5 @@ type UserSettings struct {
 
 // UserEventSettings - is a settings for events created by user
 type UserEventSettings struct {
-	DisableChooseSingle bool `json:"disable_choose_single,omitempty"` // Disable choose specific single dancer from the list
+	AutoPairing bool `json:"auto_pairing,omitempty"` // Automatically pair single dancers
 }

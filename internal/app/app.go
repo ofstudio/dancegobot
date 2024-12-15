@@ -33,6 +33,8 @@ func (a *App) WithLogger(log *slog.Logger) *App {
 	return a
 }
 
+// Start starts the application.
+// Application stops when the context is done.
 func (a *App) Start(ctx context.Context) error {
 
 	// 1. Create a new Telegram bot
@@ -59,6 +61,7 @@ func (a *App) Start(ctx context.Context) error {
 		telegram.RenderPost(bot),
 		telegram.Notify(bot),
 	).WithLogger(a.log)
+	// Start render queue
 	a.srv.Render.Start(ctx)
 
 	// 4. Initialize middleware and handlers

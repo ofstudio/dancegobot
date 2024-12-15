@@ -3,6 +3,7 @@ package services
 import (
 	"context"
 	"log/slog"
+	"time"
 
 	"github.com/ofstudio/dancegobot/internal/config"
 	"github.com/ofstudio/dancegobot/internal/models"
@@ -15,18 +16,20 @@ type RenderFunc func(event *models.Event, inlineMessageID string) error
 
 // RenderService renders events posts.
 type RenderService struct {
+	cfg        config.Settings
 	store      Store
 	renderFunc RenderFunc
-	queue      chan *models.Event
+	queue      chan queueItem
 	repeater   *repeater.Repeater
 	log        *slog.Logger
 }
 
 func NewRenderService(cfg config.Settings, store Store, renderFunc RenderFunc) *RenderService {
 	return &RenderService{
+		cfg:        cfg,
 		store:      store,
 		renderFunc: renderFunc,
-		queue:      make(chan *models.Event),
+		queue:      make(chan queueItem),
 		repeater:   repeater.NewRepeater(cfg.RendererRepeats),
 		log:        noplog.Logger(),
 	}
@@ -40,6 +43,7 @@ func (s *RenderService) WithLogger(l *slog.Logger) *RenderService {
 // Start starts the render queue.
 func (s *RenderService) Start(ctx context.Context) {
 	go s.queueHandler(ctx)
+	go s.renderAtStartup(trace.Context(ctx, "render_at_startup"))
 }
 
 // Render renders the event post and schedules a render repeat.
@@ -76,8 +80,26 @@ func (s *RenderService) render(ctx context.Context, event *models.Event) {
 	default:
 		// Add event to the rendering queue.
 		// This will wait for the previous rendering to complete
-		s.queue <- event
+		s.queue <- queueItem{event: event, ctx: ctx}
 	}
+}
+
+// renderAtStartup re-renders recent events on startup.
+func (s *RenderService) renderAtStartup(ctx context.Context) {
+	events, err := s.store.EventGetUpdatedAfter(ctx, time.Now().Add(-s.cfg.ReRenderOnStartup))
+	if err != nil {
+		s.log.Error("[render service] failed to get events to re-render: "+err.Error(), trace.Attr(ctx))
+		return
+	}
+	s.log.Info("[render service] re-rendering recent events at startup",
+		slog.Duration("updated_within", s.cfg.ReRenderOnStartup),
+		slog.Int("count", len(events)),
+		trace.Attr(ctx))
+
+	for _, event := range events {
+		s.render(ctx, event)
+	}
+	s.log.Info("[render service] re-rendering at startup completed", trace.Attr(ctx))
 }
 
 // queueHandler reads events from the queue and renders them.
@@ -88,16 +110,22 @@ func (s *RenderService) queueHandler(ctx context.Context) {
 	s.log.Info("[render service] render queue started")
 	for {
 		select {
-		case event := <-s.queue:
-			if err := s.renderFunc(event, event.Post.InlineMessageID); err != nil {
+		case item := <-s.queue:
+			if err := s.renderFunc(item.event, item.event.Post.InlineMessageID); err != nil {
 				s.log.Error(
 					"[render service] failed to render event: "+err.Error(),
-					"event", event.LogValue(),
-					trace.Attr(ctx))
+					"event", item.event.LogValue(),
+					trace.Attr(item.ctx))
 			}
 		case <-ctx.Done():
 			s.log.Info("[render service] render queue stopped")
 			return
 		}
 	}
+}
+
+// queueItem - rendering queue item.
+type queueItem struct {
+	event *models.Event
+	ctx   context.Context
 }

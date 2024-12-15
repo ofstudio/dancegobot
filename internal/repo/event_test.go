@@ -79,3 +79,20 @@ VALUES ('abc', 1, '{"id": "abc", "owner": {"id": 1}}')
 		suite.Nil(event)
 	})
 }
+
+func (suite *TestStoreSuite) TestEventGetUpdatedAfter() {
+	suite.Run("success", func() {
+		_, err := suite.store.db.Exec(`
+INSERT INTO events (id, owner_id, data, updated_at)
+VALUES ('abc', 1, '{"id": "abc", "post": {"inline_message_id": "qwe"} }', '2021-01-01 00:00:00'),
+       ('def', 1, '{"id": "def", "post": {"inline_message_id": "qwe"} }', '2021-01-02 00:00:01'),
+       ('ghi', 1, '{"id": "ghi"}', '2021-01-03 00:00:00')
+`)
+		suite.Require().NoError(err)
+
+		events, err := suite.store.EventGetUpdatedAfter(context.Background(), time.Date(2021, 1, 2, 0, 0, 0, 0, time.UTC))
+		suite.Require().NoError(err)
+		suite.Require().Len(events, 1)
+		suite.Equal("def", events[0].ID)
+	})
+}

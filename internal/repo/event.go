@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"time"
 
 	"github.com/ofstudio/dancegobot/internal/models"
 )
@@ -58,4 +59,41 @@ ON CONFLICT (id) DO UPDATE SET owner_id   = excluded.owner_id,
 	}
 
 	return nil
+}
+
+// EventGetUpdatedAfter returns all events updated after the specified time.
+func (s *SQLiteStore) EventGetUpdatedAfter(ctx context.Context, after time.Time) ([]*models.Event, error) {
+	// language=SQLite
+	const query = `SELECT data
+FROM events
+WHERE updated_at > ?1
+  AND json_extract(data, '$.post.inline_message_id') IS NOT NULL`
+	stmt, err := s.stmt(ctx, query)
+	if err != nil {
+		return nil, fmt.Errorf("%w: %w", ErrStmtPrepare, err)
+	}
+
+	rows, err := stmt.QueryxContext(ctx, after)
+	if err != nil {
+		return nil, fmt.Errorf("%w: %w", ErrStmtExec, err)
+	}
+	//goland:noinspection ALL
+	defer rows.Close()
+
+	var events []*models.Event
+	for rows.Next() {
+		var data []byte
+		if err = rows.Scan(&data); err != nil {
+			return nil, fmt.Errorf("%w: %w", ErrStmtExec, err)
+		}
+
+		event := &models.Event{}
+		if err = json.Unmarshal(data, event); err != nil {
+			return nil, fmt.Errorf("%w: %w", ErrUnmarshal, err)
+		}
+
+		events = append(events, event)
+	}
+
+	return events, nil
 }

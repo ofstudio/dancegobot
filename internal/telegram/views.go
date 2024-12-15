@@ -111,8 +111,8 @@ func btnPostURL(eventID string) *tele.ReplyMarkup {
 	return rm
 }
 
-// btnSignup creates buttons for the signup.
-func btnSignup(dancer *models.Dancer, singles []models.SessionSingle) *tele.ReplyMarkup {
+// btnSignupScene creates buttons for the signup scene.
+func btnSignupScene(reg *models.Registration, singles []models.SessionSingle) *tele.ReplyMarkup {
 	rm := &tele.ReplyMarkup{
 		ResizeKeyboard: true,
 		Placeholder:    locale.SignupPlaceholder,
@@ -120,7 +120,7 @@ func btnSignup(dancer *models.Dancer, singles []models.SessionSingle) *tele.Repl
 	var rows []tele.Row
 
 	// if dancer can signup
-	if dancer.Status.SignupAvailable() {
+	if reg.Status.CanRegister() {
 		// add user sharing button
 		rows = append(rows, rm.Row(
 			rm.User(locale.BtnSignupContact, &tele.ReplyRecipient{
@@ -130,19 +130,22 @@ func btnSignup(dancer *models.Dancer, singles []models.SessionSingle) *tele.Repl
 				RequestName:     tele.Flag(true),
 				RequestUsername: tele.Flag(true),
 			})))
-		// add event singles with the opposite role if any
-		for _, s := range singles {
-			rows = append(rows, rm.Row(rm.Text(s.Caption)))
+		// add event singles with the opposite role if auto-pairing is off
+		if !reg.Event.Settings.AutoPairing {
+			for _, s := range singles {
+				rows = append(rows, rm.Row(rm.Text(s.Caption)))
+			}
 		}
 	}
 
-	// add "signup as single" button if there are no singles in opposite role
-	if len(singles) == 0 && dancer.Status == models.StatusNotRegistered {
-		rows = append(rows, rm.Row(rm.Text(locale.BtnAsSingle[dancer.Role])))
+	// add "signup as single" button if auto-pairing is on or no singles available
+	if reg.Status == models.StatusNotRegistered &&
+		(reg.Event.Settings.AutoPairing || len(singles) == 0) {
+		rows = append(rows, rm.Row(rm.Text(locale.BtnAsSingle[reg.Role])))
 	}
 
-	// Add "remove" button if the dancer is signed up
-	if dancer.Status.SignedUp() {
+	// Add "remove" button if the dancer is already registered
+	if reg.Status.IsRegistered() {
 		rows = append(rows, rm.Row(rm.Text(locale.BtnRemove)))
 	}
 
@@ -175,11 +178,12 @@ func btnSignup(dancer *models.Dancer, singles []models.SessionSingle) *tele.Repl
 // Which gives us the link: https://t.me/c/1234567890/1234
 func btnChatLink(event *models.Event) *tele.ReplyMarkup {
 	rm := &tele.ReplyMarkup{}
-	// skip if
-	// - chat or chat message id is not set
-	// - chat is not a supergroup or channel
-	if event.Post.Chat == nil || event.Post.ChatMessageID == 0 ||
-		event.Post.Chat.Type != models.ChatSuper && event.Post.Chat.Type != models.ChatChannel {
+
+	if event == nil ||
+		event.Post == nil ||
+		event.Post.Chat == nil ||
+		event.Post.ChatMessageID == 0 ||
+		(event.Post.Chat.Type != models.ChatSuper && event.Post.Chat.Type != models.ChatChannel) {
 		return rm
 	}
 
@@ -222,80 +226,74 @@ func sendStart(c tele.Context) error {
 }
 
 // sendSignupScene sends a signup scene to the user.
-func sendSignupScene(c tele.Context, dancer *models.Dancer, singles []models.SessionSingle) error {
+func sendSignupScene(c tele.Context, reg *models.Registration, singles []models.SessionSingle) error {
 	opts := &tele.SendOptions{
-		ReplyMarkup:           btnSignup(dancer, singles),
+		ReplyMarkup:           btnSignupScene(reg, singles),
 		DisableWebPagePreview: true,
 		ParseMode:             tele.ModeHTML,
 	}
 
-	switch dancer.Status {
+	switch reg.Status {
 	case models.StatusNotRegistered:
 		return c.Send(locale.SignupNotRegistered, opts)
-	case models.StatusSingle:
-		return c.Send(fmt.Sprintf(locale.SignupSingle, locale.IconSingle[dancer.Role]), opts)
+	case models.StatusAsSingle:
+		return c.Send(fmt.Sprintf(locale.SignupSingle, locale.IconSingle[reg.Role]), opts)
 	case models.StatusInCouple:
-		return c.Send(fmt.Sprintf(locale.SignupInCouple, fmtDancerName(dancer.Partner)), opts)
+		return c.Send(fmt.Sprintf(locale.SignupInCouple, fmtDancer(reg.Partner)), opts)
 	case models.StatusForbidden:
 		return c.Send(locale.SignupForbidden, opts)
 	default:
-		return c.Send(locale.ErrSomethingWrong, tele.RemoveKeyboard)
+		_ = c.Send(locale.ErrSomethingWrong, tele.RemoveKeyboard)
+		return fmt.Errorf("unexpected registration status: '%s'", reg.Status.String())
 	}
 }
 
 // sendResult sends a message on user signup result.
-func sendResult(c tele.Context, upd *models.EventUpdate, singles []models.SessionSingle) error {
-
-	successMsg := func(status models.DancerStatus) string {
-		switch status {
-		case models.StatusSingle:
-			return fmt.Sprintf(locale.ResultSuccessSingle, locale.IconSingle[upd.Dancer.Role])
-		case models.StatusInCouple:
-			return fmt.Sprintf(locale.ResultSuccessCouple, fmtDancerName(upd.Dancer.Partner))
-		default:
-			return locale.ResultSuccessDeleted
-		}
-	}
-
+func sendResult(c tele.Context, reg *models.Registration, singles []models.SessionSingle) error {
 	opts := &tele.SendOptions{
 		DisableWebPagePreview: true,
 		ParseMode:             tele.ModeHTML,
 	}
-	if upd.Result.Retryable() {
-		opts.ReplyMarkup = btnSignup(upd.Dancer, singles)
+	if reg.Result.IsRetryable() {
+		opts.ReplyMarkup = btnSignupScene(reg, singles)
 	} else {
 		opts.ReplyMarkup = &tele.ReplyMarkup{RemoveKeyboard: true}
 	}
 
-	switch upd.Result {
-	case models.ResultSuccess:
-		return c.Send(successMsg(upd.Dancer.Status), opts)
+	switch reg.Result {
+	case models.ResultRegisteredAsSingle:
+		return c.Send(fmt.Sprintf(locale.ResultSuccessSingle, locale.IconSingle[reg.Role]), opts)
+	case models.ResultRegisteredInCouple:
+		return c.Send(fmt.Sprintf(locale.ResultSuccessCouple, fmtDancer(reg.Partner)), opts)
+	case models.ResultRegistrationRemoved:
+		return c.Send(locale.ResultSuccessRemoved, opts)
 	case models.ResultAlreadyAsSingle:
-		return c.Send(fmt.Sprintf(locale.ResultAlreadyAsSingle, locale.IconSingle[upd.Dancer.Role]), opts)
+		return c.Send(fmt.Sprintf(locale.ResultAlreadyAsSingle, locale.IconSingle[reg.Role]), opts)
 	case models.ResultAlreadyInCouple:
-		return c.Send(fmt.Sprintf(locale.ResultAlreadyInCouple, fmtDancerName(upd.Dancer.Partner)), opts)
+		return c.Send(fmt.Sprintf(locale.ResultAlreadyInCouple, fmtDancer(reg.Partner)), opts)
 	case models.ResultAlreadyInSameCouple:
 		return c.Send(locale.ResultAlreadyInSameCouple, opts)
 	case models.ResultPartnerTaken:
-		return c.Send(fmt.Sprintf(locale.ResultPartnerTaken, fmtDancerName(upd.ChosenPartner)), opts)
+		return c.Send(fmt.Sprintf(locale.ResultPartnerTaken, fmtDancer(reg.Related.Dancer)), opts)
 	case models.ResultPartnerSameRole:
 		return c.Send(locale.ResultPartnerSameRole, opts)
 	case models.ResultSelfNotAllowed:
 		return c.Send(locale.ResultSelfNotAllowed, opts)
-	case models.ResultNotRegistered:
+	case models.ResultWasNotRegistered:
 		return c.Send(locale.ResultNotRegistered, opts)
 	case models.ResultEventClosed:
 		return c.Send(locale.ResultEventClosed, opts)
-	case models.ResultEventForbiddenDancer:
-		return c.Send(locale.ResultEventForbiddenDancer, opts)
-	case models.ResultEventForbiddenPartner:
-		return c.Send(locale.ResultEventForbiddenPartner, opts)
-	case models.ResultSinglesNotAllowed:
-		return c.Send(locale.ResultSinglesNotAllowed, opts)
-	case models.ResultSinglesNotAllowedRole:
-		return c.Send(locale.ResultSinglesNotAllowedRole, opts)
+	case models.ResultDancerForbidden:
+		return c.Send(locale.ResultDancerForbidden, opts)
+	case models.ResultPartnerForbidden:
+		return c.Send(locale.ResultPartnerForbidden, opts)
+	case models.ResultClosedForSingles:
+		return c.Send(locale.ResultClosedForSingles, opts)
+	case models.ResultClosedForSingleRole:
+		return c.Send(locale.ResultClosedForSingleRole, opts)
 	default:
-		return c.Send(locale.ErrSomethingWrong, tele.RemoveKeyboard)
+		_ = c.Send(locale.ErrSomethingWrong, tele.RemoveKeyboard)
+		return fmt.Errorf("unexpected registration result: '%s'", reg.Result.String())
 	}
 }
 

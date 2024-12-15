@@ -4,7 +4,6 @@ import (
 	"sort"
 
 	"github.com/ofstudio/dancegobot/internal/config"
-	"github.com/ofstudio/dancegobot/internal/helpers"
 	"github.com/ofstudio/dancegobot/internal/models"
 )
 
@@ -486,16 +485,16 @@ func (h *EventHandler) isSame(dancer, other *models.Dancer) bool {
 		return dancer.ID == other.Profile.ID
 	// Compare dancer username (if present in profile ) and other username (if present in full name)
 	case dancer.Profile != nil && dancer.Profile.Username != "" && other.Profile == nil:
-		username, ok := helpers.Username(other.FullName)
+		username, ok := username(other.FullName)
 		return ok && (dancer.Profile.Username == username)
 	// Compare dancer username (if present in full name) and other username (if present in profile)
 	case dancer.Profile == nil && other.Profile != nil && other.Profile.Username != "":
-		username, ok := helpers.Username(dancer.FullName)
+		username, ok := username(dancer.FullName)
 		return ok && (username == other.Profile.Username)
 	// Compare usernames (if present in full names) if both profiles are missing
 	case dancer.Profile == nil && other.Profile == nil:
-		username1, ok1 := helpers.Username(dancer.FullName)
-		username2, ok2 := helpers.Username(other.FullName)
+		username1, ok1 := username(dancer.FullName)
+		username2, ok2 := username(other.FullName)
 		return (ok1 && ok2) && (username1 == username2)
 	default:
 		return false

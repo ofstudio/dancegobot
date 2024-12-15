@@ -7,7 +7,6 @@ import (
 	"time"
 
 	"github.com/ofstudio/dancegobot/internal/config"
-	"github.com/ofstudio/dancegobot/internal/helpers"
 	"github.com/ofstudio/dancegobot/internal/models"
 	"github.com/ofstudio/dancegobot/pkg/noplog"
 	"github.com/ofstudio/dancegobot/pkg/randtoken"
@@ -313,7 +312,7 @@ func (s *EventService) notify(ctx context.Context, items ...*models.Notification
 
 // validateEvent validates the event.
 func (s *EventService) validateEvent(e *models.Event) error {
-	errs := helpers.Errors{}
+	errs := errMap{}
 	if len(e.ID) != s.cfg.EventIDLen {
 		errs["id"] = fmt.Errorf("event ID must be %d characters long", s.cfg.EventIDLen)
 	}
@@ -325,7 +324,7 @@ func (s *EventService) validateEvent(e *models.Event) error {
 }
 
 func (s *EventService) validateDancer(d *models.Dancer) error {
-	errs := helpers.Errors{}
+	errs := errMap{}
 	if d.Profile == nil {
 		errs["profile"] = fmt.Errorf("dancer profile must be provided")
 	} else {
@@ -337,7 +336,7 @@ func (s *EventService) validateDancer(d *models.Dancer) error {
 }
 
 func (s *EventService) validateProfile(p *models.Profile) error {
-	errs := helpers.Errors{}
+	errs := errMap{}
 	if p.ID < 1 {
 		errs["id"] = fmt.Errorf("profile ID must be positive")
 	}

@@ -4,6 +4,7 @@ import (
 	"context"
 	"log/slog"
 	"testing"
+	"time"
 
 	"github.com/h2non/gock"
 	"github.com/stretchr/testify/suite"
@@ -29,10 +30,11 @@ func (suite *AppTestSuite) SetupSubTest() {
 	cfg.Bot.Token = "123456:ABCDEF"
 	cfg.DB.Filepath = suite.T().TempDir() + "/app_test.db"
 
-	suite.app = New(cfg).WithLogger(slog.Default())
-	go func() {
-		suite.Require().NoError(suite.app.Start(suite.ctx))
-	}()
+	// disable all the background tasks
+	cfg.RendererRepeats = []time.Duration{}
+	cfg.ReRenderOnStartup = 0
+	cfg.DraftCleanupEvery = 0
+	cfg.DraftCleanupOlderThan = 0
 
 	gock.New(telegock.GetMe).
 		Reply(200).
@@ -41,11 +43,18 @@ func (suite *AppTestSuite) SetupSubTest() {
 	gock.New(telegock.SetMyCommands).
 		Reply(200).JSON(telegock.Result(true))
 
+	suite.app = New(cfg).WithLogger(slog.Default())
+	go func() {
+		suite.Require().NoError(suite.app.Start(suite.ctx))
+	}()
+
 	suite.NoPending()
 	suite.NoUnmatched()
 }
 
 func (suite *AppTestSuite) TearDownSubTest() {
 	suite.cancel()
+	// wait for the app to stop
+	time.Sleep(100 * time.Millisecond)
 	gock.Off()
 }

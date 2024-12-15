@@ -31,14 +31,16 @@ func (suite *AppTestSuite) SetupSubTest() {
 
 	suite.app = New(cfg).WithLogger(slog.Default())
 	go func() {
-		suite.NoError(suite.app.Start(suite.ctx))
+		suite.Require().NoError(suite.app.Start(suite.ctx))
 	}()
 
 	gock.New(telegock.GetMe).
 		Reply(200).
 		JSON(telegock.Result(botUser))
+
 	gock.New(telegock.SetMyCommands).
-		Reply(200)
+		Reply(200).JSON(telegock.Result(true))
+
 	suite.NoPending()
 	suite.NoUnmatched()
 }

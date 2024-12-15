@@ -149,7 +149,7 @@ func (suite *AppTestSuite) eventDraftCreate(query tele.Query) string {
 	return eventID
 }
 
-func (suite *AppTestSuite) TestEventCreate() {
+func (suite *AppTestSuite) TestEventPostAdd() {
 
 	suite.Run("via ChosenInlineResult", func() {
 		eventID := suite.eventDraftCreate(queryA)
@@ -238,7 +238,7 @@ func (suite *AppTestSuite) TestEventCreate() {
 	})
 }
 
-func (suite *AppTestSuite) TestChatMessage() {
+func (suite *AppTestSuite) TestPostChatAdd() {
 
 	suite.Run("if before ChosenInlineResult", func() {
 		eventID := suite.eventDraftCreate(queryA)

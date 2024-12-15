@@ -180,6 +180,7 @@ func (h *EventHandler) coupleAdd(reg *models.Registration, isAutoPair bool) *mod
 	reg.Result = models.ResultRegisteredInCouple
 	reg.Status = models.StatusInCouple
 	reg.Partner = reg.Related.Dancer
+	reg.Related.Result = models.ResultRegisteredInCouple
 	reg.Related.Status = models.StatusInCouple
 	reg.Related.Partner = reg.Dancer
 	return reg
@@ -267,6 +268,12 @@ func (h *EventHandler) SingleAdd(d *models.Dancer) *models.Registration {
 func (h *EventHandler) DancerRemove(d *models.Dancer) *models.Registration {
 	reg := h.RegistrationGet(d)
 
+	// Check if event is closed for new registrations
+	if h.event.Settings.ClosedFor == models.ClosedForAll {
+		reg.Result = models.ResultEventClosed
+		return reg
+	}
+
 	// Check if dancer is registered for the event at all
 	if !reg.Status.IsRegistered() {
 		reg.Result = models.ResultWasNotRegistered
@@ -339,21 +346,11 @@ func (h *EventHandler) tryAutoPair(reg *models.Registration) *models.Registratio
 	if !h.event.Settings.AutoPairing {
 		return nil
 	}
-	// try to find a partner in the singles list
-	for _, single := range h.event.Singles {
-		if single.Role == reg.Role.Opposite() {
-			reg.AsSingle = true
-			reg.Related = &models.Registration{
-				Dancer: &single,
-				Status: models.StatusAsSingle,
-				Event:  h.event,
-			}
-			break
-		}
-	}
+	reg.Related = h.firstSingle(reg.Dancer.Role.Opposite())
 	if reg.Related == nil {
 		return nil
 	}
+	reg.AsSingle = true
 	return h.coupleAdd(reg, true)
 }
 
@@ -437,7 +434,7 @@ func (h *EventHandler) findInSingles(dancer *models.Dancer) *models.Registration
 	return nil
 }
 
-// firstSingle returns the first single dancer with the given role.
+// firstSingle returns registration of the first dancer with the given role in singles list.
 // Returns nil if no single dancer with this role found.
 func (h *EventHandler) firstSingle(role models.Role) *models.Registration {
 	reg := &models.Registration{

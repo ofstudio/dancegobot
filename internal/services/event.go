@@ -335,7 +335,7 @@ func (s *EventService) draftsCleanupScheduler(ctx context.Context) {
 	for {
 		select {
 		case <-ctx.Done():
-			s.log.Info("[event service] stopping drafts cleanup scheduler")
+			s.log.Info("[event service] drafts cleanup scheduler stopped")
 			return
 		case <-ticker.C:
 			s.draftsCleanup(trace.Context(ctx, "drafts_cleanup_"+randtoken.New(4)))

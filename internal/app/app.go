@@ -79,7 +79,7 @@ func (a *App) Start(ctx context.Context) error {
 	bot.Handle(tele.OnInlineResult, h.InlineResult)
 
 	bot.Handle(&telegram.BtnCbSignup, h.CbSignup)
-	bot.Handle(&telegram.BtnCbSettingsToggleChooseSingle, h.CbSettingsToggleChooseSingle)
+	bot.Handle(&telegram.BtnCbSettingsAutoPair, h.CbSettingsAutoPair)
 
 	// This is needed to handle channel posts
 	bot.Handle(tele.OnChannelPost, func(_ tele.Context) error { return nil })

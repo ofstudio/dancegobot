@@ -101,6 +101,14 @@ func (h *Handlers) Start(c tele.Context) error {
 	return nil
 }
 
+// Settings - handles /settings command.
+func (h *Handlers) Settings(c tele.Context) error {
+	h.log.Info("[handlers] /settings received", telelog.Attr(c))
+	u := h.userGet(c)
+	text, rm := msgSettingsScene(&u.Settings)
+	return c.Send(text, rm, tele.ModeHTML)
+}
+
 // Query - handles inline query.
 // If query is not empty creates draft event.
 func (h *Handlers) Query(c tele.Context) error {
@@ -149,6 +157,17 @@ func (h *Handlers) InlineResult(c tele.Context) error {
 	}
 	h.log.Info("[handlers] chosen_inline_result: event post added", "", upd, telelog.Trace(c))
 	return nil
+}
+
+// CbSettingsAutoPair - toggles auto pair user setting.
+func (h *Handlers) CbSettingsAutoPair(c tele.Context) error {
+	h.log.Info("[handlers] settings_auto_pair callback received", telelog.Attr(c))
+	u := h.userGet(c)
+	u.Settings.Events.AutoPairing = !u.Settings.Events.AutoPairing
+	h.userUpsert(c, u)
+	_ = c.Respond()
+	text, rm := msgSettingsScene(&u.Settings)
+	return c.Edit(text, rm, tele.ModeHTML)
 }
 
 // CbSignup handles signup callback buttons.

@@ -192,6 +192,28 @@ func btnChatLink(event *models.Event) *tele.ReplyMarkup {
 
 }
 
+var (
+	BtnCbSettingsAutoPair = tele.Btn{Unique: "settings_auto_pair"}
+	BtnCbSettingsHelp     = tele.Btn{Unique: "settings_help"}
+)
+
+func btnSettingsScene(settings *models.UserSettings) *tele.ReplyMarkup {
+	rm := &tele.ReplyMarkup{
+		RemoveKeyboard: true,
+	}
+	rm.Inline(
+		rm.Row(
+			rm.Data(locale.BtnAutoPairing[settings.Events.AutoPairing],
+				BtnCbSettingsAutoPair.Unique,
+				randtoken.New(4)),
+		),
+		rm.Row(
+			rm.Data(locale.BtnSettingsHelp, BtnCbSettingsHelp.Unique, randtoken.New(4)),
+		),
+	)
+	return rm
+}
+
 // sendStart sends a welcome message.
 func sendStart(c tele.Context) error {
 	rm := btnTry()
@@ -290,6 +312,14 @@ func sendResult(c tele.Context, upd *models.EventUpdate, singles []models.Sessio
 // sendCloseOK sends a message on user session close.
 func sendCloseOK(c tele.Context) error {
 	return c.Send(locale.Ok, tele.RemoveKeyboard)
+}
+
+// msgSettingsScene returns a message with the user settings.
+func msgSettingsScene(settings *models.UserSettings) (string, *tele.ReplyMarkup) {
+	text := locale.SettingsCaption +
+		locale.SettingsAutoPairing[settings.Events.AutoPairing]
+	rm := btnSettingsScene(settings)
+	return text, rm
 }
 
 // answerQueryEmpty sends a response to the empty inline query.

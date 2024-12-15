@@ -485,17 +485,17 @@ func (h *EventHandler) isSame(dancer, other *models.Dancer) bool {
 		return dancer.ID == other.Profile.ID
 	// Compare dancer username (if present in profile ) and other username (if present in full name)
 	case dancer.Profile != nil && dancer.Profile.Username != "" && other.Profile == nil:
-		username, ok := username(other.FullName)
-		return ok && (dancer.Profile.Username == username)
+		u, ok := username(other.FullName)
+		return ok && (dancer.Profile.Username == u)
 	// Compare dancer username (if present in full name) and other username (if present in profile)
 	case dancer.Profile == nil && other.Profile != nil && other.Profile.Username != "":
-		username, ok := username(dancer.FullName)
-		return ok && (username == other.Profile.Username)
+		u, ok := username(dancer.FullName)
+		return ok && (u == other.Profile.Username)
 	// Compare usernames (if present in full names) if both profiles are missing
 	case dancer.Profile == nil && other.Profile == nil:
-		username1, ok1 := username(dancer.FullName)
-		username2, ok2 := username(other.FullName)
-		return (ok1 && ok2) && (username1 == username2)
+		u1, ok1 := username(dancer.FullName)
+		u2, ok2 := username(other.FullName)
+		return (ok1 && ok2) && (u1 == u2)
 	default:
 		return false
 	}

@@ -3,7 +3,13 @@ package services
 import (
 	"regexp"
 	"strings"
+	"time"
 )
+
+// nowFn returns the current time in UTC.
+var nowFn = func() time.Time {
+	return time.Now().UTC()
+}
 
 // reUsername is a regular expression to extract telegram username from the string.
 // Regex explanation:

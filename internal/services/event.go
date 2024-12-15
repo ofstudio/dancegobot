@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
-	"time"
 
 	"github.com/ofstudio/dancegobot/internal/config"
 	"github.com/ofstudio/dancegobot/internal/models"
@@ -12,10 +11,6 @@ import (
 	"github.com/ofstudio/dancegobot/pkg/randtoken"
 	"github.com/ofstudio/dancegobot/pkg/trace"
 )
-
-var nowFn = func() time.Time {
-	return time.Now().UTC()
-}
 
 // EventService is a service that manages dance events
 type EventService struct {

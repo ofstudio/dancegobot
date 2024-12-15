@@ -41,19 +41,28 @@ func (s *EventService) WithLogger(l *slog.Logger) *EventService {
 	return s
 }
 
-// NewID generates a new event ID
-func (s *EventService) NewID() string {
-	return randtoken.New(s.cfg.EventIDLen)
-}
-
 // Create creates a new event.
-func (s *EventService) Create(ctx context.Context, event *models.Event) error {
+func (s *EventService) Create(
+	ctx context.Context,
+	caption string,
+	owner models.Profile,
+	settings models.EventSettings,
+) (*models.Event, error) {
+
+	event := &models.Event{
+		ID:        randtoken.New(s.cfg.EventIDLen),
+		Caption:   caption,
+		Settings:  settings,
+		Owner:     owner,
+		CreatedAt: nowFn(),
+	}
+
 	if err := s.validateEvent(event); err != nil {
-		return fmt.Errorf("failed to validate event: %w", err)
+		return nil, fmt.Errorf("failed to validate event: %w", err)
 	}
 
 	if err := s.store.EventUpsert(ctx, event); err != nil {
-		return fmt.Errorf("failed to upsert event: %w", err)
+		return nil, fmt.Errorf("failed to upsert event: %w", err)
 	}
 
 	go s.historyInsert(ctx, &models.HistoryItem{
@@ -64,7 +73,7 @@ func (s *EventService) Create(ctx context.Context, event *models.Event) error {
 		CreatedAt: nowFn(),
 	})
 
-	return nil
+	return event, nil
 }
 
 // Get returns an event by ID.

@@ -114,31 +114,18 @@ func (h *Handlers) Settings(c tele.Context) error {
 // Query - handles inline query.
 // If query is not empty creates draft event.
 func (h *Handlers) Query(c tele.Context) error {
-	u := h.userGet(c)
 	if c.Query().Text == "" {
 		return answerQueryEmpty(c, h.cfg.QueryThumbUrl)
 	}
-	eventID := h.events.NewID()
 
-	event := models.Event{
-		ID:      eventID,
-		Caption: c.Query().Text,
-		Settings: models.EventSettings{
-			AutoPairing: u.Settings.Events.AutoPairing,
-		},
-		Owner:     u.Profile,
-		CreatedAt: nowFn(),
-	}
-	if err := h.events.Create(h.ctx(c), &event); err != nil {
-		h.log.Error("[handlers] failed to create event: "+err.Error(),
-			"event", event.LogValue(),
-			telelog.Trace(c))
+	u := h.userGet(c)
+	event, err := h.events.Create(h.ctx(c), c.Query().Text, u.Profile, u.Settings.Event)
+	if err != nil {
+		h.log.Error("[handlers] failed to create event: "+err.Error(), telelog.Trace(c))
 		return h.sendErr(c, locale.ErrSomethingWrong)
 	}
-	h.log.Info("[handlers] event created",
-		"event", event.LogValue(),
-		telelog.Trace(c))
-	return answerQuery(c, eventID, h.cfg.QueryThumbUrl)
+	h.log.Info("[handlers] event created", "event", event.LogValue(), telelog.Trace(c))
+	return answerQuery(c, event.ID, h.cfg.QueryThumbUrl)
 }
 
 // InlineResult handles chosen inline result.

@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
+	"time"
 
 	"github.com/ofstudio/dancegobot/internal/config"
 	"github.com/ofstudio/dancegobot/internal/models"
@@ -34,6 +35,11 @@ func NewEventService(cfg config.Settings, store Store, r *RenderService, n *Noti
 func (s *EventService) WithLogger(l *slog.Logger) *EventService {
 	s.log = l
 	return s
+}
+
+// Start starts draft cleanup scheduler.
+func (s *EventService) Start(ctx context.Context) {
+	go s.draftsCleanupScheduler(ctx)
 }
 
 // Create creates a new event.
@@ -312,6 +318,51 @@ func (s *EventService) notify(ctx context.Context, items ...*models.Notification
 	for _, item := range items {
 		s.notifier.Notify(ctx, item)
 	}
+}
+
+func (s *EventService) draftsCleanupScheduler(ctx context.Context) {
+	if s.cfg.DraftCleanupEvery == 0 {
+		s.log.Info("[event service] drafts cleanup is disabled")
+		return
+	}
+
+	s.log.Info("[event service] starting drafts cleanup scheduler",
+		slog.Duration("interval", s.cfg.DraftCleanupEvery),
+		slog.Duration("older_than", s.cfg.DraftCleanupOlderThan))
+
+	ticker := time.NewTicker(s.cfg.DraftCleanupEvery)
+	defer ticker.Stop()
+	for {
+		select {
+		case <-ctx.Done():
+			s.log.Info("[event service] stopping drafts cleanup scheduler")
+			return
+		case <-ticker.C:
+			s.draftsCleanup(trace.Context(ctx, "drafts_cleanup_"+randtoken.New(4)))
+		}
+	}
+}
+
+func (s *EventService) draftsCleanup(ctx context.Context) {
+	before := time.Now().Add(-s.cfg.DraftCleanupOlderThan)
+	ids, err := s.store.EventRemoveDraftsBefore(ctx, before)
+	if err != nil {
+		s.log.Error("[event service] failed to remove draft events: "+err.Error(), trace.Attr(ctx))
+		return
+	}
+	s.log.Info("[event service] removed draft events",
+		slog.Int("count", len(ids)),
+		trace.Attr(ctx),
+	)
+	count, err := s.store.HistoryRemoveByEventIDs(ctx, ids)
+	if err != nil {
+		s.log.Error("[event service] failed to remove draft events history items: "+err.Error(), trace.Attr(ctx))
+		return
+	}
+	s.log.Info("[event service] removed draft events history items",
+		slog.Int("count", count),
+		trace.Attr(ctx),
+	)
 }
 
 // validateEvent validates the event.

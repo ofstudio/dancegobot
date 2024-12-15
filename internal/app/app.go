@@ -61,7 +61,9 @@ func (a *App) Start(ctx context.Context) error {
 		telegram.RenderPost(bot),
 		telegram.Notify(bot),
 	).WithLogger(a.log)
-	// Start render queue
+	// Start event background tasks
+	a.srv.Event.Start(ctx)
+	// Start render background tasks
 	a.srv.Render.Start(ctx)
 
 	// 4. Initialize middleware and handlers

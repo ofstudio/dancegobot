@@ -5,6 +5,8 @@ import (
 	"encoding/json"
 	"fmt"
 
+	"github.com/jmoiron/sqlx"
+
 	"github.com/ofstudio/dancegobot/internal/models"
 )
 
@@ -32,4 +34,32 @@ VALUES (?1, ?2, ?3, $4);`
 	}
 
 	return nil
+}
+
+// HistoryRemoveByEventIDs removes history items by event IDs.
+// Returns the number of removed items.
+func (s *SQLiteStore) HistoryRemoveByEventIDs(ctx context.Context, eventIDs []string) (int, error) {
+	if len(eventIDs) == 0 {
+		return 0, nil
+	}
+	// language=SQLite
+	query, args, err := sqlx.In(
+		`DELETE FROM history WHERE event_id IN (?)`,
+		eventIDs,
+	)
+	if err != nil {
+		return 0, fmt.Errorf("failed to bind query: %w", err)
+	}
+
+	result, err := s.db.ExecContext(ctx, query, args...)
+	if err != nil {
+		return 0, fmt.Errorf("failed to execute query: %w", err)
+	}
+
+	affected, err := result.RowsAffected()
+	if err != nil {
+		return 0, fmt.Errorf("failed to get rows affected: %w", err)
+	}
+
+	return int(affected), nil
 }

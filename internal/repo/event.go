@@ -97,3 +97,37 @@ WHERE updated_at > ?1
 
 	return events, nil
 }
+
+// EventRemoveDraftsBefore removes all draft events updated before the specified time.
+// Returns the ids of the removed events.
+func (s *SQLiteStore) EventRemoveDraftsBefore(ctx context.Context, before time.Time) ([]string, error) {
+	// language=SQLite
+	const query = `DELETE
+FROM events
+WHERE updated_at < ?1
+  AND json_extract(data, '$.post.inline_message_id') IS NULL
+RETURNING id;`
+
+	stmt, err := s.stmt(ctx, query)
+	if err != nil {
+		return nil, fmt.Errorf("%w: %w", ErrStmtPrepare, err)
+	}
+
+	rows, err := stmt.QueryxContext(ctx, before)
+	if err != nil {
+		return nil, fmt.Errorf("%w: %w", ErrStmtExec, err)
+	}
+	//goland:noinspection ALL
+	defer rows.Close()
+
+	var ids []string
+	for rows.Next() {
+		var id string
+		if err = rows.Scan(&id); err != nil {
+			return nil, fmt.Errorf("%w: %w", ErrStmtExec, err)
+		}
+		ids = append(ids, id)
+	}
+
+	return ids, nil
+}

@@ -33,11 +33,13 @@ func Default() Config {
 
 		// Application default settings
 		Settings: Settings{
-			EventIDLen:        12,
-			EventTextMaxLen:   2048,
-			DancerNameMaxLen:  64,
-			RendererRepeats:   []time.Duration{2 * time.Second, 10 * time.Second, time.Minute, 1 * time.Hour},
-			ReRenderOnStartup: 12 * time.Hour,
+			EventIDLen:            12,
+			EventTextMaxLen:       2048,
+			DancerNameMaxLen:      64,
+			RendererRepeats:       []time.Duration{2 * time.Second, 10 * time.Second, time.Minute, 1 * time.Hour},
+			ReRenderOnStartup:     12 * time.Hour,
+			DraftCleanupOlderThan: 24 * time.Hour,
+			DraftCleanupEvery:     24 * time.Hour,
 		},
 	}
 }

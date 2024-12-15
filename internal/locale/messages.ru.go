@@ -97,10 +97,4 @@ var IconSingle = roleMap{
 	models.RoleFollower: "🙋‍♀️",
 }
 
-var Notifications = map[models.NotificationTmpl]string{
-	models.TmplRegisteredWithSingle: "🔔 %s\n\n%s зарегистрировался с тобой в паре! 🎉",
-	models.TmplCanceledWithSingle:   "🔔 %s\n\n%s отменил вашу регистрацию. Я вернул тебя в список ищущих пару 🤗",
-	models.TmplCanceledByPartner:    "🔔 %s\n\n%s отменил вашу регистрацию.",
-}
-
 const BtnChatLink = "Посмотреть"

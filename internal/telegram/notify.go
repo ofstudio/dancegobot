@@ -3,6 +3,8 @@ package telegram
 import (
 	"errors"
 	"fmt"
+	"html/template"
+	"strings"
 
 	tele "gopkg.in/telebot.v4"
 
@@ -13,26 +15,53 @@ import (
 // Notify sends notification to the recipient.
 func Notify(api tele.API) func(n *models.Notification) error {
 	return func(n *models.Notification) error {
-		if n.Event != nil {
-			n.EventID = &n.Event.ID
+		textSb, err := notifyText(n)
+		if err != nil {
+			return err
 		}
+		rm := btnChatLink(n.Payload.Event)
 
-		t, ok := locale.Notifications[n.TmplCode]
-		if !ok {
-			return fmt.Errorf("unknown notification template: %s", n.TmplCode)
-		}
+		// Send notification
 		user := &tele.User{ID: n.Recipient.ID}
-
-		var initiatorName string
-		if n.Initiator != nil {
-			initiatorName = fmtName(n.Initiator.FullName(), n.Initiator)
-		}
-		text := fmt.Sprintf(t, n.Event.Caption, initiatorName)
-		rm := btnChatLink(n.Event)
-		_, err := api.Send(user, text, rm, tele.ModeHTML, tele.NoPreview, tele.RemoveKeyboard)
+		_, err = api.Send(user, textSb.String(), rm, tele.ModeHTML, tele.NoPreview, tele.RemoveKeyboard)
 		if errors.Is(err, tele.ErrTrueResult) {
 			return nil
 		}
 		return err
+	}
+}
+
+// notifyText returns [strings.Builder] with notification text for the given notification
+func notifyText(n *models.Notification) (*strings.Builder, error) {
+	sb := &strings.Builder{}
+	err := notifyT.ExecuteTemplate(sb, n.TmplCode.String(), n.Payload)
+	if err != nil {
+		return nil, fmt.Errorf("failed to execute notification template '%s': %w", n.TmplCode, err)
+	}
+	return sb, nil
+}
+
+var notifyT *template.Template
+
+// initialize notification templates
+func init() {
+	var err error
+
+	// Parse notification base template
+	notifyT, err = template.New("").Funcs(template.FuncMap{
+		"urlTo": func(p *models.Profile) template.URL {
+			return template.URL(fmtProfileURL(p))
+		},
+	}).Parse(locale.NotificationsBase)
+	if err != nil {
+		panic(fmt.Sprintf("failed to parse notification base template: %v", err))
+	}
+
+	// Parse notification templates
+	for name, tmpl := range locale.Notifications {
+		_, err = notifyT.New(name.String()).Parse(tmpl)
+		if err != nil {
+			panic(fmt.Sprintf("failed to parse notification template '%s': %v", name, err))
+		}
 	}
 }

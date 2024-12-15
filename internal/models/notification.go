@@ -1,16 +1,40 @@
 package models
 
+import "log/slog"
+
 type Notification struct {
-	Recipient Profile          `json:"recipient"`           // Receiver of the notification
-	Initiator *Profile         `json:"initiator,omitempty"` // Who initiates the notification
-	TmplCode  NotificationTmpl `json:"template"`            // Template of the notification
-	Event     *Event           `json:"-"`                   // Event related to the notification (if any)
-	// Virtual fields
-	EventID *string `json:"event_id,omitempty"` // ID of the event related to the notification (if any)
-	Error   string  `json:"error,omitempty"`    // Error message during notification sending (if any)
+	TmplCode  NotificationTmpl    `json:"template"`        // Template of the notification
+	Recipient *Profile            `json:"recipient"`       // Receiver of the notification
+	Payload   NotificationPayload `json:"-"`               // Payload of the notification
+	Error     string              `json:"error,omitempty"` // Error message during notification sending (if any)
+}
+
+// LogValue implements slog.Valuer interface for Notification model.
+func (n Notification) LogValue() slog.Value {
+	attrs := []slog.Attr{
+		slog.String("template", string(n.TmplCode)),
+		slog.Any("recipient", n.Recipient.LogValue()),
+	}
+	if n.Payload.Event != nil {
+		attrs = append(attrs, slog.Any("event", slog.GroupValue(
+			slog.String("id", n.Payload.Event.ID),
+		)))
+	}
+	return slog.GroupValue(attrs...)
+}
+
+// NotificationPayload contains the context of the notification.
+type NotificationPayload struct {
+	Event      *Event  // Event related to the notification (if any)
+	Partner    *Dancer // Current partner of the recipient (if any)
+	NewPartner *Dancer // New partner of the recipient (if any)
 }
 
 type NotificationTmpl string
+
+func (t NotificationTmpl) String() string {
+	return string(t)
+}
 
 const (
 	// TmplRegisteredWithSingle - someone registered in couple with a single recipient
@@ -23,4 +47,11 @@ const (
 
 	// TmplCanceledByPartner - chosen partner canceled registration
 	TmplCanceledByPartner NotificationTmpl = "canceled_by_partner"
+
+	// TmplAutoPairPartnerFound - partner has been found for the recipient
+	TmplAutoPairPartnerFound NotificationTmpl = "auto_pair_partner_found"
+
+	// TmplAutoPairPartnerChanged - partner has been canceled the registration
+	// and new partner has been chosen.
+	TmplAutoPairPartnerChanged NotificationTmpl = "auto_pair_partner_changed"
 )

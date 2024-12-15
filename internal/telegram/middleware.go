@@ -125,11 +125,18 @@ func (m *Middleware) ChatMessage() tele.MiddlewareFunc {
 			if ok {
 				chatMessageID := c.Message().ID
 				chat := models.NewChat(c.Message().Chat)
-				upd, err := m.events.PostChatAdd(m.ctx(c), eventID, &chat, chatMessageID)
+				event, post, err := m.events.PostChatAdd(m.ctx(c), eventID, &chat, chatMessageID)
 				if err != nil {
-					m.log.Error("[middleware] failed to add chat to the event post: "+err.Error(), telelog.Trace(c))
+					m.log.Error("[middleware] failed to add chat to the event post: "+err.Error(),
+						"event_id", eventID,
+						"chat", chat.LogValue(),
+						"chat_message_id", chatMessageID,
+						telelog.Trace(c))
 				} else {
-					m.log.Info("[middleware] chat added to the event post", "", upd, telelog.Trace(c))
+					m.log.Info("[middleware] chat added to the event post",
+						"event", event.LogValue(),
+						"post", post.LogValue(),
+						telelog.Trace(c))
 				}
 			}
 			return next(c)

@@ -65,7 +65,7 @@ func DeeplinkParsePayload(payload string) (*Deeplink, error) {
 	}
 }
 
-// String returns the deep link URL.
+// String returns the deep link URL string.
 func (d Deeplink) String() string {
 	url := "https://t.me/" + config.BotProfile().Username + "?start=" + randtoken.New(4) + dlSeparator
 
@@ -77,55 +77,10 @@ func (d Deeplink) String() string {
 	return url
 }
 
-//	func deeplink(action models.SessionAction, params ...string) string {
-//		return "https://t.me/" + config.BotProfile().Username + "?start=" +
-//			randtoken.New(4) + "-" +
-//			string(action) + "-" +
-//			strings.Join(params, "-")
-//	}
-//
-// // deeplinkParse parses and validates deep link.
-// // Returns the user action and parameters.
-//
-//	func deeplinkParse(deeplink string) (models.SessionAction, []string, error) {
-//		if !strings.HasPrefix(deeplink, "https://t.me/"+config.BotProfile().Username+"?start=") {
-//			return "", nil, errDeepLinkInvalid(deeplink)
-//		}
-//
-//		parts := strings.Split(deeplink, "?start=")
-//		if len(parts) < 2 {
-//			return "", nil, errDeepLinkInvalid(deeplink)
-//		}
-//
-//		return deeplinkParsePayload(parts[1])
-//	}
-//
-// // deeplinkParsePayload parses and validates deeplink payload.
-// // Returns the user action and parameters.
-// func deeplinkParsePayload(payload string) (models.SessionAction, []string, error) {
-//
-//		parts := strings.Split(payload, dlSeparator)
-//		if len(parts) < 2 {
-//			return "", nil, errDeepLinkInvalid(payload)
-//		}
-//
-//		action := models.SessionAction(parts[1])
-//		params := parts[2:]
-//
-//		switch action {
-//		case models.SessionSignup:
-//			if len(params) != 2 {
-//				return "", nil, errDeepLinkInvalid(payload)
-//			}
-//		default:
-//			return "", nil, errDeepLinkInvalid(payload)
-//		}
-//
-//		return action, params, nil
-//	}
 func errDeeplink(url string) error {
 	return fmt.Errorf("invalid deeplink: %q", url)
 }
+
 func errPayload(payload string) error {
 	return fmt.Errorf("invalid deeplink payload: %q", payload)
 }

@@ -1,6 +1,10 @@
 package models
 
-import tele "gopkg.in/telebot.v4"
+import (
+	"log/slog"
+
+	tele "gopkg.in/telebot.v4"
+)
 
 // Chat is information about a chat where the event post is published.
 type Chat struct {
@@ -30,6 +34,21 @@ func NewChat(c *tele.Chat) Chat {
 		Type:     t,
 		Title:    c.Title,
 	}
+}
+
+// LogValue implements the slog.Valuer interface for Chat model.
+func (c Chat) LogValue() slog.Value {
+	attrs := []slog.Attr{
+		slog.Int64("id", c.ID),
+		slog.String("type", string(c.Type)),
+	}
+	if c.Title != "" {
+		attrs = append(attrs, slog.String("title", c.Title))
+	}
+	if c.Username != "" {
+		attrs = append(attrs, slog.String("username", c.Username))
+	}
+	return slog.GroupValue(attrs...)
 }
 
 type ChatType string

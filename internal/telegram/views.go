@@ -243,16 +243,6 @@ func sendSignupScene(c tele.Context, dancer *models.Dancer, singles []models.Ses
 	}
 }
 
-func sendChooseSingleScene(c tele.Context, singles []models.SessionSingle) error {
-	// todo implement this
-	return c.Send(locale.ErrNotImplemented)
-}
-
-func sendNoSinglesAvailable(c tele.Context) error {
-	// todo implement this
-	return c.Send(locale.ErrNotImplemented)
-}
-
 // sendResult sends a message on user signup result.
 func sendResult(c tele.Context, upd *models.EventUpdate, singles []models.SessionSingle) error {
 

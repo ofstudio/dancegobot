@@ -100,11 +100,6 @@ var BtnAsSingle = roleMap{
 	models.RoleFollower: "🙋‍♀️ Ищу партнера",
 }
 
-var BtnChooseSingle = roleMap{
-	models.RoleLeader:   "🙋‍♀️ Из списка ожидания",
-	models.RoleFollower: "🙋‍♂️ Из списка ожидания",
-}
-
 var IconSingle = roleMap{
 	models.RoleLeader:   "🙋‍♂️",
 	models.RoleFollower: "🙋‍♀️",

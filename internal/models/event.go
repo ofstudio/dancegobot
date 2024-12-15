@@ -17,6 +17,14 @@ type Event struct {
 	CreatedAt time.Time     `json:"created_at"` // Creation time
 }
 
+// LogValue implements slog.Valuer interface for Event model.
+func (e Event) LogValue() slog.Value {
+	return slog.GroupValue(
+		slog.String("id", e.ID),
+		slog.Any("owner", e.Owner.LogValue()),
+	)
+}
+
 // EventSettings - is a settings for the event
 type EventSettings struct {
 	Limit               int       `json:"limit,omitempty"`                 // Maximum number of couples allowed to sign-in. Zero means no limit

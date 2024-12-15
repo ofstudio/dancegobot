@@ -40,9 +40,9 @@ func (s *RenderService) WithLogger(l *slog.Logger) *RenderService {
 	return s
 }
 
-// Start starts the render queue.
+// Start starts the render queue and re-renders recent events at startup.
 func (s *RenderService) Start(ctx context.Context) {
-	go s.queueHandler(ctx)
+	go s.queueHandler(trace.Context(ctx, "render_queue_handler"))
 	go s.renderAtStartup(trace.Context(ctx, "render_at_startup"))
 }
 
@@ -86,6 +86,11 @@ func (s *RenderService) render(ctx context.Context, event *models.Event) {
 
 // renderAtStartup re-renders recent events on startup.
 func (s *RenderService) renderAtStartup(ctx context.Context) {
+	if s.cfg.ReRenderOnStartup == 0 {
+		s.log.Info("[render service] re-rendering at startup is disabled", trace.Attr(ctx))
+		return
+	}
+
 	events, err := s.store.EventGetUpdatedAfter(ctx, time.Now().Add(-s.cfg.ReRenderOnStartup))
 	if err != nil {
 		s.log.Error("[render service] failed to get events to re-render: "+err.Error(), trace.Attr(ctx))
@@ -107,7 +112,7 @@ func (s *RenderService) renderAtStartup(ctx context.Context) {
 // where earlier rendering requests are processed by Telegram later than later ones.
 // See: https://github.com/ofstudio/dancegobot/issues/6
 func (s *RenderService) queueHandler(ctx context.Context) {
-	s.log.Info("[render service] render queue started")
+	s.log.Info("[render service] render queue started", trace.Attr(ctx))
 	for {
 		select {
 		case item := <-s.queue:
@@ -118,7 +123,7 @@ func (s *RenderService) queueHandler(ctx context.Context) {
 					trace.Attr(item.ctx))
 			}
 		case <-ctx.Done():
-			s.log.Info("[render service] render queue stopped")
+			s.log.Info("[render service] render queue stopped", trace.Attr(ctx))
 			return
 		}
 	}

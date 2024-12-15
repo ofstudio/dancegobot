@@ -15,10 +15,5 @@ type User struct {
 
 // UserSettings - is a user settings
 type UserSettings struct {
-	Events UserEventSettings `json:"events"` // Settings for events created by user
-}
-
-// UserEventSettings - is a settings for events created by user
-type UserEventSettings struct {
-	AutoPairing bool `json:"auto_pairing,omitempty"` // Automatically pair single dancers
+	Event EventSettings `json:"event"` // Default settings for new events created by user
 }

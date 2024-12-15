@@ -173,7 +173,7 @@ func (h *Handlers) InlineResult(c tele.Context) error {
 func (h *Handlers) CbSettingsAutoPair(c tele.Context) error {
 	h.log.Info("[handlers] settings_auto_pair callback received", telelog.Attr(c))
 	u := h.userGet(c)
-	u.Settings.Events.AutoPairing = !u.Settings.Events.AutoPairing
+	u.Settings.Event.AutoPairing = !u.Settings.Event.AutoPairing
 	h.userUpsert(c, u)
 	_ = c.Respond()
 	text, rm := msgSettingsScene(&u.Settings)

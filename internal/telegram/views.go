@@ -207,7 +207,7 @@ func btnSettingsScene(settings *models.UserSettings) *tele.ReplyMarkup {
 	}
 	rm.Inline(
 		rm.Row(
-			rm.Data(locale.BtnAutoPairing[settings.Events.AutoPairing],
+			rm.Data(locale.BtnAutoPairing[settings.Event.AutoPairing],
 				BtnCbSettingsAutoPair.Unique,
 				randtoken.New(4)),
 		),
@@ -305,7 +305,7 @@ func sendCloseOK(c tele.Context) error {
 // msgSettingsScene returns a message with the user settings.
 func msgSettingsScene(settings *models.UserSettings) (string, *tele.ReplyMarkup) {
 	text := locale.SettingsCaption +
-		locale.SettingsAutoPairing[settings.Events.AutoPairing]
+		locale.SettingsAutoPairing[settings.Event.AutoPairing]
 	rm := btnSettingsScene(settings)
 	return text, rm
 }

@@ -6,6 +6,7 @@ import (
 
 	"github.com/ofstudio/dancegobot/internal/config"
 	"github.com/ofstudio/dancegobot/internal/models"
+	"github.com/ofstudio/dancegobot/internal/store"
 	"github.com/ofstudio/dancegobot/pkg/noplog"
 	"github.com/ofstudio/dancegobot/pkg/trace"
 )
@@ -15,12 +16,12 @@ type NotifyFunc func(*models.Notification) error
 // NotifierService is a service that sends notifications to users.
 type NotifierService struct {
 	cfg   config.Settings
-	store Store
+	store store.Store
 	do    NotifyFunc
 	log   *slog.Logger
 }
 
-func NewNotifierService(cfg config.Settings, store Store, f NotifyFunc) *NotifierService {
+func NewNotifierService(cfg config.Settings, store store.Store, f NotifyFunc) *NotifierService {
 	return &NotifierService{
 		cfg:   cfg,
 		store: store,

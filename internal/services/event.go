@@ -8,6 +8,7 @@ import (
 
 	"github.com/ofstudio/dancegobot/internal/config"
 	"github.com/ofstudio/dancegobot/internal/models"
+	"github.com/ofstudio/dancegobot/internal/store"
 	"github.com/ofstudio/dancegobot/pkg/noplog"
 	"github.com/ofstudio/dancegobot/pkg/randtoken"
 	"github.com/ofstudio/dancegobot/pkg/trace"
@@ -16,13 +17,13 @@ import (
 // EventService is a service that manages dance events
 type EventService struct {
 	cfg      config.Settings
-	store    Store
+	store    store.Store
 	notifier *NotifierService
 	renderer *RenderService
 	log      *slog.Logger
 }
 
-func NewEventService(cfg config.Settings, store Store, r *RenderService, n *NotifierService) *EventService {
+func NewEventService(cfg config.Settings, store store.Store, r *RenderService, n *NotifierService) *EventService {
 	return &EventService{
 		cfg:      cfg,
 		store:    store,

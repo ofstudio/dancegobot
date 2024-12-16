@@ -7,6 +7,7 @@ import (
 
 	"github.com/ofstudio/dancegobot/internal/config"
 	"github.com/ofstudio/dancegobot/internal/models"
+	"github.com/ofstudio/dancegobot/internal/store"
 	"github.com/ofstudio/dancegobot/pkg/noplog"
 	"github.com/ofstudio/dancegobot/pkg/repeater"
 	"github.com/ofstudio/dancegobot/pkg/trace"
@@ -17,14 +18,14 @@ type RenderFunc func(event *models.Event, inlineMessageID string) error
 // RenderService renders events posts.
 type RenderService struct {
 	cfg        config.Settings
-	store      Store
+	store      store.Store
 	renderFunc RenderFunc
 	queue      chan queueItem
 	repeater   *repeater.Repeater
 	log        *slog.Logger
 }
 
-func NewRenderService(cfg config.Settings, store Store, renderFunc RenderFunc) *RenderService {
+func NewRenderService(cfg config.Settings, store store.Store, renderFunc RenderFunc) *RenderService {
 	return &RenderService{
 		cfg:        cfg,
 		store:      store,

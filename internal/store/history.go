@@ -1,4 +1,4 @@
-package repo
+package store
 
 import (
 	"context"
@@ -11,8 +11,9 @@ import (
 )
 
 func (s *SQLiteStore) HistoryInsert(ctx context.Context, item *models.HistoryItem) error {
+	const query =
 	// language=SQLite
-	const query = `INSERT INTO history (action, initiator_id, event_id, data)
+	`INSERT INTO history (action, initiator_id, event_id, data)
 VALUES (?1, ?2, ?3, $4);`
 	stmt, err := s.stmt(ctx, query)
 	if err != nil {

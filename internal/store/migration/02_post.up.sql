@@ -3,6 +3,12 @@ AS IS: events.data = '{
   "id": "123abc",
   "text": "Event announcement",
   "message_id": "ABC123"
+  "singles": [
+    {
+      "single_signup": true,
+      ...
+    }
+  ]
   ...
 }'
 
@@ -12,6 +18,12 @@ TO BE: events.data = '{
   post: {
     "inline_message_id": "ABC123"
   }
+  "singles": [
+    {
+      "as_single": true,
+      ...
+    }
+  ]
   ...
 }'
 
@@ -33,3 +45,9 @@ SET data = json_remove(
         json_set(data, '$.caption', json_extract(data, '$.text')),
         '$.text')
 WHERE json_extract(data, '$.text') IS NOT NULL;
+
+
+-- Step 3: Rename the single_signup field to as_single
+UPDATE events
+SET data = REPLACE (data, '"single_signup"', '"as_single"')
+WHERE data IS NOT NULL;

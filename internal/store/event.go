@@ -106,8 +106,8 @@ func (s *SQLiteStore) EventRemoveDraftsBefore(ctx context.Context, before time.T
 FROM events
 WHERE updated_at < ?1
   AND json_extract(data, '$.post.inline_message_id') IS NULL
-  AND json_extract(data, '$.couples') IS NULL
-  AND json_extract(data, '$.singles') IS NULL
+  AND ifnull(json_array_length(data, '$.couples'), 0) = 0
+  AND ifnull(json_array_length(data, '$.singles'), 0) = 0
 RETURNING id;`
 
 	stmt, err := s.stmt(ctx, query)

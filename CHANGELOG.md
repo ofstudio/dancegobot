@@ -5,7 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [1.0.2-pre-v2-migration] - 2024-12-08
+# [v2.0.0] - 2024-12-16
+
+- Added auto pairing feature (issue #3)
+- Fixed bug when event is not created (issue #2)
+- Added re-rendering of recent events on bot startup (issue #5)
+- Added sequential event rendering (issue #6)
+
+## [v1.0.2-pre-v2-migration] - 2024-12-16
 
 - Added v1 ↔︎ v2 database migration scripts to be able to roll back from v2 to v1.
 

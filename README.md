@@ -6,15 +6,37 @@ Inspired by [Tayrinn/CoopDance](https://github.com/Tayrinn/CoopDance).
 
 ## Features
 
-- ✅ Announcement publishing via bot inline query: `@dancegobot <announcement text>`.
+- ✅ Event publishing via bot inline query: `@dancegobot <announcement text>`.
 - ✅ Dancer can sign up in a couple with a partner or as single looking for a partner.
-- ✅ Partner can be selected from the contact list or by username or by name as a free text.
-- ✅ Partner can be selected from the list of single dancers.
-- ✅ Notifications to the single dancer when someone selects them as a partner.
+- ✅ Automatic pairing of single dancers.
+- ✅ Notifications to the dancer when someone selects them as a partner.
 
 ## Installation
 
-See `Dockerfile` and `docker-compose.yml` for an example of how to run the bot in a Docker container.
+### Docker
+Obtain a bot token from [@BotFather](https://t.me/botfather) and run the following command:
+
+```bash
+docker run -d --name dancegobot:latest \
+  -e BOT_TOKEN=<your_bot_token> \
+  -v /path/to/database:/data \
+    ghcr.io/ofstudio/dancegobot:latest
+```
+This will start the bot in [long polling mode](https://core.telegram.org/bots/api#getupdates) 
+with SQLite database stored in `/path/to/database/dancegobot.db`.
+
+To run specific version of the bot, replace `latest` with the desired version tag, for example `v2.0.0`.
+Version tags can be found at [Packages page](https://github.com/ofstudio/dancegobot/pkgs/container/dancegobot).
+See `CHANGELOG.md` for the version history.
+
+### Docker Compose
+See `docker-compose.yaml` for an example of running the bot in [webhook mode](https://core.telegram.org/bots/webhooks)
+with Traefik reverse proxy and Let's Encrypt TLS certificates.
+
+### Build from source
+1. Clone the repository.
+2. Download dependencies: `go mod download`.
+3. Build the bot: `go build -o dancegobot ./cmd/dancegobot`.
 
 ## Configuration
 

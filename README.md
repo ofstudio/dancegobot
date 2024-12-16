@@ -17,7 +17,7 @@ Inspired by [Tayrinn/CoopDance](https://github.com/Tayrinn/CoopDance).
 Obtain a bot token from [@BotFather](https://t.me/botfather) and run the following command:
 
 ```bash
-docker run -d --name dancegobot:latest \
+docker run --name dancegobot \
   -e BOT_TOKEN=<your_bot_token> \
   -v /path/to/database:/data \
     ghcr.io/ofstudio/dancegobot:latest

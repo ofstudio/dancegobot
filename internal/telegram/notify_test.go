@@ -9,26 +9,7 @@ import (
 	"github.com/ofstudio/dancegobot/internal/models"
 )
 
-var testPayload = models.NotificationPayload{
-	Event: &models.Event{
-		Caption: "Test Event",
-	},
-	Partner: &models.Dancer{
-		Profile: &models.Profile{
-			ID: 1,
-		},
-		FullName: "Test Partner",
-	},
-	NewPartner: &models.Dancer{
-		Profile: &models.Profile{
-			ID:       2,
-			Username: "new_partner",
-		},
-		FullName: "New Partner",
-	},
-}
-
-func TestExecTmpl(t *testing.T) {
+func Test_notifyText(t *testing.T) {
 	t.Run("TmplRegisteredWithSingle", func(t *testing.T) {
 		n := &models.Notification{
 			TmplCode: models.TmplRegisteredWithSingle,
@@ -88,4 +69,23 @@ func TestExecTmpl(t *testing.T) {
 			"🔔 Test Event\n\n<a href=\"tg://user?id=1\">Test Partner</a> отменил вашу регистрацию. \nЯ записал тебя вместе с <a href=\"https://t.me/new_partner\">New Partner</a> 👌",
 			text.String())
 	})
+}
+
+var testPayload = models.NotificationPayload{
+	Event: &models.Event{
+		Caption: "Test Event",
+	},
+	Partner: &models.Dancer{
+		Profile: &models.Profile{
+			ID: 1,
+		},
+		FullName: "Test Partner",
+	},
+	NewPartner: &models.Dancer{
+		Profile: &models.Profile{
+			ID:       2,
+			Username: "new_partner",
+		},
+		FullName: "New Partner",
+	},
 }

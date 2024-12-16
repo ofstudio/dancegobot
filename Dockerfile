@@ -14,9 +14,9 @@ RUN go build -trimpath \
       -o /build/dancegobot ./cmd/dancegobot
 
 FROM alpine:3.20
-LABEL org.opencontainers.image.source=https://github.com/ofstudio/dancegobot
-LABEL org.opencontainers.image.description="Telegram bot for finding a partner for dance events"
-LABEL org.opencontainers.image.licenses="Apache License 2.0"
+LABEL org.opencontainers.image.source='https://github.com/ofstudio/dancegobot'
+LABEL org.opencontainers.image.description='Telegram bot for finding a partner for dance events'
+LABEL org.opencontainers.image.licenses='Apache License 2.0'
 COPY --from=builder /build/dancegobot /
 EXPOSE 8080
 VOLUME ["/data"]

@@ -14,15 +14,9 @@ import (
 )
 
 func (suite *AppTestSuite) TestEventDraft() {
-	suite.Run("empty inline query", func() {
-		gock.New(telegock.GetUpdates).
-			Reply(200).
-			JSON(telegock.Updates().InlineQuery(tele.Query{
-				Sender:   userJohn,
-				Text:     "",
-				ChatType: "supergroup",
-			}))
 
+	suite.Run("empty inline query", func() {
+		// <- bot should call `answerInlineQuery`
 		gock.New(telegock.AnswerInlineQuery).
 			Reply(200).
 			Filter(func(res *http.Response) bool {
@@ -38,19 +32,21 @@ func (suite *AppTestSuite) TestEventDraft() {
 			}).
 			JSON(telegock.Result(true))
 
+		// -> bot update
+		gock.New(telegock.GetUpdates).
+			Reply(200).
+			JSON(telegock.Updates().InlineQuery(tele.Query{
+				Sender:   userJohn,
+				Text:     "",
+				ChatType: "supergroup",
+			}))
+
 		suite.NoPending()
 		suite.NoUnmatched()
 	})
 
 	suite.Run("non-empty inline query", func() {
-		gock.New(telegock.GetUpdates).
-			Reply(200).
-			JSON(telegock.Updates().InlineQuery(tele.Query{
-				Sender:   userJohn,
-				Text:     "Test text",
-				ChatType: "supergroup",
-			}))
-
+		// <- bot should call `answerInlineQuery`
 		var eventID string
 		gock.New(telegock.AnswerInlineQuery).
 			Reply(200).
@@ -74,6 +70,15 @@ func (suite *AppTestSuite) TestEventDraft() {
 				return true
 			}).JSON(telegock.Result(true))
 
+		// -> bot update
+		gock.New(telegock.GetUpdates).
+			Reply(200).
+			JSON(telegock.Updates().InlineQuery(tele.Query{
+				Sender:   userJohn,
+				Text:     "Test text",
+				ChatType: "supergroup",
+			}))
+
 		suite.NoPending()
 		suite.NoUnmatched()
 		event, err := suite.app.srv.Event.Get(context.Background(), eventID)
@@ -83,14 +88,7 @@ func (suite *AppTestSuite) TestEventDraft() {
 	})
 
 	suite.Run("quite long inline query", func() {
-		gock.New(telegock.GetUpdates).
-			Reply(200).
-			JSON(telegock.Updates().InlineQuery(tele.Query{
-				Sender:   userJohn,
-				Text:     strings.Repeat("A", 250),
-				ChatType: "supergroup",
-			}))
-
+		// <- bot should call `answerInlineQuery`
 		gock.New(telegock.AnswerInlineQuery).
 			Reply(200).
 			Filter(func(res *http.Response) bool {
@@ -101,19 +99,21 @@ func (suite *AppTestSuite) TestEventDraft() {
 				return true
 			}).JSON(telegock.Result(true))
 
+		// -> bot update
+		gock.New(telegock.GetUpdates).
+			Reply(200).
+			JSON(telegock.Updates().InlineQuery(tele.Query{
+				Sender:   userJohn,
+				Text:     strings.Repeat("A", 250),
+				ChatType: "supergroup",
+			}))
+
 		suite.NoPending()
 		suite.NoUnmatched()
 	})
 
 	suite.Run("too long inline query", func() {
-		gock.New(telegock.GetUpdates).
-			Reply(200).
-			JSON(telegock.Updates().InlineQuery(tele.Query{
-				Sender:   userJohn,
-				Text:     strings.Repeat("A", 300),
-				ChatType: "supergroup",
-			}))
-
+		// <- bot should call `answerInlineQuery`
 		gock.New(telegock.AnswerInlineQuery).
 			Reply(200).
 			Filter(func(res *http.Response) bool {
@@ -124,18 +124,23 @@ func (suite *AppTestSuite) TestEventDraft() {
 				return true
 			}).JSON(telegock.Result(true))
 
+		// -> bot update
+		gock.New(telegock.GetUpdates).
+			Reply(200).
+			JSON(telegock.Updates().InlineQuery(tele.Query{
+				Sender:   userJohn,
+				Text:     strings.Repeat("A", 300),
+				ChatType: "supergroup",
+			}))
+
 		suite.NoPending()
 		suite.NoUnmatched()
 	})
 }
 
 func (suite *AppTestSuite) eventDraftCreate(query tele.Query) string {
+	// <- bot should call `answerInlineQuery`
 	var eventID string
-
-	gock.New(telegock.GetUpdates).
-		Reply(200).
-		JSON(telegock.Updates().InlineQuery(query))
-
 	gock.New(telegock.AnswerInlineQuery).
 		Reply(200).
 		Filter(func(res *http.Response) bool {
@@ -145,6 +150,11 @@ func (suite *AppTestSuite) eventDraftCreate(query tele.Query) string {
 			return true
 		}).JSON(telegock.Result(true))
 
+	// -> bot update
+	gock.New(telegock.GetUpdates).
+		Reply(200).
+		JSON(telegock.Updates().InlineQuery(query))
+
 	suite.NoPending()
 	return eventID
 }
@@ -153,6 +163,11 @@ func (suite *AppTestSuite) TestEventPostAdd() {
 
 	suite.Run("via ChosenInlineResult", func() {
 		eventID := suite.eventDraftCreate(queryA)
+
+		// <- bot should call `editMessageText`
+		gock.New(telegock.EditMessageText).Reply(200).JSON(telegock.Result(true))
+
+		// -> bot update
 		gock.New(telegock.GetUpdates).
 			Reply(200).
 			JSON(telegock.Updates().InlineResult(tele.InlineResult{
@@ -162,11 +177,9 @@ func (suite *AppTestSuite) TestEventPostAdd() {
 				MessageID: "test-inline-message-ChosenInlineResult",
 			}))
 
-		// Should render the event post
-		gock.New(telegock.EditMessageText).Reply(200).JSON(telegock.Result(true))
-
 		suite.NoPending()
 		suite.NoUnmatched()
+
 		event, err := suite.app.srv.Event.Get(context.Background(), eventID)
 		suite.NoError(err)
 		suite.Require().NotNil(event)
@@ -178,15 +191,8 @@ func (suite *AppTestSuite) TestEventPostAdd() {
 
 	suite.Run("via CallbackQuery success", func() {
 		eventID := suite.eventDraftCreate(queryB)
-		gock.New(telegock.GetUpdates).
-			Reply(200).
-			JSON(telegock.Updates().CallbackQuery(tele.Callback{
-				Sender:    userJohn,
-				MessageID: "test-inline-message-CallbackQuery",
-				Data:      "\fsignup|" + eventID + "|leader|rand-token",
-			}))
 
-		// Should reply with the signup URL
+		// <- bot should call `answerCallbackQuery`
 		gock.New(telegock.AnswerCallbackQuery).
 			Reply(200).
 			Filter(func(res *http.Response) bool {
@@ -195,11 +201,21 @@ func (suite *AppTestSuite) TestEventPostAdd() {
 				return true
 			}).JSON(telegock.Result(true))
 
-		// Should render the event post
+		// <- bot should call `editMessageText`
 		gock.New(telegock.EditMessageText).Reply(200).JSON(telegock.Result(true))
+
+		// -> bot update
+		gock.New(telegock.GetUpdates).
+			Reply(200).
+			JSON(telegock.Updates().CallbackQuery(tele.Callback{
+				Sender:    userJohn,
+				MessageID: "test-inline-message-CallbackQuery",
+				Data:      "\fsignup|" + eventID + "|leader|rand-token",
+			}))
 
 		suite.NoPending()
 		suite.NoUnmatched()
+
 		event, err := suite.app.srv.Event.Get(context.Background(), eventID)
 		suite.NoError(err)
 		suite.Require().NotNil(event)
@@ -211,15 +227,8 @@ func (suite *AppTestSuite) TestEventPostAdd() {
 
 	suite.Run("via CallbackQuery invalid", func() {
 		eventID := suite.eventDraftCreate(queryB)
-		gock.New(telegock.GetUpdates).
-			Reply(200).
-			JSON(telegock.Updates().CallbackQuery(tele.Callback{
-				Sender:    userJohn,
-				MessageID: "test-inline-message-CallbackQuery",
-				Data:      "\fsignup|INVALID_PAYLOAD",
-			}))
 
-		// Should reply with the signup URL
+		// <- bot should call `answerCallbackQuery`
 		gock.New(telegock.AnswerCallbackQuery).
 			Reply(200).
 			Filter(func(res *http.Response) bool {
@@ -228,8 +237,18 @@ func (suite *AppTestSuite) TestEventPostAdd() {
 				return true
 			}).JSON(telegock.Result(true))
 
+		// -> bot update
+		gock.New(telegock.GetUpdates).
+			Reply(200).
+			JSON(telegock.Updates().CallbackQuery(tele.Callback{
+				Sender:    userJohn,
+				MessageID: "test-inline-message-CallbackQuery",
+				Data:      "\fsignup|INVALID_PAYLOAD",
+			}))
+
 		suite.NoPending()
 		suite.NoUnmatched()
+
 		event, err := suite.app.srv.Event.Get(context.Background(), eventID)
 		suite.Require().NoError(err)
 		suite.Require().NotNil(event)
@@ -242,6 +261,8 @@ func (suite *AppTestSuite) TestPostChatAdd() {
 
 	suite.Run("if before ChosenInlineResult", func() {
 		eventID := suite.eventDraftCreate(queryA)
+
+		// -> bot update
 		gock.New(telegock.GetUpdates).
 			Reply(200).
 			JSON(telegock.Updates().Message(tele.Message{
@@ -258,8 +279,10 @@ func (suite *AppTestSuite) TestPostChatAdd() {
 						},
 					},
 				}}))
+
 		suite.NoPending()
 		suite.NoUnmatched()
+
 		event, err := suite.app.srv.Event.Get(context.Background(), eventID)
 		suite.Require().NoError(err)
 		suite.Require().NotNil(event)
@@ -270,6 +293,8 @@ func (suite *AppTestSuite) TestPostChatAdd() {
 
 	suite.Run("if after ChosenInlineResult", func() {
 		eventID := suite.eventDraftCreate(queryB)
+
+		// -> bot update
 		gock.New(telegock.GetUpdates).
 			Reply(200).
 			JSON(telegock.Updates().Message(tele.Message{
@@ -289,6 +314,7 @@ func (suite *AppTestSuite) TestPostChatAdd() {
 
 		suite.NoPending()
 		suite.NoUnmatched()
+
 		event, err := suite.app.srv.Event.Get(context.Background(), eventID)
 		suite.Require().NoError(err)
 		suite.Require().NotNil(event)

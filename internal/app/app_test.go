@@ -56,5 +56,5 @@ func (suite *AppTestSuite) TearDownSubTest() {
 	suite.cancel()
 	// wait for the app to stop
 	time.Sleep(100 * time.Millisecond)
-	gock.Off()
+	gock.OffAll()
 }

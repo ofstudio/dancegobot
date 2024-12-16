@@ -17,7 +17,7 @@ var nowFn = func() time.Time {
 //	(boundary)@(username)(boundary)
 var reUsername = regexp.MustCompile(`(?:^|\b|\s)@([a-zA-Z][a-zA-Z0-9_]{3,30}[a-zA-Z0-9])(?:\b|$)`)
 
-// username extracts Telegram @username from string.
+// getUsername extracts Telegram @username from string.
 // Only the first username occurrence will be extracted.
 //
 // Telegram username rules:
@@ -25,7 +25,7 @@ var reUsername = regexp.MustCompile(`(?:^|\b|\s)@([a-zA-Z][a-zA-Z0-9_]{3,30}[a-z
 //   - can contain only letters, digits and underscores: a-z, A-Z, 0-9, _
 //   - must start with a letter
 //   - must end with a letter or a digit
-func username(s string) (string, bool) {
+func getUsername(s string) (string, bool) {
 	matches := reUsername.FindStringSubmatch(s)
 	if len(matches) > 1 {
 		return matches[1], true

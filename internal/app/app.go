@@ -61,16 +61,16 @@ func (a *App) Start(ctx context.Context) error {
 		telegram.RenderPost(bot),
 		telegram.Notify(bot),
 	).WithLogger(a.log)
-	// Start event background tasks
+
+	// 4. Start background tasks
 	a.srv.Event.Start(ctx)
-	// Start render background tasks
 	a.srv.Render.Start(ctx)
 
-	// 4. Initialize middleware and handlers
+	// 5. Initialize middleware and handlers
 	m := telegram.NewMiddleware(a.cfg.Settings, a.srv.Event, a.srv.User).WithLogger(a.log)
 	h := telegram.NewHandlers(a.cfg.Settings, a.srv.Event, a.srv.User).WithLogger(a.log)
 
-	// 5. Set up bot middleware and handlers
+	// 6. Set up bot middleware and handlers
 	bot.Use(m.Context(ctx))
 	bot.Use(m.Trace())
 	bot.Use(m.Logger())
@@ -93,14 +93,14 @@ func (a *App) Start(ctx context.Context) error {
 	// This is needed to handle channel posts
 	bot.Handle(tele.OnChannelPost, func(_ tele.Context) error { return nil })
 
-	// 6. Start the bot
+	// 7. Start the bot
 	go bot.Start()
 	a.log.Info("Bot started")
 
-	// 7. Wait for the context to be done
+	// 8. Wait for the context to be done
 	<-ctx.Done()
 
-	// 8. Stop the bot
+	// 9. Stop the bot
 	bot.Stop()
 	a.log.Info("Bot stopped")
 

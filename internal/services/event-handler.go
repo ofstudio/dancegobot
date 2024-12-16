@@ -316,7 +316,7 @@ func (h *EventHandler) DancerRemove(d *models.Dancer) *models.Registration {
 	}
 	reg.Partner = nil
 
-	// If partner was signed up as a single, move back to singles
+	// If partner was signed up as a single, move back to singles (or auto pair if available)
 	if reg.Related.AsSingle {
 		reg.Related = h.singleRestore(reg.Related, reg.Dancer)
 		return reg
@@ -375,8 +375,11 @@ func (h *EventHandler) singleRestore(reg *models.Registration, ex *models.Dancer
 	reg.Status = models.StatusAsSingle
 	reg.Result = models.ResultRegisteredAsSingle
 	h.event.Singles = append(h.event.Singles, *reg.Dancer)
+
+	// Sort singles by creation time
 	sort.Sort(SinglesSorter(h.event.Singles))
 
+	// Send notification that the partner has canceled the registration
 	h.notif = append(h.notif, &models.Notification{
 		TmplCode:  models.TmplCanceledWithSingle,
 		Recipient: reg.Profile,
@@ -385,6 +388,8 @@ func (h *EventHandler) singleRestore(reg *models.Registration, ex *models.Dancer
 			Partner: ex,
 		},
 	})
+
+	// Add history item
 	h.hist = append(h.hist, &models.HistoryItem{
 		Action:    models.HistorySingleAdded,
 		Initiator: ex.Profile,
@@ -482,16 +487,16 @@ func (h *EventHandler) isSame(dancer, other *models.Dancer) bool {
 		return dancer.ID == other.Profile.ID
 	// Compare dancer username (if present in profile ) and other username (if present in full name)
 	case dancer.Profile != nil && dancer.Profile.Username != "" && other.Profile == nil:
-		u, ok := username(other.FullName)
+		u, ok := getUsername(other.FullName)
 		return ok && (dancer.Profile.Username == u)
 	// Compare dancer username (if present in full name) and other username (if present in profile)
 	case dancer.Profile == nil && other.Profile != nil && other.Profile.Username != "":
-		u, ok := username(dancer.FullName)
+		u, ok := getUsername(dancer.FullName)
 		return ok && (u == other.Profile.Username)
 	// Compare usernames (if present in full names) if both profiles are missing
 	case dancer.Profile == nil && other.Profile == nil:
-		u1, ok1 := username(dancer.FullName)
-		u2, ok2 := username(other.FullName)
+		u1, ok1 := getUsername(dancer.FullName)
+		u2, ok2 := getUsername(other.FullName)
 		return (ok1 && ok2) && (u1 == u2)
 	default:
 		return false

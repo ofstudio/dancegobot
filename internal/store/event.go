@@ -37,9 +37,9 @@ func (s *SQLiteStore) EventGet(ctx context.Context, eventID string) (*models.Eve
 
 // EventUpsert inserts or updates an event.
 func (s *SQLiteStore) EventUpsert(ctx context.Context, event *models.Event) error {
+	const query =
 	// language=SQLite
-	const query = `
-INSERT INTO events (id, owner_id, data)
+	`INSERT INTO events (id, owner_id, data)
 VALUES (?1, ?2, ?3)
 ON CONFLICT (id) DO UPDATE SET owner_id   = excluded.owner_id,
                                data       = excluded.data,

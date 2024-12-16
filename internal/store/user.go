@@ -51,8 +51,9 @@ WHERE id = ?1
 // UserUpsert inserts or updates a user.
 // If the user with given Profile.ID already exists, updates its profile, session, and settings.
 func (s *SQLiteStore) UserUpsert(ctx context.Context, user *models.User) error {
+	const query =
 	// language=SQLite
-	const query = `INSERT INTO users (id, profile, session, settings)
+	`INSERT INTO users (id, profile, session, settings)
 VALUES (?1, ?2, ?3, ?4)
 ON CONFLICT (id) DO UPDATE SET profile    = excluded.profile,
 							   session    = excluded.session,

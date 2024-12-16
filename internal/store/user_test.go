@@ -1,4 +1,4 @@
-package repo
+package store
 
 import (
 	"context"
@@ -33,7 +33,6 @@ VALUES (1, '{"id": 1, "first_name": "Test"}', '{}', ?1, ?2)`, now, now)
 	})
 }
 
-// todo TestUserUpsert
 func (suite *TestStoreSuite) TestUserUpsert() {
 	suite.Run("insert new user", func() {
 		// Insert new user into the database

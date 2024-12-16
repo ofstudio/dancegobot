@@ -32,7 +32,7 @@ func (suite *AppTestSuite) TestEventDraft() {
 			}).
 			JSON(telegock.Result(true))
 
-		// -> bot update
+		// -> bot update `inline_query`
 		gock.New(telegock.GetUpdates).
 			Reply(200).
 			JSON(telegock.Updates().InlineQuery(tele.Query{
@@ -70,7 +70,7 @@ func (suite *AppTestSuite) TestEventDraft() {
 				return true
 			}).JSON(telegock.Result(true))
 
-		// -> bot update
+		// -> bot update `inline_query`
 		gock.New(telegock.GetUpdates).
 			Reply(200).
 			JSON(telegock.Updates().InlineQuery(tele.Query{
@@ -99,7 +99,7 @@ func (suite *AppTestSuite) TestEventDraft() {
 				return true
 			}).JSON(telegock.Result(true))
 
-		// -> bot update
+		// -> bot update `inline_query`
 		gock.New(telegock.GetUpdates).
 			Reply(200).
 			JSON(telegock.Updates().InlineQuery(tele.Query{
@@ -124,7 +124,7 @@ func (suite *AppTestSuite) TestEventDraft() {
 				return true
 			}).JSON(telegock.Result(true))
 
-		// -> bot update
+		// -> bot update `inline_query`
 		gock.New(telegock.GetUpdates).
 			Reply(200).
 			JSON(telegock.Updates().InlineQuery(tele.Query{
@@ -150,7 +150,7 @@ func (suite *AppTestSuite) eventDraftCreate(query tele.Query) string {
 			return true
 		}).JSON(telegock.Result(true))
 
-	// -> bot update
+	// -> bot update `inline_query`
 	gock.New(telegock.GetUpdates).
 		Reply(200).
 		JSON(telegock.Updates().InlineQuery(query))
@@ -167,7 +167,7 @@ func (suite *AppTestSuite) TestEventPostAdd() {
 		// <- bot should call `editMessageText`
 		gock.New(telegock.EditMessageText).Reply(200).JSON(telegock.Result(true))
 
-		// -> bot update
+		// -> bot update `chosen_inline_result`
 		gock.New(telegock.GetUpdates).
 			Reply(200).
 			JSON(telegock.Updates().InlineResult(tele.InlineResult{
@@ -204,7 +204,7 @@ func (suite *AppTestSuite) TestEventPostAdd() {
 		// <- bot should call `editMessageText`
 		gock.New(telegock.EditMessageText).Reply(200).JSON(telegock.Result(true))
 
-		// -> bot update
+		// -> bot update `callback_query`
 		gock.New(telegock.GetUpdates).
 			Reply(200).
 			JSON(telegock.Updates().CallbackQuery(tele.Callback{
@@ -237,7 +237,7 @@ func (suite *AppTestSuite) TestEventPostAdd() {
 				return true
 			}).JSON(telegock.Result(true))
 
-		// -> bot update
+		// -> bot update `callback_query`
 		gock.New(telegock.GetUpdates).
 			Reply(200).
 			JSON(telegock.Updates().CallbackQuery(tele.Callback{
@@ -262,6 +262,8 @@ func (suite *AppTestSuite) TestPostChatAdd() {
 	suite.Run("if before ChosenInlineResult", func() {
 		eventID := suite.eventDraftCreate(queryA)
 
+		// <- bot should not call any method
+		//
 		// -> bot update
 		gock.New(telegock.GetUpdates).
 			Reply(200).
@@ -283,10 +285,31 @@ func (suite *AppTestSuite) TestPostChatAdd() {
 		suite.NoPending()
 		suite.NoUnmatched()
 
+		// <- bot should call `editMessageText`
+		gock.New(telegock.EditMessageText).
+			Reply(200).
+			JSON(telegock.Result(true))
+
+		// -> bot update `chosen_inline_result`
+		gock.New(telegock.GetUpdates).
+			Reply(200).
+			JSON(telegock.Updates().InlineResult(tele.InlineResult{
+				Sender:    userJohn,
+				Location:  nil,
+				ResultID:  eventID,
+				Query:     queryA.Text,
+				MessageID: "test-inline-message",
+			}))
+
+		suite.NoPending()
+		suite.NoUnmatched()
+
 		event, err := suite.app.srv.Event.Get(context.Background(), eventID)
 		suite.Require().NoError(err)
 		suite.Require().NotNil(event)
 		suite.Require().NotNil(event.Post)
+		suite.Equal("test-inline-message", event.Post.InlineMessageID)
+		suite.Require().NotNil(event.Post.Chat)
 		suite.Equal(models.NewChat(chatSuperGroup), *event.Post.Chat)
 		suite.Equal(12345, event.Post.ChatMessageID)
 	})
@@ -294,7 +317,31 @@ func (suite *AppTestSuite) TestPostChatAdd() {
 	suite.Run("if after ChosenInlineResult", func() {
 		eventID := suite.eventDraftCreate(queryB)
 
-		// -> bot update
+		// <- bot should call `editMessageText`
+		gock.New(telegock.EditMessageText).
+			Reply(200).
+			JSON(telegock.Result(true))
+
+		// -> bot update `chosen_inline_result`
+		gock.New(telegock.GetUpdates).
+			Reply(200).
+			JSON(telegock.Updates().InlineResult(tele.InlineResult{
+				Sender:    userJohn,
+				Location:  nil,
+				ResultID:  eventID,
+				Query:     queryA.Text,
+				MessageID: "test-inline-message",
+			}))
+
+		suite.NoPending()
+		suite.NoUnmatched()
+
+		// <- bot should call `editMessageText`
+		gock.New(telegock.EditMessageText).
+			Reply(200).
+			JSON(telegock.Result(true))
+
+		// -> bot update `message`
 		gock.New(telegock.GetUpdates).
 			Reply(200).
 			JSON(telegock.Updates().Message(tele.Message{
@@ -319,6 +366,8 @@ func (suite *AppTestSuite) TestPostChatAdd() {
 		suite.Require().NoError(err)
 		suite.Require().NotNil(event)
 		suite.Require().NotNil(event.Post)
+		suite.Equal("test-inline-message", event.Post.InlineMessageID)
+		suite.Require().NotNil(event.Post.Chat)
 		suite.Equal(models.NewChat(chatSuperGroup), *event.Post.Chat)
 		suite.Equal(67890, event.Post.ChatMessageID)
 	})

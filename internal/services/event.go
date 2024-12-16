@@ -108,10 +108,14 @@ func (s *EventService) PostAdd(
 	}
 
 	var event *models.Event
-	post := &models.Post{InlineMessageID: inlineMessageID}
+	var post *models.Post
 	err := s.handle(ctx, eventID, func(h *EventHandler) {
-		h.Event().Post = post
+		if h.Event().Post == nil {
+			h.Event().Post = &models.Post{}
+		}
+		h.Event().Post.InlineMessageID = inlineMessageID
 		event = h.Event()
+		post = h.Event().Post
 		h.hist = append(h.hist, &models.HistoryItem{
 			Action:    models.HistoryPostAdded,
 			Initiator: &h.event.Owner,

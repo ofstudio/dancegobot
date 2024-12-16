@@ -23,7 +23,7 @@ func (suite *AppTestSuite) TestStart() {
 				return true
 			})
 
-		// -> bot update
+		// -> bot update `message`
 		gock.New(telegock.GetUpdates).
 			Reply(200).
 			JSON(telegock.Updates().Message(tele.Message{

@@ -90,6 +90,8 @@ func (a *App) Start(ctx context.Context) error {
 
 	bot.Handle(&telegram.BtnCbSignup, h.CbSignup)
 	bot.Handle(&telegram.BtnCbSettingsAutoPair, h.CbSettingsAutoPair)
+	bot.Handle(&telegram.BtnCbSettingsHelp, h.CbSettingsHelp)
+	bot.Handle(&telegram.BtnCbSettingsBack, h.CbSettingsBack)
 
 	// This is needed to handle channel posts
 	bot.Handle(tele.OnChannelPost, func(_ tele.Context) error { return nil })

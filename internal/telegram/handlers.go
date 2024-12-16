@@ -3,7 +3,6 @@ package telegram
 import (
 	"context"
 	"log/slog"
-	"time"
 
 	tele "gopkg.in/telebot.v4"
 
@@ -13,10 +12,6 @@ import (
 	"github.com/ofstudio/dancegobot/pkg/noplog"
 	"github.com/ofstudio/dancegobot/pkg/telelog"
 )
-
-var nowFn = func() time.Time {
-	return time.Now().UTC()
-}
 
 type Handlers struct {
 	cfg    config.Settings
@@ -162,6 +157,23 @@ func (h *Handlers) CbSettingsAutoPair(c tele.Context) error {
 	u := h.userGet(c)
 	u.Settings.Event.AutoPairing = !u.Settings.Event.AutoPairing
 	h.userUpsert(c, u)
+	_ = c.Respond()
+	text, rm := msgSettingsScene(&u.Settings)
+	return c.Edit(text, rm, tele.ModeHTML)
+}
+
+// CbSettingsHelp - sends settings help message.
+func (h *Handlers) CbSettingsHelp(c tele.Context) error {
+	h.log.Info("[handlers] settings_help callback received", telelog.Attr(c))
+	_ = c.Respond()
+	text, rm := msgSettingsHelp()
+	return c.Edit(text, rm, tele.ModeHTML)
+}
+
+// CbSettingsBack - sends settings scene message.
+func (h *Handlers) CbSettingsBack(c tele.Context) error {
+	h.log.Info("[handlers] settings_back callback received", telelog.Attr(c))
+	u := h.userGet(c)
 	_ = c.Respond()
 	text, rm := msgSettingsScene(&u.Settings)
 	return c.Edit(text, rm, tele.ModeHTML)

@@ -199,8 +199,10 @@ func btnChatLink(event *models.Event) *tele.ReplyMarkup {
 var (
 	BtnCbSettingsAutoPair = tele.Btn{Unique: "settings_auto_pair"}
 	BtnCbSettingsHelp     = tele.Btn{Unique: "settings_help"}
+	BtnCbSettingsBack     = tele.Btn{Unique: "settings_back"}
 )
 
+// btnSettingsScene creates buttons for the settings scene.
 func btnSettingsScene(settings *models.UserSettings) *tele.ReplyMarkup {
 	rm := &tele.ReplyMarkup{
 		RemoveKeyboard: true,
@@ -215,6 +217,17 @@ func btnSettingsScene(settings *models.UserSettings) *tele.ReplyMarkup {
 			rm.Data(locale.BtnSettingsHelp, BtnCbSettingsHelp.Unique, randtoken.New(4)),
 		),
 	)
+	return rm
+}
+
+// btnSettingsBack creates a button to return to the settings scene.
+func btnSettingsBack() *tele.ReplyMarkup {
+	rm := &tele.ReplyMarkup{
+		RemoveKeyboard: true,
+	}
+	rm.Inline(rm.Row(
+		rm.Data(locale.BtnBack, BtnCbSettingsBack.Unique, randtoken.New(4)),
+	))
 	return rm
 }
 
@@ -308,6 +321,11 @@ func msgSettingsScene(settings *models.UserSettings) (string, *tele.ReplyMarkup)
 		locale.SettingsAutoPairing[settings.Event.AutoPairing]
 	rm := btnSettingsScene(settings)
 	return text, rm
+}
+
+// msgSettingsHelp returns a message with the user settings help.
+func msgSettingsHelp() (string, *tele.ReplyMarkup) {
+	return locale.SettingsHelp, btnSettingsBack()
 }
 
 // answerQueryEmpty sends a response to the empty inline query.

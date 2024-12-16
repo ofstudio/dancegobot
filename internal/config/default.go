@@ -14,12 +14,18 @@ func Default() Config {
 
 		// Bot default configuration
 		Bot: Bot{
-			ApiURL:         tele.DefaultApiURL,
-			UseWebhook:     false,
-			WebhookListen:  ":8080",
-			RPS:            30,
-			Timeout:        30 * time.Second,
-			AllowedUpdates: []string{"message", "channel_post", "inline_query", "chosen_inline_result", "callback_query"},
+			ApiURL:        tele.DefaultApiURL,
+			UseWebhook:    false,
+			WebhookListen: ":8080",
+			RPS:           30,
+			Timeout:       30 * time.Second,
+			AllowedUpdates: []string{
+				"message",
+				"channel_post",
+				"inline_query",
+				"chosen_inline_result",
+				"callback_query",
+			},
 			CommandsPrivate: []tele.Command{
 				{Text: "start", Description: locale.CmdDescriptionStart},
 				{Text: "settings", Description: locale.CmdDescriptionSettings},
@@ -33,13 +39,18 @@ func Default() Config {
 
 		// Application default settings
 		Settings: Settings{
-			EventIDLen:            12,
-			EventTextMaxLen:       2048,
-			DancerNameMaxLen:      64,
-			RendererRepeats:       []time.Duration{2 * time.Second, 10 * time.Second, time.Minute, 1 * time.Hour},
+			EventIDLen:       12,
+			EventTextMaxLen:  2048,
+			DancerNameMaxLen: 64,
+			RendererRepeats: []time.Duration{
+				02 * time.Second,
+				10 * time.Second,
+				01 * time.Minute,
+				01 * time.Hour,
+			},
 			ReRenderOnStartup:     12 * time.Hour,
-			DraftCleanupOlderThan: 24 * time.Hour,
-			DraftCleanupEvery:     24 * time.Hour,
+			DraftCleanupOlderThan: 72 * time.Hour,
+			DraftCleanupEvery:     6 * time.Hour,
 		},
 	}
 }

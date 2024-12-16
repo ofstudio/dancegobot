@@ -1,21 +1,37 @@
 # This is an example of how to run the bot in webhook mode
 # with traefik as a reverse proxy with Let's Encrypt certificates
+# and automatic renewal of certificates.
+#
+# More info on webhook mode can be found at:
+# https://core.telegram.org/bots/webhooks
+#
+# Traefik is a modern HTTP reverse proxy and load balancer
+# https://doc.traefik.io/traefik/v3.1/
 
 services:
 
   bot:
-    build: .
-    container_name: dancegobot
+    # Set ${VERSION} with the current version of the bot
+    # Current version can be found at:
+    # https://github.com/ofstudio/dancegobot/pkgs/container/dancegobot
+    image: ghcr.io/ofstudio/dancegobot:${VERSION}
     restart: always
     volumes:
+      # Replace `/path/to/data` with the path to the path on local machine
+      # where the bot will store its database.
       - /path/to/data:/data
     environment:
+      # Set `${BOT_TOKEN}` with the token of your bot.
+      # Token can be obtained from @BotFather
       BOT_TOKEN: ${BOT_TOKEN}
       BOT_USE_WEBHOOK: true
-      BOT_WEBHOOK_PUBLIC_URL: https://your.domain.com/bot
+      # Replace `https://your.domain.com/` with the public URL of your bot
+      BOT_WEBHOOK_PUBLIC_URL: https://your.domain.com/
+      # `THUMBNAIL_URL` is optional
       THUMBNAIL_URL: ${THUMBNAIL_URL}
     labels:
       - traefik.enable=true
+      # Replace `your.domain.com` with your domain
       - traefik.http.routers.dancegobot.rule=Host(`your.domain.com`)
       - traefik.http.routers.dancegobot.entrypoints=websecure
       - traefik.http.routers.dancegobot.tls.certresolver=le
@@ -29,10 +45,14 @@ services:
       - --providers.docker.exposedbydefault=false
       - --entryPoints.websecure.address=:443
       - --certificatesresolvers.le.acme.tlschallenge=true
+      # Replace `your@email.com` with your email
+      # to receive notifications from Let's Encrypt
       - --certificatesresolvers.le.acme.email=your@email.com
       - --certificatesresolvers.le.acme.storage=/certificates/acme.json
     ports:
       - "443:443"
     volumes:
+      # Replace `/path/to/certificates` to the path on local machine
+      # where certificates from Let's Encrypt will be stored
       - /path/to/certificates:/certificates
       - /var/run/docker.sock:/var/run/docker.sock:ro

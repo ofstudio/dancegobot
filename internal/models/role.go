@@ -1,5 +1,6 @@
 package models
 
+// Role is a Dancer role at the Event
 type Role string
 
 const (
@@ -12,6 +13,10 @@ func (r Role) Opposite() Role {
 		return RoleFollower
 	}
 	return RoleLeader
+}
+
+func (r Role) String() string {
+	return string(r)
 }
 
 var Roles = []Role{RoleLeader, RoleFollower}

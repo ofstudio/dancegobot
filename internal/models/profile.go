@@ -1,6 +1,10 @@
 package models
 
-import tele "gopkg.in/telebot.v4"
+import (
+	"log/slog"
+
+	tele "gopkg.in/telebot.v4"
+)
 
 // Profile is a Telegram user profile.
 type Profile struct {
@@ -17,6 +21,21 @@ func NewProfile(u tele.User) Profile {
 		LastName:  u.LastName,
 		Username:  u.Username,
 	}
+}
+
+// LogValue implements slog.Valuer interface for Profile model.
+func (p Profile) LogValue() slog.Value {
+	attrs := []slog.Attr{
+		slog.Int64("id", p.ID),
+		slog.String("first_name", p.FirstName),
+	}
+	if p.LastName != "" {
+		attrs = append(attrs, slog.String("last_name", p.LastName))
+	}
+	if p.Username != "" {
+		attrs = append(attrs, slog.String("username", p.Username))
+	}
+	return slog.GroupValue(attrs...)
 }
 
 // FullName returns a full name of the Telegram profile.

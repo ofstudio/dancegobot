@@ -16,13 +16,13 @@ func TestStore(t *testing.T) {
 
 type TestStoreSuite struct {
 	suite.Suite
-	store *Store
+	store *SQLiteStore
 }
 
 func (suite *TestStoreSuite) SetupSubTest() {
 	db, err := NewSQLite(":memory:", 1)
 	suite.Require().NoError(err)
-	suite.store = NewStore(db)
+	suite.store = NewSQLiteStore(db)
 }
 
 func (suite *TestStoreSuite) TearDownSubTest() {
@@ -36,7 +36,7 @@ func (suite *TestStoreSuite) TestStoreTx() {
 		db, err := NewSQLite(":memory:", 1)
 		suite.Require().NoError(err)
 
-		store := NewStore(db)
+		store := NewSQLiteStore(db)
 		defer store.Close()
 
 		go func() {
@@ -44,13 +44,13 @@ func (suite *TestStoreSuite) TestStoreTx() {
 			suite.Require().NoError(err)
 
 			time.Sleep(700 * time.Millisecond)
-			err = tx.UserProfileUpsert(context.Background(), &models.User{})
+			err = tx.UserUpsert(context.Background(), &models.User{})
 			suite.Require().NoError(err)
 			suite.Require().NoError(tx.Commit())
 		}()
 
 		time.Sleep(300 * time.Millisecond)
-		err = store.UserProfileUpsert(context.Background(), &models.User{})
+		err = store.UserUpsert(context.Background(), &models.User{})
 		suite.Require().NoError(err)
 
 	})

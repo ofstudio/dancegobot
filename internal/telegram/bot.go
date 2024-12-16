@@ -2,6 +2,7 @@ package telegram
 
 import (
 	"errors"
+	"fmt"
 	"log/slog"
 
 	tele "gopkg.in/telebot.v4"
@@ -34,7 +35,7 @@ func NewBot(cfg config.Bot, log *slog.Logger) (*tele.Bot, error) {
 		log = noplog.Logger()
 	}
 
-	b, err := tele.NewBot(tele.Settings{
+	bot, err := tele.NewBot(tele.Settings{
 		URL:     cfg.ApiURL,
 		Token:   cfg.Token,
 		Poller:  poller(cfg),
@@ -44,10 +45,13 @@ func NewBot(cfg config.Bot, log *slog.Logger) (*tele.Bot, error) {
 	if err != nil {
 		return nil, err
 	}
-	if b.Me == nil {
-		return nil, errors.New("failed to get bot info")
+
+	// Set bot commands for private chats.
+	if err = bot.SetCommands(cfg.CommandsPrivate, scopePrivate); err != nil {
+		return nil, fmt.Errorf("failed to set bot commands: %w", err)
 	}
-	return b, nil
+
+	return bot, nil
 }
 
 // onError is a bot error handler.
@@ -68,3 +72,5 @@ func onError(log *slog.Logger) func(err error, c tele.Context) {
 		}
 	}
 }
+
+var scopePrivate = tele.CommandScope{Type: tele.CommandScopeAllPrivateChats}

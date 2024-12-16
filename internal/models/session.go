@@ -20,8 +20,10 @@ func (a SessionAction) String() string {
 	return string(a)
 }
 
-// SessionSingle - associate a single dancer with a reply button caption
+// SessionSingle - is a single dancer profiles
+// available for signup with the current user role
+// associated with reply button caption.
 type SessionSingle struct {
-	Caption string  `json:"caption"` // Reply button caption
 	Profile Profile `json:"profile"` // Profile of the single dancer
+	Caption string  `json:"caption"` // Reply button caption
 }

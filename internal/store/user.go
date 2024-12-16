@@ -22,7 +22,7 @@ type userRow struct {
 
 // UserGet returns user by its id.
 // If the user does not exist, returns ErrNotFound.
-func (s *Store) UserGet(ctx context.Context, id int64) (*models.User, error) {
+func (s *SQLiteStore) UserGet(ctx context.Context, id int64) (*models.User, error) {
 	const query = `SELECT profile, session, settings, created_at, updated_at
 FROM users
 WHERE id = ?1
@@ -48,97 +48,41 @@ WHERE id = ?1
 	return user, nil
 }
 
-// UserProfileUpsert updates user profile. If the user does not exist, creates a new one.
-func (s *Store) UserProfileUpsert(ctx context.Context, user *models.User) error {
+// UserUpsert inserts or updates a user.
+// If the user with given Profile.ID already exists, updates its profile, session, and settings.
+func (s *SQLiteStore) UserUpsert(ctx context.Context, user *models.User) error {
+	const query =
 	// language=SQLite
-	const query = `INSERT INTO users (id, profile)
-VALUES (?1, ?2)
+	`INSERT INTO users (id, profile, session, settings)
+VALUES (?1, ?2, ?3, ?4)
 ON CONFLICT (id) DO UPDATE SET profile    = excluded.profile,
-                               updated_at = CURRENT_TIMESTAMP
+							   session    = excluded.session,
+							   settings   = excluded.settings,	
+							   updated_at = CURRENT_TIMESTAMP
 RETURNING id, profile, session, settings, created_at, updated_at
 `
+
 	stmt, err := s.stmt(ctx, query)
+
 	if err != nil {
 		return fmt.Errorf("%w: %w", ErrStmtPrepare, err)
 	}
 
-	data, err := json.Marshal(user.Profile)
+	jsonProfile, err := json.Marshal(user.Profile)
 	if err != nil {
 		return fmt.Errorf("%w: user.profile, user.id=%d, %w", ErrMarshal, user.Profile.ID, err)
 	}
-
-	var row userRow
-	if err = stmt.QueryRowxContext(ctx, user.Profile.ID, data).StructScan(&row); err != nil {
-		return fmt.Errorf("%w: %w", ErrStmtExec, err)
-	}
-
-	return s.userUnmarshalRow(row, user)
-}
-
-// UserSessionUpsert updates user session and profile as well.
-// If the user does not exist, creates a new one.
-// Passed user model will be updated with the latest data from the database.
-func (s *Store) UserSessionUpsert(ctx context.Context, user *models.User) error {
-	// language=SQLite
-	const query = `INSERT INTO users (id, profile, session)
-VALUES (?1, ?2, ?3)
-ON CONFLICT (id) DO UPDATE SET profile    = excluded.profile,
-                               session    = excluded.session,
-                               updated_at = CURRENT_TIMESTAMP
-RETURNING id, profile, session, settings, created_at, updated_at
-`
-	stmt, err := s.stmt(ctx, query)
-	if err != nil {
-		return fmt.Errorf("%w: %w", ErrStmtPrepare, err)
-	}
-
-	dataProfile, err := json.Marshal(user.Profile)
-	if err != nil {
-		return fmt.Errorf("%w: user.profile, user.id=%d, %w", ErrMarshal, user.Profile.ID, err)
-	}
-	dataSession, err := json.Marshal(user.Session)
+	jsonSession, err := json.Marshal(user.Session)
 	if err != nil {
 		return fmt.Errorf("%w: user.session, user.id=%d, %w", ErrMarshal, user.Profile.ID, err)
 	}
-
-	var row userRow
-	if err = stmt.QueryRowxContext(ctx, user.Profile.ID, dataProfile, dataSession).
-		StructScan(&row); err != nil {
-		return fmt.Errorf("%w: %w", ErrStmtExec, err)
-	}
-
-	return s.userUnmarshalRow(row, user)
-}
-
-// UserSettingsUpsert updates user settings and profile as well.
-// If the user does not exist, creates a new one.
-// Passed user model will be updated with the latest data from the database.
-func (s *Store) UserSettingsUpsert(ctx context.Context, user *models.User) error {
-	// language=SQLite
-	const query = `INSERT INTO users (id, profile, settings)
-VALUES (?1, ?2, ?3)
-ON CONFLICT (id) DO UPDATE SET profile    = excluded.profile,
-                               settings   = excluded.settings,
-                               updated_at = CURRENT_TIMESTAMP
-RETURNING id, profile, session, settings, created_at, updated_at
-`
-	stmt, err := s.stmt(ctx, query)
-	if err != nil {
-		return fmt.Errorf("%w: %w", ErrStmtPrepare, err)
-	}
-
-	dataProfile, err := json.Marshal(user.Profile)
-	if err != nil {
-		return fmt.Errorf("%w: user.profile, user.id=%d, %w", ErrMarshal, user.Profile.ID, err)
-	}
-
-	dataSettings, err := json.Marshal(user.Settings)
+	jsonSettings, err := json.Marshal(user.Settings)
 	if err != nil {
 		return fmt.Errorf("%w: user.settings, user.id=%d, %w", ErrMarshal, user.Profile.ID, err)
 	}
 
 	var row userRow
-	if err = stmt.QueryRowxContext(ctx, user.Profile.ID, dataProfile, dataSettings).
+	if err = stmt.QueryRowxContext(ctx, user.Profile.ID, jsonProfile, jsonSession, jsonSettings).
 		StructScan(&row); err != nil {
 		return fmt.Errorf("%w: %w", ErrStmtExec, err)
 	}
@@ -146,7 +90,7 @@ RETURNING id, profile, session, settings, created_at, updated_at
 	return s.userUnmarshalRow(row, user)
 }
 
-func (s *Store) userUnmarshalRow(row userRow, user *models.User) error {
+func (s *SQLiteStore) userUnmarshalRow(row userRow, user *models.User) error {
 	if user == nil {
 		return errors.New("user is nil")
 	}

@@ -13,5 +13,7 @@ type User struct {
 	UpdatedAt time.Time
 }
 
+// UserSettings - is a user settings
 type UserSettings struct {
+	Event EventSettings `json:"event"` // Default settings for new events created by user
 }

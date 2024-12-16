@@ -4,6 +4,7 @@ import (
 	"log/slog"
 
 	"github.com/ofstudio/dancegobot/internal/config"
+	"github.com/ofstudio/dancegobot/internal/store"
 )
 
 // Services is a service container.
@@ -14,7 +15,7 @@ type Services struct {
 	Render   *RenderService
 }
 
-func NewServices(cfg config.Settings, store Store, rf RenderFunc, nf NotifyFunc) *Services {
+func NewServices(cfg config.Settings, store store.Store, rf RenderFunc, nf NotifyFunc) *Services {
 	render := NewRenderService(cfg, store, rf)
 	notifier := NewNotifierService(cfg, store, nf)
 	return &Services{

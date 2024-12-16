@@ -3,386 +3,461 @@ package services
 import (
 	"sort"
 
-	"github.com/ofstudio/dancegobot/internal/helpers"
+	"github.com/ofstudio/dancegobot/internal/config"
 	"github.com/ofstudio/dancegobot/internal/models"
 )
 
-// eventHandler implements the event handling logic and rules.
-type eventHandler struct {
+// EventHandler implements the event logic and rules.
+type EventHandler struct {
 	event *models.Event
 	hist  []*models.HistoryItem
 	notif []*models.Notification
 }
 
-func newEventHandler(event *models.Event) *eventHandler {
-	return &eventHandler{
+func NewEventHandler(event *models.Event) *EventHandler {
+	return &EventHandler{
 		event: event,
 	}
 }
 
 // Event returns the event being handled.
-func (h *eventHandler) Event() *models.Event {
+func (h *EventHandler) Event() *models.Event {
 	return h.event
 }
 
 // History returns the list of history items to save
 // that were collected during event handling.
-func (h *eventHandler) History() []*models.HistoryItem {
+func (h *EventHandler) History() []*models.HistoryItem {
 	return h.hist
 }
 
 // Notifications returns the list of notifications to send
 // that were collected during the event handling.
-func (h *eventHandler) Notifications() []*models.Notification {
+func (h *EventHandler) Notifications() []*models.Notification {
 	return h.notif
 }
 
-// DancerGetByProfile looking for a dancer at event by provided Telegram profile.
-// If not found, creates a new dancer with the provided profile and role.
-// If found, Result and Partner fields will be filled accordingly.
-func (h *eventHandler) DancerGetByProfile(profile *models.Profile, role models.Role) *models.Dancer {
-	newDancer := &models.Dancer{
-		Profile:   profile,
-		FullName:  profile.FullName(),
-		Role:      role,
-		Status:    models.StatusNotRegistered,
-		CreatedAt: nowFn(),
+// RegistrationGet returns registration for given dancer at the event.
+// If the dancer is not registered, returns a new registration.
+func (h *EventHandler) RegistrationGet(dancer *models.Dancer) *models.Registration {
+	if existingReg := h.findInCouples(dancer); existingReg != nil {
+		return existingReg
 	}
-
-	if found, ok := h.dancerGet(newDancer); ok {
-		return found
+	if existingReg := h.findInSingles(dancer); existingReg != nil {
+		return existingReg
 	}
-	return newDancer
-}
-
-// DancerGetByName looking for a dancer at event by provided full name.
-// If not found, creates a new dancer with the provided name and role.
-// If found, [models.Dancer.Status] and [models.Dancer.Partner] fields will be filled accordingly.
-func (h *eventHandler) DancerGetByName(fullname string, role models.Role) *models.Dancer {
-	newDancer := &models.Dancer{
-		FullName:  fullname,
-		Role:      role,
-		Status:    models.StatusNotRegistered,
-		CreatedAt: nowFn(),
+	dancer.CreatedAt = nowFn()
+	return &models.Registration{
+		Dancer: dancer,
+		Status: models.StatusNotRegistered,
+		Event:  h.event,
 	}
-	if found, ok := h.dancerGet(newDancer); ok {
-		return found
-	}
-	return newDancer
-}
-
-// dancerGet looking for a dancer at event.
-// If not found, returns the provided dancer as is with [models.Dancer.Status] set to [models.StatusNotRegistered].
-// If found, [models.Dancer.Status] and [models.Dancer.Partner] fields will be filled accordingly.
-func (h *eventHandler) dancerGet(dancer *models.Dancer) (*models.Dancer, bool) {
-	if foundDancer, ok := h.findInCouples(dancer); ok {
-		foundDancer.Status = models.StatusInCouple
-		return foundDancer, ok
-	}
-	if foundDancer, ok := h.findInSingles(dancer); ok {
-		foundDancer.Status = models.StatusSingle
-		return foundDancer, ok
-	}
-
-	// If not found, return the provided dancer as is with Status set to NotRegistered
-	dancer.Status = models.StatusNotRegistered
-	return dancer, false
 }
 
 // CoupleAdd registers a couple for the event.
-//
 // If the partner initially was registered as a single, the partner will be notified.
-//
-// Note: both dancer and partner should be with actual status and partner fields.
-func (h *eventHandler) CoupleAdd(dancer, partner *models.Dancer) *models.EventUpdate {
-	var result models.UpdateResult
+func (h *EventHandler) CoupleAdd(d, p *models.Dancer) *models.Registration {
+	result := models.ResultNoResult
+	reg := h.RegistrationGet(d)
+	reg.Related = h.RegistrationGet(p)
 
-	// 1. Check if event is not forbidden for the dancer or partner
-	if dancer.Status == models.StatusForbidden {
-		result = models.ResultEventForbiddenDancer
+	// Check if event is not forbidden for the dancer or partner
+	if reg.Status == models.StatusForbidden {
+		result = models.ResultDancerForbidden
 	}
-	if partner.Status == models.StatusForbidden {
-		result = models.ResultEventForbiddenPartner
+	if reg.Related.Status == models.StatusForbidden {
+		result = models.ResultPartnerForbidden
 	}
 
-	// 2. Check if the partner is already registered in a couple
-	if partner.Status == models.StatusInCouple {
+	// Check if the partner is already registered in a couple
+	if reg.Related.Status == models.StatusInCouple {
 		result = models.ResultPartnerTaken
 	}
 
-	// 3. Check if the dancer is already registered in a couple
-	if dancer.Status == models.StatusInCouple {
-		if h.isSame(dancer.Partner, partner) {
+	// Check if the dancer is already registered in a couple
+	if reg.Status == models.StatusInCouple {
+		if h.isSame(reg.Partner, reg.Related.Dancer) {
 			result = models.ResultAlreadyInSameCouple
 		} else {
 			result = models.ResultAlreadyInCouple
 		}
 	}
 
-	// 4. Check if event is not closed for new registrations
-	if h.event.Closed {
+	// Check if event is not closed for new registrations
+	if h.event.Settings.ClosedFor == models.ClosedForAll {
 		result = models.ResultEventClosed
 	}
 
-	// 5. Check if the partner has the same role as the dancer
-	if dancer.Role == partner.Role {
+	// Check if the partner has the same role as the partner
+	if reg.Role == reg.Related.Role {
 		result = models.ResultPartnerSameRole
 	}
 
-	// 6. Check if the dancer is trying to register with itself
-	if h.isSame(dancer, partner) {
+	// Check if the dancer is trying to register with itself
+	if h.isSame(reg.Dancer, reg.Related.Dancer) {
 		result = models.ResultSelfNotAllowed
 	}
 
-	// 7. Break if any of the checks failed
-	if result != models.ResultUnknown {
-		return &models.EventUpdate{
-			Event:         h.event,
-			Result:        result,
-			Dancer:        dancer,
-			ChosenPartner: partner,
-		}
+	// Break if any of the checks failed
+	if result != models.ResultNoResult {
+		reg.Result = result
+		return reg
 	}
 
-	// 8. Check if dancer is in singles and remove from singles
-	if dancer.Status == models.StatusSingle {
-		h.removeFromSingles(dancer)
+	// 8. Register as couple
+	return h.coupleAdd(reg, false)
+}
+
+// coupleAdd processes the couple registration.
+func (h *EventHandler) coupleAdd(reg *models.Registration, isAutoPair bool) *models.Registration {
+	// Check if dancer is in singles and remove from singles
+	if reg.Status == models.StatusAsSingle {
+		h.removeFromSingles(reg.Dancer)
 		h.hist = append(h.hist, &models.HistoryItem{
 			Action:    models.HistorySingleRemoved,
-			Initiator: dancer.Profile,
+			Initiator: reg.Dancer.Profile,
 			EventID:   &h.event.ID,
-			Details:   dancer,
+			Details:   reg.Dancer,
 			CreatedAt: nowFn(),
 		})
 	}
 
-	// 9. Check if partner is in singles and remove from singles
+	// Check if partner is in singles and remove from singles
 	// and create notification for the partner
-	if partner.Status == models.StatusSingle {
-		h.removeFromSingles(partner)
+	initiator := reg.Profile
+	if isAutoPair {
+		initiator = config.BotProfile()
+	}
+	if reg.Related.Status == models.StatusAsSingle {
+		h.removeFromSingles(reg.Related.Dancer)
+		// Add history item and notification for the partner
 		h.hist = append(h.hist, &models.HistoryItem{
 			Action:    models.HistorySingleRemoved,
-			Initiator: dancer.Profile,
+			Initiator: initiator,
 			EventID:   &h.event.ID,
-			Details:   partner,
+			Details:   reg.Related.Dancer,
 			CreatedAt: nowFn(),
 		})
+		var tmplCode models.NotificationTmpl
+		if isAutoPair {
+			tmplCode = models.TmplAutoPairPartnerFound
+		} else {
+			tmplCode = models.TmplRegisteredWithSingle
+		}
 		h.notif = append(h.notif, &models.Notification{
-			Recipient: *partner.Profile,
-			Initiator: dancer.Profile,
-			TmplCode:  models.TmplRegisteredWithSingle,
-			Event:     h.event,
+			TmplCode:  tmplCode,
+			Recipient: reg.Related.Profile,
+			Payload: models.NotificationPayload{
+				Event:   h.event,
+				Partner: reg.Dancer,
+			},
 		})
 	}
 
-	// 10. Set the dancers as a couple
-	dancer.Status = models.StatusInCouple
-	dancer.Partner = partner
-	partner.Status = models.StatusInCouple
-	partner.Partner = dancer
-
-	// 11. Create a couple and add to the event
+	// Create a couple
 	couple := models.Couple{
-		CreatedBy: *dancer.Profile,
+		CreatedBy: *reg.Profile,
+		AutoPair:  isAutoPair,
 		CreatedAt: nowFn(),
 	}
-	if dancer.Role == models.RoleLeader {
-		couple.Dancers = []models.Dancer{*dancer, *partner}
+	if reg.Role == models.RoleLeader {
+		couple.Dancers = []models.Dancer{*reg.Dancer, *reg.Related.Dancer}
 	} else {
-		couple.Dancers = []models.Dancer{*partner, *dancer}
+		couple.Dancers = []models.Dancer{*reg.Related.Dancer, *reg.Dancer}
 	}
-	h.event.Couples = append(h.event.Couples, couple)
+
+	// Add couple to the event history
 	h.hist = append(h.hist, &models.HistoryItem{
 		Action:    models.HistoryCoupleAdded,
-		Initiator: dancer.Profile,
+		Initiator: initiator,
 		EventID:   &h.event.ID,
 		Details:   &couple,
 		CreatedAt: nowFn(),
 	})
 
-	// 12. Return the update result
-	return &models.EventUpdate{
-		Event:         h.event,
-		Result:        models.ResultSuccess,
-		Dancer:        dancer,
-		ChosenPartner: partner,
-		Couple:        &couple,
-	}
+	// Add couple to the event and return the registration
+	h.event.Couples = append(h.event.Couples, couple)
+	reg.Result = models.ResultRegisteredInCouple
+	reg.Status = models.StatusInCouple
+	reg.Partner = reg.Related.Dancer
+	reg.Related.Result = models.ResultRegisteredInCouple
+	reg.Related.Status = models.StatusInCouple
+	reg.Related.Partner = reg.Dancer
+	return reg
 }
 
 // SingleAdd registers a dancer as a single for the event.
-// Note: dancer should be with actual status and partner fields.
-func (h *eventHandler) SingleAdd(dancer *models.Dancer) *models.EventUpdate {
-	var result models.UpdateResult
+// If auto pairing is enabled, tries to auto pair the dancer.
+func (h *EventHandler) SingleAdd(d *models.Dancer) *models.Registration {
 
-	// 1. Check if event is not forbidden for the dancer
-	if dancer.Status == models.StatusForbidden {
-		result = models.ResultEventForbiddenDancer
+	result := models.ResultNoResult
+	reg := h.RegistrationGet(d)
+
+	// Check if event is not forbidden for the dancer
+	if reg.Status == models.StatusForbidden {
+		result = models.ResultDancerForbidden
 	}
 
-	// 2. Check if the dancer is already registered in a couple
-	if dancer.Status == models.StatusInCouple {
+	// Check if the dancer not already registered in a couple
+	if reg.Status == models.StatusInCouple {
 		result = models.ResultAlreadyInCouple
 	}
 
-	// 3. Check if dancer is already registered as single
-	if dancer.Status == models.StatusSingle {
+	// 3. Check if dancer not already registered as single
+	if reg.Status == models.StatusAsSingle {
 		result = models.ResultAlreadyAsSingle
 	}
 
 	// 4. Check if event is not closed for new registrations
-	if h.event.Closed {
+	if h.event.Settings.ClosedFor == models.ClosedForAll {
 		result = models.ResultEventClosed
 	}
 
-	/// 5. Break if any of the checks failed
-	if result != models.ResultUnknown {
-		return &models.EventUpdate{Event: h.event, Result: result, Dancer: dancer}
+	// 5. Try to auto pair the reg
+	if autoPairReg := h.tryAutoPair(reg); autoPairReg != nil {
+		return autoPairReg
 	}
 
-	// 6. Set the dancer as a single
-	dancer.SingleSignup = true
-	dancer.Status = models.StatusSingle
+	// 6. Check if singles are allowed for the event
+	if h.event.Settings.ClosedFor == models.ClosedForSingles {
+		result = models.ResultClosedForSingles
+	}
 
-	// 7. Create a single and add to the event
-	h.event.Singles = append(h.event.Singles, *dancer)
+	// 7. Check if singles are allowed for the role
+	if (h.event.Settings.ClosedFor == models.ClosedForSingleLeaders &&
+		reg.Dancer.Role == models.RoleLeader) ||
+		(h.event.Settings.ClosedFor == models.ClosedForSingleFollowers &&
+			reg.Dancer.Role == models.RoleFollower) {
+		result = models.ResultClosedForSingleRole
+	}
+
+	// 8. Break if any of the checks failed
+	if result != models.ResultNoResult {
+		reg.Result = result
+		return reg
+	}
+
+	// 9. Create a single and add to the event
+	reg.Dancer.AsSingle = true
+	h.event.Singles = append(h.event.Singles, *reg.Dancer)
 	h.hist = append(h.hist, &models.HistoryItem{
 		Action:    models.HistorySingleAdded,
-		Initiator: dancer.Profile,
+		Initiator: reg.Profile,
 		EventID:   &h.event.ID,
-		Details:   dancer,
+		Details:   reg.Dancer,
 		CreatedAt: nowFn(),
 	})
 
-	// 8. Return the update result
-	return &models.EventUpdate{Event: h.event, Result: models.ResultSuccess, Dancer: dancer}
+	// 11. Return the update result
+	reg.Status = models.StatusAsSingle
+	reg.Result = models.ResultRegisteredAsSingle
+	reg.Partner = nil
+	reg.Related = nil
+	return reg
 }
 
 // DancerRemove removes the dancer from the event.
 //
 // If the dancer is in a couple, and the partner initially signed up as a single,
-// the partner will be moved to the singles list back and a notification will be created.
+// the partner will be moved to the singles list back (or auto paired if enabled)
+// and a notification will be created.
 // Otherwise, the partner will be removed from the event as well.
 //
 // If the dancer is in a couple, and a couple was created by the partner,
 // the partner will be notified that the dancer has left the event.
-//
-// Note: dancer should be with actual status and partner fields.
-func (h *eventHandler) DancerRemove(dancer *models.Dancer) *models.EventUpdate {
+func (h *EventHandler) DancerRemove(d *models.Dancer) *models.Registration {
+	reg := h.RegistrationGet(d)
 
-	// 1. Check if dancer is registered for the event at all
-	if dancer.Status != models.StatusSingle && dancer.Status != models.StatusInCouple {
-		return &models.EventUpdate{Event: h.event, Result: models.ResultNotRegistered, Dancer: dancer}
+	// Check if event is closed for new registrations
+	if h.event.Settings.ClosedFor == models.ClosedForAll {
+		reg.Result = models.ResultEventClosed
+		return reg
 	}
 
-	// 2. Check if dancer is in a singles list and remove from singles
-	if dancer.Status == models.StatusSingle {
-		h.removeFromSingles(dancer)
+	// Check if dancer is registered for the event at all
+	if !reg.Status.IsRegistered() {
+		reg.Result = models.ResultWasNotRegistered
+		return reg
+	}
+
+	// Check if dancer is in a singles list and remove from singles
+	if reg.Status == models.StatusAsSingle {
+		h.removeFromSingles(reg.Dancer)
 		h.hist = append(h.hist, &models.HistoryItem{
 			Action:    models.HistorySingleRemoved,
-			Initiator: dancer.Profile,
+			Initiator: reg.Profile,
 			EventID:   &h.event.ID,
-			Details:   dancer,
+			Details:   reg.Dancer,
 			CreatedAt: nowFn(),
 		})
-		dancer.Status = models.StatusNotRegistered
-		return &models.EventUpdate{Event: h.event, Result: models.ResultSuccess, Dancer: dancer}
+		reg.Result = models.ResultRegistrationRemoved
+		reg.Status = models.StatusNotRegistered
+		return reg
 	}
 
-	// 3. If dancer is in a couple remove the couple
-	couple, ok := h.removeCouple(dancer)
-	if !ok {
-		return &models.EventUpdate{Event: h.event, Result: models.ResultNotRegistered, Dancer: dancer}
-	}
+	// If dancer is in a couple remove the couple
+	removedCouple := h.removeCouple(reg.Dancer)
 	h.hist = append(h.hist, &models.HistoryItem{
 		Action:    models.HistoryCoupleRemoved,
-		Initiator: dancer.Profile,
+		Initiator: reg.Dancer.Profile,
 		EventID:   &h.event.ID,
-		Details:   couple,
+		Details:   removedCouple,
 		CreatedAt: nowFn(),
 	})
 
-	// 3.1 Set dancer and partner status to not registered
-	partner := dancer.Partner
+	// Set dancer and partner status to not registered
+	reg.Status = models.StatusNotRegistered
+	reg.Result = models.ResultRegistrationRemoved
+	reg.Related = &models.Registration{
+		Dancer: reg.Partner,
+		Status: models.StatusNotRegistered,
+		Result: models.ResultRegistrationRemoved,
+		Event:  h.event,
+	}
+	reg.Partner = nil
 
-	dancer.Status = models.StatusNotRegistered
-	dancer.Partner = nil
-	partner.Status = models.StatusNotRegistered
-	partner.Partner = nil
+	// If partner was signed up as a single, move back to singles (or auto pair if available)
+	if reg.Related.AsSingle {
+		reg.Related = h.singleRestore(reg.Related, reg.Dancer)
+		return reg
+	}
 
-	// 3.2 If partner was signed up as a single, move back to singles
-	if partner.SingleSignup {
-		partner.Status = models.StatusSingle
-		h.event.Singles = append(h.event.Singles, *partner)
-		sort.Sort(SinglesSorter(h.event.Singles))
-		h.hist = append(h.hist, &models.HistoryItem{
-			Action:    models.HistorySingleAdded,
-			Initiator: dancer.Profile,
-			EventID:   &h.event.ID,
-			Details:   partner,
-			CreatedAt: nowFn(),
+	// Otherwise, if couple was created by the partner send notification to the partner
+	if reg.Related.Profile != nil && removedCouple.CreatedBy.ID == reg.Related.Profile.ID {
+		h.notif = append(h.notif, &models.Notification{
+			TmplCode:  models.TmplCanceledByPartner,
+			Recipient: reg.Related.Profile,
+			Payload: models.NotificationPayload{
+				Event:   h.event,
+				Partner: reg.Dancer,
+			},
 		})
 	}
 
-	if partner.Profile != nil {
-		// 3.3 Send notification to the partner if needed
-		if partner.SingleSignup {
-			// 3.3.1 If partner was signed up as a single send the partner
-			h.notif = append(h.notif, &models.Notification{
-				Recipient: *partner.Profile,
-				Initiator: dancer.Profile,
-				TmplCode:  models.TmplCanceledWithSingle,
-				Event:     h.event,
-			})
-		} else if couple.CreatedBy.ID == partner.Profile.ID {
-			// 3.3.2 Otherwise if couple was created by the partner send the partner
-			h.notif = append(h.notif, &models.Notification{
-				Recipient: *partner.Profile,
-				Initiator: dancer.Profile,
-				TmplCode:  models.TmplCanceledByPartner,
-				Event:     h.event,
-			})
-		}
-	}
-
-	// 4. Return the update result
-	return &models.EventUpdate{Event: h.event, Result: models.ResultSuccess, Dancer: dancer}
-
+	// Return the registration
+	return reg
 }
 
-// findInCouples finds dancer in the couples.
-// Returns the dancer and true if found, otherwise nil and false.
-func (h *eventHandler) findInCouples(dancer *models.Dancer) (*models.Dancer, bool) {
-	var foundDancer models.Dancer
+// tryAutoPair tries to auto pair the dancer with a partner from the singles list.
+// Returns the updated registration if the partner was found and paired, otherwise nil.
+// If auto pairing is disabled for the event, returns nil.
+func (h *EventHandler) tryAutoPair(reg *models.Registration) *models.Registration {
+	// skip if auto pairing is disabled for the event
+	if !h.event.Settings.AutoPairing {
+		return nil
+	}
+	reg.Related = h.firstSingle(reg.Dancer.Role.Opposite())
+	if reg.Related == nil {
+		return nil
+	}
+	reg.AsSingle = true
+	return h.coupleAdd(reg, true)
+}
+
+// singleRestore restores the dancer to the singles list.
+// If auto pairing is enabled, tries to auto pair the dancer.
+func (h *EventHandler) singleRestore(reg *models.Registration, ex *models.Dancer) *models.Registration {
+	// Try to auto pair the dancer
+	if autoPairReg := h.tryAutoPair(reg); autoPairReg != nil {
+		h.notif = append(h.notif, &models.Notification{
+			TmplCode:  models.TmplAutoPairPartnerChanged,
+			Recipient: autoPairReg.Profile,
+			Payload: models.NotificationPayload{
+				Event:      h.event,
+				Partner:    ex,
+				NewPartner: autoPairReg.Partner,
+			},
+		})
+		return autoPairReg
+	}
+
+	// Otherwise, move back to singles
+	reg.Status = models.StatusAsSingle
+	reg.Result = models.ResultRegisteredAsSingle
+	h.event.Singles = append(h.event.Singles, *reg.Dancer)
+
+	// Sort singles by creation time
+	sort.Sort(SinglesSorter(h.event.Singles))
+
+	// Send notification that the partner has canceled the registration
+	h.notif = append(h.notif, &models.Notification{
+		TmplCode:  models.TmplCanceledWithSingle,
+		Recipient: reg.Profile,
+		Payload: models.NotificationPayload{
+			Event:   h.event,
+			Partner: ex,
+		},
+	})
+
+	// Add history item
+	h.hist = append(h.hist, &models.HistoryItem{
+		Action:    models.HistorySingleAdded,
+		Initiator: ex.Profile,
+		EventID:   &h.event.ID,
+		Details:   reg.Dancer,
+		CreatedAt: nowFn(),
+	})
+
+	return reg
+}
+
+// findInCouples finds dancers registration in the couples.
+// Returns nil if not found.
+func (h *EventHandler) findInCouples(dancer *models.Dancer) *models.Registration {
+	reg := &models.Registration{
+		Status: models.StatusInCouple,
+		Event:  h.event,
+	}
 	for _, couple := range h.event.Couples {
 		if h.isSame(dancer, &couple.Dancers[0]) {
-			foundDancer = couple.Dancers[0]
-			foundDancer.Partner = &couple.Dancers[1]
-			return &foundDancer, true
+			reg.Dancer = &couple.Dancers[0]
+			reg.Partner = &couple.Dancers[1]
+			return reg
 		}
 		if h.isSame(dancer, &couple.Dancers[1]) {
-			foundDancer = couple.Dancers[1]
-			foundDancer.Partner = &couple.Dancers[0]
-			return &foundDancer, true
+			reg.Dancer = &couple.Dancers[1]
+			reg.Partner = &couple.Dancers[0]
+			return reg
 		}
 	}
-	return nil, false
+	return nil
 }
 
 // findInSingles finds dancer in the singles of the event.
-// Returns the dancer and true if found, otherwise nil and false.
-func (h *eventHandler) findInSingles(dancer *models.Dancer) (*models.Dancer, bool) {
+// Returns nil if not found.
+func (h *EventHandler) findInSingles(dancer *models.Dancer) *models.Registration {
+	reg := &models.Registration{
+		Status: models.StatusAsSingle,
+		Event:  h.event,
+	}
 	for _, single := range h.event.Singles {
 		if h.isSame(dancer, &single) {
-			return &single, true
+			reg.Dancer = &single
+			return reg
 		}
 	}
-	return nil, false
+	return nil
+}
+
+// firstSingle returns registration of the first dancer with the given role in singles list.
+// Returns nil if no single dancer with this role found.
+func (h *EventHandler) firstSingle(role models.Role) *models.Registration {
+	reg := &models.Registration{
+		Status: models.StatusAsSingle,
+		Event:  h.event,
+	}
+	for _, single := range h.event.Singles {
+		if single.Role == role {
+			reg.Dancer = &single
+			return reg
+		}
+	}
+	return nil
 }
 
 // removeFromSingles removes the dancer from the singles list of the event.
 // If dancer found returns the dancer and true, otherwise nil and false.
-func (h *eventHandler) removeFromSingles(dancer *models.Dancer) (*models.Dancer, bool) {
+func (h *EventHandler) removeFromSingles(dancer *models.Dancer) (*models.Dancer, bool) {
 	for i, single := range h.event.Singles {
 		if h.isSame(dancer, &single) {
 			h.event.Singles = append(h.event.Singles[:i], h.event.Singles[i+1:]...)
@@ -393,36 +468,36 @@ func (h *eventHandler) removeFromSingles(dancer *models.Dancer) (*models.Dancer,
 }
 
 // removeCouple removes the couple from the couples list of the event.
-// If couple with the dancer found returns the couple and true, otherwise nil and false.
-func (h *eventHandler) removeCouple(dancer *models.Dancer) (*models.Couple, bool) {
+// If dancer found returns removed couple, otherwise nil.
+func (h *EventHandler) removeCouple(dancer *models.Dancer) *models.Couple {
 	for i, couple := range h.event.Couples {
 		if h.isSame(dancer, &couple.Dancers[0]) || h.isSame(dancer, &couple.Dancers[1]) {
 			h.event.Couples = append(h.event.Couples[:i], h.event.Couples[i+1:]...)
-			return &couple, true
+			return &couple
 		}
 	}
-	return nil, false
+	return nil
 }
 
 // isSame checks if dancer is the same as the other dancer on the event
-func (h *eventHandler) isSame(dancer, other *models.Dancer) bool {
+func (h *EventHandler) isSame(dancer, other *models.Dancer) bool {
 	switch {
 	// Compare profile IDs if both profiles are present
 	case dancer.Profile != nil && other.Profile != nil:
 		return dancer.ID == other.Profile.ID
 	// Compare dancer username (if present in profile ) and other username (if present in full name)
 	case dancer.Profile != nil && dancer.Profile.Username != "" && other.Profile == nil:
-		username, ok := helpers.Username(other.FullName)
-		return ok && (dancer.Profile.Username == username)
+		u, ok := getUsername(other.FullName)
+		return ok && (dancer.Profile.Username == u)
 	// Compare dancer username (if present in full name) and other username (if present in profile)
 	case dancer.Profile == nil && other.Profile != nil && other.Profile.Username != "":
-		username, ok := helpers.Username(dancer.FullName)
-		return ok && (username == other.Profile.Username)
+		u, ok := getUsername(dancer.FullName)
+		return ok && (u == other.Profile.Username)
 	// Compare usernames (if present in full names) if both profiles are missing
 	case dancer.Profile == nil && other.Profile == nil:
-		username1, ok1 := helpers.Username(dancer.FullName)
-		username2, ok2 := helpers.Username(other.FullName)
-		return (ok1 && ok2) && (username1 == username2)
+		u1, ok1 := getUsername(dancer.FullName)
+		u2, ok2 := getUsername(other.FullName)
+		return (ok1 && ok2) && (u1 == u2)
 	default:
 		return false
 	}

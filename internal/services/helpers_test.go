@@ -1,8 +1,8 @@
-package helpers
+package services
 
 import "testing"
 
-func TestUsername(t *testing.T) {
+func Test_getUsername(t *testing.T) {
 	tests := []struct {
 		input        string
 		wantUsername string
@@ -26,9 +26,9 @@ func TestUsername(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		gotUsername, gotOK := Username(tt.input)
+		gotUsername, gotOK := getUsername(tt.input)
 		if gotUsername != tt.wantUsername || gotOK != tt.wantOK {
-			t.Errorf("Username(%q) = %v, %v; want %v, %v", tt.input, gotUsername, gotOK, tt.wantUsername, tt.wantOK)
+			t.Errorf("username(%q) = %v, %v; want %v, %v", tt.input, gotUsername, gotOK, tt.wantUsername, tt.wantOK)
 		}
 	}
 

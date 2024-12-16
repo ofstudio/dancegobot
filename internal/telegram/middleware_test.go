@@ -21,11 +21,10 @@ func (suite *TestMiddlewareSuite) SetupSuite() {
 	config.SetBotProfile(&tele.User{ID: 123, Username: "my_bot"})
 }
 
-// todo add callback button cases
 func (suite *TestMiddlewareSuite) Test_isEventPost() {
 	suite.Run("is post message", func() {
 		m := NewMiddleware(config.Settings{}, nil, nil)
-		eventID, ok := m.isEventPost(&msgIsPost)
+		eventID, ok := m.isEventPost(&msgIsPostURL)
 		suite.True(ok)
 		suite.Equal("event123", eventID)
 	})
@@ -77,10 +76,35 @@ func (suite *TestMiddlewareSuite) Test_isEventPost() {
 		_, ok := m.isEventPost(&msgNotSignupURL)
 		suite.False(ok)
 	})
+
+	suite.Run("is post callback", func() {
+		m := NewMiddleware(config.Settings{}, nil, nil)
+		eventID, ok := m.isEventPost(&msgIsPostCb)
+		suite.True(ok)
+		suite.Equal("event123", eventID)
+	})
+
+	suite.Run("not signup callback", func() {
+		m := NewMiddleware(config.Settings{}, nil, nil)
+		_, ok := m.isEventPost(&msgNotSignupCb)
+		suite.False(ok)
+	})
+
+	suite.Run("not via bot callback", func() {
+		m := NewMiddleware(config.Settings{}, nil, nil)
+		_, ok := m.isEventPost(&msgNotViaBotCb)
+		suite.False(ok)
+	})
+
+	suite.Run("no callback", func() {
+		m := NewMiddleware(config.Settings{}, nil, nil)
+		_, ok := m.isEventPost(&msgNoCb)
+		suite.False(ok)
+	})
 }
 
 var (
-	msgIsPost = tele.Message{
+	msgIsPostURL = tele.Message{
 		Via: &tele.User{ID: 123},
 		ReplyMarkup: &tele.ReplyMarkup{InlineKeyboard: [][]tele.InlineButton{{
 			{URL: "https://t.me/my_bot?start=1a2b-signup-event123-leader"},
@@ -134,6 +158,34 @@ var (
 		Via: &tele.User{ID: 123},
 		ReplyMarkup: &tele.ReplyMarkup{InlineKeyboard: [][]tele.InlineButton{{
 			{URL: "https://t.me/my_bot?start=1a2b-another_action-event123-leader"},
+		}}},
+	}
+
+	msgIsPostCb = tele.Message{
+		Via: &tele.User{ID: 123},
+		ReplyMarkup: &tele.ReplyMarkup{InlineKeyboard: [][]tele.InlineButton{{
+			{Data: "\fsignup|event123|leader|1a2b"},
+		}}},
+	}
+
+	msgNotSignupCb = tele.Message{
+		Via: &tele.User{ID: 123},
+		ReplyMarkup: &tele.ReplyMarkup{InlineKeyboard: [][]tele.InlineButton{{
+			{Data: "\fanother_action|event123|leader|1a2b"},
+		}}},
+	}
+
+	msgNotViaBotCb = tele.Message{
+		Via: nil,
+		ReplyMarkup: &tele.ReplyMarkup{InlineKeyboard: [][]tele.InlineButton{{
+			{Data: "\fsignup|event123|leader|1a2b"},
+		}}},
+	}
+
+	msgNoCb = tele.Message{
+		Via: &tele.User{ID: 123},
+		ReplyMarkup: &tele.ReplyMarkup{InlineKeyboard: [][]tele.InlineButton{{
+			{Data: ""},
 		}}},
 	}
 )

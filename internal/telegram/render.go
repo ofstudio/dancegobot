@@ -20,7 +20,7 @@ func RenderPost(api tele.API) func(*models.Event, string) error {
 
 // render renders the event post.
 func render(api tele.API, event *models.Event, inlineMessageID string) error {
-	text := renderText(event)
+	textSB := renderText(event)
 	rm := btnPostURL(event.ID)
 	msg := &tele.InlineResult{MessageID: inlineMessageID}
 	opts := &tele.SendOptions{
@@ -28,14 +28,14 @@ func render(api tele.API, event *models.Event, inlineMessageID string) error {
 		DisableWebPagePreview: true,
 		ParseMode:             tele.ModeHTML,
 	}
-	_, err := api.Edit(msg, text, opts)
+	_, err := api.Edit(msg, textSB.String(), opts)
 	if errors.Is(err, tele.ErrTrueResult) {
 		return nil
 	}
 	return err
 }
 
-func renderText(event *models.Event) string {
+func renderText(event *models.Event) *strings.Builder {
 	sb := &strings.Builder{}
 	sb.WriteString(event.Caption)
 	sb.WriteString("\n\n")
@@ -56,7 +56,7 @@ func renderText(event *models.Event) string {
 			sbSingles(sb, followers, leaders)
 		}
 	}
-	return sb.String()
+	return sb
 }
 
 func sbCouples(sb *strings.Builder, couples []models.Couple) {

@@ -28,6 +28,7 @@ type Deeplink struct {
 	Role    models.Role
 }
 
+// DeeplinkParse parses the deeplink from the URL.
 func DeeplinkParse(url string) (*Deeplink, error) {
 	if !strings.HasPrefix(url, "https://t.me/"+config.BotProfile().Username+"?start=") {
 		return nil, errDeeplink(url)
@@ -41,6 +42,7 @@ func DeeplinkParse(url string) (*Deeplink, error) {
 	return DeeplinkParsePayload(parts[1])
 }
 
+// DeeplinkParsePayload parses the deeplink from 'start' parameter in the URL.
 func DeeplinkParsePayload(payload string) (*Deeplink, error) {
 	parts := strings.Split(payload, dlSeparator)
 	if len(parts) < 2 {

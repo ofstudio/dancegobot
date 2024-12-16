@@ -21,59 +21,60 @@ func (suite *TestMiddlewareSuite) SetupSuite() {
 	config.SetBotProfile(&tele.User{ID: 123, Username: "my_bot"})
 }
 
-func (suite *TestMiddlewareSuite) Test_isPost() {
+// todo add callback button cases
+func (suite *TestMiddlewareSuite) Test_isEventPost() {
 	suite.Run("is post message", func() {
 		m := NewMiddleware(config.Settings{}, nil, nil)
-		eventID, ok := m.isPost(&msgIsPost)
+		eventID, ok := m.isEventPost(&msgIsPost)
 		suite.True(ok)
 		suite.Equal("event123", eventID)
 	})
 
 	suite.Run("not via bot", func() {
 		m := NewMiddleware(config.Settings{}, nil, nil)
-		_, ok := m.isPost(&msgNotViaBot)
+		_, ok := m.isEventPost(&msgNotViaBot)
 		suite.False(ok)
 	})
 
 	suite.Run("via another bot", func() {
 		m := NewMiddleware(config.Settings{}, nil, nil)
-		_, ok := m.isPost(&msgViaAnotherBot)
+		_, ok := m.isEventPost(&msgViaAnotherBot)
 		suite.False(ok)
 	})
 
 	suite.Run("no reply markup", func() {
 		m := NewMiddleware(config.Settings{}, nil, nil)
-		_, ok := m.isPost(&msgNoReplyMarkup)
+		_, ok := m.isEventPost(&msgNoReplyMarkup)
 		suite.False(ok)
 	})
 
 	suite.Run("no inline keyboard", func() {
 		m := NewMiddleware(config.Settings{}, nil, nil)
-		_, ok := m.isPost(&msgNoInlineKeyboard)
+		_, ok := m.isEventPost(&msgNoInlineKeyboard)
 		suite.False(ok)
 	})
 
 	suite.Run("no inline button", func() {
 		m := NewMiddleware(config.Settings{}, nil, nil)
-		_, ok := m.isPost(&msgNoInlineButton)
+		_, ok := m.isEventPost(&msgNoInlineButton)
 		suite.False(ok)
 	})
 
 	suite.Run("no URL", func() {
 		m := NewMiddleware(config.Settings{}, nil, nil)
-		_, ok := m.isPost(&msgNoURL)
+		_, ok := m.isEventPost(&msgNoURL)
 		suite.False(ok)
 	})
 
 	suite.Run("unknown URL", func() {
 		m := NewMiddleware(config.Settings{}, nil, nil)
-		_, ok := m.isPost(&msgUnknownURL)
+		_, ok := m.isEventPost(&msgUnknownURL)
 		suite.False(ok)
 	})
 
 	suite.Run("not signup URL", func() {
 		m := NewMiddleware(config.Settings{}, nil, nil)
-		_, ok := m.isPost(&msgNotSignupURL)
+		_, ok := m.isEventPost(&msgNotSignupURL)
 		suite.False(ok)
 	})
 }

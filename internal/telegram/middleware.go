@@ -121,7 +121,7 @@ func (m *Middleware) ChatMessage() tele.MiddlewareFunc {
 	return func(next tele.HandlerFunc) tele.HandlerFunc {
 		return func(c tele.Context) error {
 			// Check if the message is an event post
-			eventID, ok := m.isPost(c.Message())
+			eventID, ok := m.isEventPost(c.Message())
 			if ok {
 				chatMessageID := c.Message().ID
 				chat := models.NewChat(c.Message().Chat)
@@ -144,9 +144,9 @@ func (m *Middleware) ChatMessage() tele.MiddlewareFunc {
 	}
 }
 
-// isPost checks if Telegram message is an event post.
+// isEventPost checks if Telegram message is an event post.
 // If the message is an event post, it returns the event ID and true.
-func (m *Middleware) isPost(msg *tele.Message) (string, bool) {
+func (m *Middleware) isEventPost(msg *tele.Message) (string, bool) {
 	if msg == nil ||
 		msg.Via == nil ||
 		msg.Via.ID != config.BotProfile().ID ||

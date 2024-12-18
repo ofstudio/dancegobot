@@ -17,8 +17,8 @@ func Default() Config {
 			ApiURL:        tele.DefaultApiURL,
 			UseWebhook:    false,
 			WebhookListen: ":8080",
-			RPS:           30,
-			Timeout:       30 * time.Second,
+			RPS:           25,
+			Timeout:       20 * time.Second,
 			AllowedUpdates: []string{
 				"message",
 				"channel_post",
@@ -43,9 +43,11 @@ func Default() Config {
 			EventTextMaxLen:  2048,
 			DancerNameMaxLen: 64,
 			RendererRepeats: []time.Duration{
-				02 * time.Second,
+				03 * time.Second,
 				10 * time.Second,
+				30 * time.Second,
 				01 * time.Minute,
+				05 * time.Minute,
 				01 * time.Hour,
 			},
 			ReRenderOnStartup:     12 * time.Hour,

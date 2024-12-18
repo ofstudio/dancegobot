@@ -5,10 +5,12 @@ import (
 	"fmt"
 	"log/slog"
 	"time"
+	"unicode/utf8"
 
 	"github.com/ofstudio/dancegobot/internal/config"
 	"github.com/ofstudio/dancegobot/internal/models"
 	"github.com/ofstudio/dancegobot/internal/store"
+	"github.com/ofstudio/dancegobot/pkg/errutil"
 	"github.com/ofstudio/dancegobot/pkg/noplog"
 	"github.com/ofstudio/dancegobot/pkg/randtoken"
 	"github.com/ofstudio/dancegobot/pkg/trace"
@@ -372,38 +374,40 @@ func (s *EventService) draftsCleanup(ctx context.Context) {
 
 // validateEvent validates the event.
 func (s *EventService) validateEvent(e *models.Event) error {
-	errs := errMap{}
-	if len(e.ID) != s.cfg.EventIDLen {
-		errs["id"] = fmt.Errorf("event ID must be %d characters long", s.cfg.EventIDLen)
+	var err error
+	if utf8.RuneCountInString(e.Caption) > s.cfg.EventTextMaxLen {
+		err = errutil.Append(err, fmt.Errorf("event text must be at most %d characters long, got %d",
+			s.cfg.EventTextMaxLen, utf8.RuneCountInString(e.Caption)))
 	}
-	if len(e.Caption) > s.cfg.EventTextMaxLen {
-		errs["text"] = fmt.Errorf("event text must be at most %d characters long", s.cfg.EventTextMaxLen)
-	}
-	errs["owner"] = s.validateProfile(&e.Owner)
-	return errs.Filter()
+	err = errutil.Append(err, s.validateProfile(&e.Owner))
+	return err
 }
 
 func (s *EventService) validateDancer(d *models.Dancer) error {
-	errs := errMap{}
-	if d.Profile == nil {
-		errs["profile"] = fmt.Errorf("dancer profile must be provided")
-	} else {
-		errs["profile"] = s.validateProfile(d.Profile)
+	if d == nil {
+		return fmt.Errorf("dancer is nil")
 	}
-	errs["full_name"] = s.validateFullname(d.FullName)
-	errs["role"] = s.validateRole(d.Role)
-	return errs.Filter()
+	var err error
+	if d.Profile != nil {
+		err = errutil.Append(err, s.validateProfile(d.Profile))
+	}
+	err = errutil.Append(err, s.validateFullname(d.FullName))
+	err = errutil.Append(err, s.validateRole(d.Role))
+	return err
 }
 
 func (s *EventService) validateProfile(p *models.Profile) error {
-	errs := errMap{}
+	if p == nil {
+		return fmt.Errorf("profile is nil")
+	}
+	var err error
 	if p.ID < 1 {
-		errs["id"] = fmt.Errorf("profile ID must be positive")
+		err = errutil.Append(err, fmt.Errorf("profile ID must be positive, got %d", p.ID))
 	}
 	if p.FirstName == "" {
-		errs["first_name"] = fmt.Errorf("profile first name must be provided")
+		err = errutil.Append(err, fmt.Errorf("profile first name must be provided"))
 	}
-	return errs.Filter()
+	return err
 }
 
 func (s *EventService) validateRole(r models.Role) error {

@@ -60,7 +60,6 @@ func (s *EventService) Create(
 		Owner:     owner,
 		CreatedAt: nowFn(),
 	}
-
 	if err := s.validateEvent(event); err != nil {
 		return nil, fmt.Errorf("failed to validate event: %w", err)
 	}
@@ -90,7 +89,12 @@ func (s *EventService) Get(ctx context.Context, id string) (*models.Event, error
 }
 
 // RegistrationGet returns registration for the given event by profile and role.
+// If the dancer is not registered, returns a new registration.
+// If event or profile is nil, returns nil.
 func (s *EventService) RegistrationGet(event *models.Event, profile *models.Profile, role models.Role) *models.Registration {
+	if event == nil || profile == nil {
+		return nil
+	}
 	return NewEventHandler(event).RegistrationGet(&models.Dancer{
 		Profile:   profile,
 		FullName:  profile.FullName(),
@@ -174,22 +178,22 @@ func (s *EventService) CoupleAdd(
 	other any,
 ) (*models.Registration, error) {
 
-	if err := s.validateProfile(profile); err != nil {
-		return nil, fmt.Errorf("failed to validate profile: %w", err)
+	if profile == nil {
+		return nil, fmt.Errorf("profile must be provided")
 	}
-
 	dancer := &models.Dancer{
 		Profile:   profile,
 		FullName:  profile.FullName(),
 		Role:      role,
 		CreatedAt: nowFn(),
 	}
+	if err := s.validateDancer(dancer); err != nil {
+		return nil, fmt.Errorf("failed to validate dancer: %w", err)
+	}
+
 	var partner *models.Dancer
 	switch v := other.(type) {
 	case *models.Profile:
-		if err := s.validateProfile(v); err != nil {
-			return nil, fmt.Errorf("failed to validate other person profile: %w", err)
-		}
 		partner = &models.Dancer{
 			Profile:   v,
 			FullName:  v.FullName(),
@@ -197,9 +201,6 @@ func (s *EventService) CoupleAdd(
 			CreatedAt: nowFn(),
 		}
 	case string:
-		if err := s.validateFullname(v); err != nil {
-			return nil, fmt.Errorf("failed to validate other person name: %w", err)
-		}
 		partner = &models.Dancer{
 			FullName:  v,
 			Role:      role.Opposite(),
@@ -207,6 +208,9 @@ func (s *EventService) CoupleAdd(
 		}
 	default:
 		return nil, fmt.Errorf("invalid type of other person: %T", other)
+	}
+	if err := s.validateDancer(partner); err != nil {
+		return nil, fmt.Errorf("failed to validate partner: %w", err)
 	}
 
 	var reg *models.Registration
@@ -224,17 +228,23 @@ func (s *EventService) SingleAdd(
 	profile *models.Profile,
 	role models.Role,
 ) (*models.Registration, error) {
-	if err := s.validateProfile(profile); err != nil {
-		return nil, fmt.Errorf("failed to validate profile: %w", err)
+
+	if profile == nil {
+		return nil, fmt.Errorf("profile must be provided")
 	}
+	dancer := &models.Dancer{
+		Profile:   profile,
+		FullName:  profile.FullName(),
+		Role:      role,
+		CreatedAt: nowFn(),
+	}
+	if err := s.validateDancer(dancer); err != nil {
+		return nil, fmt.Errorf("failed to validate dancer: %w", err)
+	}
+
 	var reg *models.Registration
 	err := s.handle(ctx, eventID, func(h *EventHandler) {
-		reg = h.SingleAdd(&models.Dancer{
-			Profile:   profile,
-			FullName:  profile.FullName(),
-			Role:      role,
-			CreatedAt: nowFn(),
-		})
+		reg = h.SingleAdd(dancer)
 	})
 	return reg, err
 }
@@ -253,8 +263,8 @@ func (s *EventService) DancerRemove(
 	eventID string,
 	profile *models.Profile,
 ) (*models.Registration, error) {
-	if err := s.validateProfile(profile); err != nil {
-		return nil, fmt.Errorf("failed to validate profile: %w", err)
+	if profile == nil {
+		return nil, fmt.Errorf("profile must be provided")
 	}
 	var reg *models.Registration
 	err := s.handle(ctx, eventID, func(h *EventHandler) {
@@ -412,14 +422,16 @@ func (s *EventService) validateProfile(p *models.Profile) error {
 
 func (s *EventService) validateRole(r models.Role) error {
 	if r != models.RoleLeader && r != models.RoleFollower {
-		return fmt.Errorf("role must be either %q or %q", models.RoleLeader, models.RoleFollower)
+		return fmt.Errorf("invalid role: %q", r)
 	}
 	return nil
 }
 
-func (s *EventService) validateFullname(fn string) error {
-	if len(fn) < 1 || len(fn) > s.cfg.DancerNameMaxLen {
-		return fmt.Errorf("full name must be between 1 and %d characters long", s.cfg.DancerNameMaxLen)
+func (s *EventService) validateFullname(name string) error {
+	n := utf8.RuneCountInString(name)
+	if n < 1 || n > s.cfg.DancerNameMaxLen {
+		return fmt.Errorf("full name must be between 1 and %d characters long, got %d",
+			s.cfg.DancerNameMaxLen, n)
 	}
 	return nil
 }

@@ -289,6 +289,14 @@ func (h *Handlers) signupScene(c tele.Context, eventID string, role models.Role)
 	}
 
 	reg := h.events.RegistrationGet(event, &u.Profile, role)
+	if reg == nil {
+		h.log.Error("[handlers] signup scene: failed to get registration",
+			"event_id", eventID,
+			"profile", u.Profile.LogValue(),
+			"role", role.String(),
+			telelog.Trace(c))
+		return h.sendErr(c, locale.ErrSomethingWrong)
+	}
 
 	// if the dancer can register or already registered, update the session
 	var singles []models.SessionSingle

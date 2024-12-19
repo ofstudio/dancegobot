@@ -10,12 +10,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Changed rate limit and render repeats config params due to 429 errors from Telegram
 
-# [v2.0.2] - 2024-12-16
+## [v2.0.1] - 2024-12-16
 
 - Fixed bug when `post.inline_message_id` overwrites `post.chat` (issue #15)
 - Added user settings help
 
-# [v2.0.0] - 2024-12-16
+## [v2.0.0] - 2024-12-16
 
 - Added user settings
 - Added auto pairing feature (issue #3)

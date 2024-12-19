@@ -94,6 +94,7 @@ func TestAppend(t *testing.T) {
 
 	t.Run("delim", func(t *testing.T) {
 		SetDelim(" | ")
+		defer SetDelim(DefaultDelim)
 		err := Append(errors.New("test1"), errors.New("test2"))
 		if err == nil {
 			t.Fatal("expected error, got nil")

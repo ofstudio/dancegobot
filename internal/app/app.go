@@ -104,6 +104,13 @@ func (a *App) Start(ctx context.Context) error {
 	<-ctx.Done()
 
 	// 9. Stop the bot
+	if a.cfg.Bot.UseWebhook {
+		if err = bot.RemoveWebhook(); err != nil {
+			a.log.Error("Failed to remove webhook: " + err.Error())
+		} else {
+			a.log.Info("Webhook removed")
+		}
+	}
 	bot.Stop()
 	a.log.Info("Bot stopped")
 

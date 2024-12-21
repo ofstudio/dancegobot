@@ -9,4 +9,5 @@ var (
 	ErrScan        = errors.New("failed to scan data")
 	ErrMarshal     = errors.New("failed to marshal data")
 	ErrUnmarshal   = errors.New("failed to unmarshal data")
+	ErrNilProfile  = errors.New("profile is nil")
 )

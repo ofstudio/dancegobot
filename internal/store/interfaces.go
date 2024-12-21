@@ -16,6 +16,7 @@ type Store interface {
 	EventUpsert(ctx context.Context, event *models.Event) error
 	EventGetUpdatedAfter(ctx context.Context, after time.Time) ([]*models.Event, error)
 	EventRemoveDraftsBefore(ctx context.Context, before time.Time) ([]string, error)
+	EventGetMy(ctx context.Context, profile *models.Profile) ([]string, error)
 	UserGet(ctx context.Context, id int64) (*models.User, error)
 	UserUpsert(ctx context.Context, user *models.User) error
 	HistoryInsert(ctx context.Context, item *models.HistoryItem) error

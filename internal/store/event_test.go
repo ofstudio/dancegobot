@@ -144,3 +144,82 @@ VALUES ('event_1', 1, '{"post": {"inline_message_id": "qwe"} }', '2021-01-01 00:
 		suite.Contains(idsFromDB, "event_8")
 	})
 }
+
+func (suite *TestStoreSuite) TestEventGetMy() {
+	suite.Run("owned by user", func() {
+		_, err := suite.store.db.Exec(`
+INSERT INTO events (id, owner_id, data)
+VALUES ('event_1', 1, '{"post": {"inline_message_id": "test"}}'),
+	   ('event_2', 1, '{"post": {"inline_message_id": "test"}}'),
+       ('event_3', 2, '{"post": {"inline_message_id": "test"}}')
+`)
+		suite.Require().NoError(err)
+
+		ids, err := suite.store.EventGetMy(context.Background(), &models.Profile{ID: 1})
+		suite.Require().NoError(err)
+		suite.Require().Len(ids, 2)
+		suite.Contains(ids, "event_1")
+		suite.Contains(ids, "event_2")
+	})
+
+	suite.Run("user as single", func() {
+		_, err := suite.store.db.Exec(`
+INSERT INTO events (id, owner_id, data)
+VALUES ('event_1', 100, '{"id": "event_1", "singles": [{"id": 1}], "post": {"inline_message_id": "test"}}'),
+       ('event_2', 200, '{"id": "event_2", "post": {"inline_message_id": "test"}}'),
+       ('event_3', 300, '{"id": "event_3", "singles": [{"id": 2}], "post": {"inline_message_id": "test"}}'),
+       ('event_4', 400, '{"id": "event_4", "singles": [{"id": 1}]}') -- no post
+`)
+		suite.Require().NoError(err)
+
+		ids, err := suite.store.EventGetMy(context.Background(), &models.Profile{ID: 1})
+		suite.Require().NoError(err)
+		suite.Require().Len(ids, 1)
+		suite.Equal("event_1", ids[0])
+	})
+
+	suite.Run("user in couple", func() {
+		_, err := suite.store.db.Exec(`
+INSERT INTO events (id, owner_id, data)
+VALUES ('event_1', 100, '{"couples": [{"dancers": [{"id": 1}, {"id": 2}]}], "post": {"inline_message_id": "test"}}'),
+       ('event_2', 200, '{"couples": [{"dancers": [{"id": 10}, {"id": 20}]}], "post": {"inline_message_id": "test"}}'),
+       ('event_3', 300, '{"couples": [{"dancers": [{"id": 1}, {"id": 3}]}], "post": {"inline_message_id": "test"}}')
+`)
+		suite.Require().NoError(err)
+
+		ids, err := suite.store.EventGetMy(context.Background(), &models.Profile{ID: 1})
+		suite.Require().NoError(err)
+		suite.Require().Len(ids, 2)
+		suite.Contains(ids, "event_1")
+		suite.Contains(ids, "event_3")
+	})
+
+	suite.Run("user by username", func() {
+		_, err := suite.store.db.Exec(`
+INSERT INTO events (id, owner_id, data)
+VALUES ('event_1', 100, '{"singles": [{"username": "testuser"}], "post": {"inline_message_id": "test"}}'),
+       ('event_2', 200, '{"couples": [{"dancers": [{"username": "testuser"}]}], "post": {"inline_message_id": "test"}}'),
+       ('event_3', 300, '{"singles": [{"id": 2, "username": ""}], "post": {"inline_message_id": "test"}}')
+`)
+		suite.Require().NoError(err)
+
+		ids, err := suite.store.EventGetMy(context.Background(), &models.Profile{ID: 1, Username: "testuser"})
+		suite.Require().NoError(err)
+		suite.Require().Len(ids, 2)
+		suite.Contains(ids, "event_1")
+		suite.Contains(ids, "event_2")
+	})
+
+	suite.Run("no events", func() {
+		_, err := suite.store.db.Exec(`
+INSERT INTO events (id, owner_id, data)
+VALUES ('event_1', 100, '{"singles": [{"id": 1}], "post": {"inline_message_id": "test"}}'),
+       ('event_2', 200, '{"couples": [{"dancers": [{"id": 10}, {"id": 20}]}], "post": {"inline_message_id": "test"}}'),
+       ('event_3', 300, '{"couples": [{"dancers": [{"id": 1}, {"id": 3}]}], "post": {"inline_message_id": "test"}}')
+`)
+		suite.Require().NoError(err)
+		ids, err := suite.store.EventGetMy(context.Background(), &models.Profile{ID: 999})
+		suite.Require().NoError(err)
+		suite.Empty(ids)
+	})
+}

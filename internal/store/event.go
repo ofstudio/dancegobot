@@ -126,7 +126,57 @@ RETURNING id;`
 	for rows.Next() {
 		var id string
 		if err = rows.Scan(&id); err != nil {
-			return nil, fmt.Errorf("%w: %w", ErrStmtExec, err)
+			return nil, fmt.Errorf("%w: %w", ErrScan, err)
+		}
+		ids = append(ids, id)
+	}
+
+	return ids, nil
+}
+
+// EventGetMy returns slice of event id related to the specified profile:
+//   - non-draft events owned by the user
+//   - events where the user is a participant: either in a couple or as a single
+func (s *SQLiteStore) EventGetMy(ctx context.Context, profile *models.Profile) ([]string, error) {
+	if profile == nil {
+		return nil, ErrNilProfile
+	}
+	// language=SQLite
+	const query = `SELECT id
+FROM events
+WHERE data ->> 'post.inline_message_id' IS NOT NULL -- Skip draft events
+  AND (
+    -- Search by owner_id
+    owner_id == ?1
+        -- Search in couples
+        OR EXISTS (SELECT 1
+                   FROM json_each(data -> 'couples') AS couple,
+                        json_each(couple.value -> 'dancers') AS dancer
+                   WHERE dancer.value ->> 'id' = ?1
+                      OR (?2 != '' AND dancer.value ->> 'username' = ?2))
+        -- Search in singles
+        OR EXISTS (SELECT 1
+                   FROM json_each(data -> 'singles') AS single
+                   WHERE single.value ->> 'id' = ?1
+                      OR (?2 != '' AND single.value ->> 'username' = ?2))
+    )
+ORDER BY created_at DESC
+`
+	stmt, err := s.stmt(ctx, query)
+	if err != nil {
+		return nil, fmt.Errorf("%w: %w", ErrStmtPrepare, err)
+	}
+
+	rows, err := stmt.QueryxContext(ctx, profile.ID, profile.Username)
+	if err != nil {
+		return nil, fmt.Errorf("%w: %w", ErrStmtExec, err)
+	}
+
+	var ids []string
+	for rows.Next() {
+		var id string
+		if err = rows.Scan(&id); err != nil {
+			return nil, fmt.Errorf("%w: %w", ErrScan, err)
 		}
 		ids = append(ids, id)
 	}

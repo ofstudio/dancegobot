@@ -10,7 +10,7 @@ import (
 func (suite *TestStoreSuite) TestEventUpsert() {
 	suite.Run("insert", func() {
 		event := &models.Event{
-			ID:      "abc",
+			ID:      "event_1",
 			Caption: "test",
 			Owner: models.Profile{
 				ID:        12,
@@ -28,7 +28,7 @@ func (suite *TestStoreSuite) TestEventUpsert() {
 
 	suite.Run("update", func() {
 		event := &models.Event{
-			ID:      "abc",
+			ID:      "event_1",
 			Caption: "test",
 			Owner: models.Profile{
 				ID:        12,
@@ -53,14 +53,14 @@ func (suite *TestStoreSuite) TestEventGet() {
 	suite.Run("success", func() {
 		_, err := suite.store.db.Exec(`
 INSERT INTO events (id, owner_id, data)
-VALUES ('abc', 1, '{"id": "abc", "owner": {"id": 1}}')
+VALUES ('event_1', 1, '{"id": "event_1", "owner": {"id": 1}}')
 `)
 		suite.Require().NoError(err)
 
-		event, err := suite.store.EventGet(context.Background(), "abc")
+		event, err := suite.store.EventGet(context.Background(), "event_1")
 		suite.Require().NoError(err)
 		suite.Equal(&models.Event{
-			ID: "abc",
+			ID: "event_1",
 			Owner: models.Profile{
 				ID: 1,
 			},
@@ -70,11 +70,11 @@ VALUES ('abc', 1, '{"id": "abc", "owner": {"id": 1}}')
 	suite.Run("not found", func() {
 		_, err := suite.store.db.Exec(`
 INSERT INTO events (id, owner_id, data)
-VALUES ('abc', 1, '{"id": "abc", "owner": {"id": 1}}')
+VALUES ('event_1', 1, '{"id": "event_1", "owner": {"id": 1}}')
 `)
 		suite.Require().NoError(err)
 
-		event, err := suite.store.EventGet(context.Background(), "def")
+		event, err := suite.store.EventGet(context.Background(), "event_2")
 		suite.ErrorIs(err, ErrNotFound)
 		suite.Nil(event)
 	})
@@ -84,9 +84,9 @@ func (suite *TestStoreSuite) TestEventGetUpdatedAfter() {
 	suite.Run("success", func() {
 		_, err := suite.store.db.Exec(`
 INSERT INTO events (id, owner_id, data, updated_at)
-VALUES ('abc', 1, '{"id": "abc", "post": {"inline_message_id": "qwe"} }', '2021-01-01 00:00:00'),
-       ('def', 1, '{"id": "def", "post": {"inline_message_id": "qwe"} }', '2021-01-02 00:00:01'),
-       ('ghi', 1, '{"id": "ghi"}', '2021-01-03 00:00:00')
+VALUES ('event_1', 1, '{"id": "event_1", "post": {"inline_message_id": "qwe"} }', '2021-01-01 00:00:00'),
+       ('event_2', 1, '{"id": "event_2", "post": {"inline_message_id": "qwe"} }', '2021-01-02 00:00:01'),
+       ('event_3', 1, '{"id": "event_3", }', '2021-01-03 00:00:00')
 `)
 		suite.Require().NoError(err)
 
@@ -96,7 +96,7 @@ VALUES ('abc', 1, '{"id": "abc", "post": {"inline_message_id": "qwe"} }', '2021-
 		)
 		suite.Require().NoError(err)
 		suite.Require().Len(events, 1)
-		suite.Equal("def", events[0].ID)
+		suite.Equal("event_2", events[0].ID)
 	})
 }
 
@@ -104,14 +104,14 @@ func (suite *TestStoreSuite) TestEventRemoveDraftsBefore() {
 	suite.Run("success", func() {
 		_, err := suite.store.db.Exec(`
 INSERT INTO events (id, owner_id, data, updated_at)
-VALUES ('abc', 1, '{"id": "abc", "post": {"inline_message_id": "qwe"} }', '2021-01-01 00:00:00'), -- This should NOT be removed
-       ('xxx', 1, '{"id": "def", "couples": [1,2,3] }', '2021-01-02 00:00:01'),                   -- This should NOT be removed
-       ('yyy', 1, '{"id": "def", "singles": [5,6,7] }', '2021-01-02 00:00:01'),                   -- This should NOT be removed
-       ('def', 1, '{"id": "def" }', '2021-01-02 00:00:01'),                                       -- This should BE removed
-       ('ghi', 1, '{"id": "ghi"}', '2021-01-03 00:00:00'),                                        -- This should BE removed
-       ('jkl', 1, '{"id": "jkl", "post": {"inline_message_id": "zxc"} }', '2021-01-04 00:00:00'), -- This should NOT be removed
-       ('mno', 1, '{"id": "mno" }', '2021-01-05 00:00:01'),                                       -- This should NOT be removed
-       ('pqr', 1, '{"id": "pqr", "post": {"inline_message_id": "rty"} }', '2021-01-06 00:00:00')  -- This should NOT be removed
+VALUES ('event_1', 1, '{"post": {"inline_message_id": "qwe"} }', '2021-01-01 00:00:00'), -- This should NOT be removed
+       ('event_2', 1, '{"couples": [1,2,3] }', '2021-01-02 00:00:01'),                   -- This should NOT be removed
+       ('event_3', 1, '{"singles": [5,6,7] }', '2021-01-02 00:00:01'),                   -- This should NOT be removed
+       ('event_4', 1, '{}', '2021-01-02 00:00:01'),                                       -- This should BE removed
+       ('event_5', 1, '{}', '2021-01-03 00:00:00'),                                        -- This should BE removed
+       ('event_6', 1, '{"post": {"inline_message_id": "zxc"} }', '2021-01-04 00:00:00'), -- This should NOT be removed
+       ('event_7', 1, '{}', '2021-01-05 00:00:01'),                                       -- This should NOT be removed
+       ('event_8', 1, '{"post": {"inline_message_id": "rty"} }', '2021-01-06 00:00:00')  -- This should NOT be removed
 `)
 		suite.Require().NoError(err)
 
@@ -121,8 +121,8 @@ VALUES ('abc', 1, '{"id": "abc", "post": {"inline_message_id": "qwe"} }', '2021-
 		)
 		suite.Require().NoError(err)
 		suite.Require().Len(ids, 2)
-		suite.Contains(ids, "def")
-		suite.Contains(ids, "ghi")
+		suite.Contains(ids, "event_4")
+		suite.Contains(ids, "event_5")
 
 		res, err := suite.store.db.Query("SELECT id FROM events")
 		suite.Require().NoError(err)
@@ -136,11 +136,11 @@ VALUES ('abc', 1, '{"id": "abc", "post": {"inline_message_id": "qwe"} }', '2021-
 			idsFromDB = append(idsFromDB, id)
 		}
 		suite.Require().Len(idsFromDB, 6)
-		suite.Contains(idsFromDB, "abc")
-		suite.Contains(idsFromDB, "jkl")
-		suite.Contains(idsFromDB, "mno")
-		suite.Contains(idsFromDB, "pqr")
-		suite.Contains(idsFromDB, "xxx")
-		suite.Contains(idsFromDB, "yyy")
+		suite.Contains(idsFromDB, "event_1")
+		suite.Contains(idsFromDB, "event_2")
+		suite.Contains(idsFromDB, "event_3")
+		suite.Contains(idsFromDB, "event_6")
+		suite.Contains(idsFromDB, "event_7")
+		suite.Contains(idsFromDB, "event_8")
 	})
 }

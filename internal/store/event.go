@@ -75,7 +75,7 @@ WHERE updated_at > ?1
 
 	rows, err := stmt.QueryxContext(ctx, after)
 	if err != nil {
-		return nil, fmt.Errorf("%w: %w", ErrStmtExec, err)
+		return nil, fmt.Errorf("%w: %w", ErrScan, err)
 	}
 	//goland:noinspection ALL
 	defer rows.Close()
@@ -84,7 +84,7 @@ WHERE updated_at > ?1
 	for rows.Next() {
 		var data []byte
 		if err = rows.Scan(&data); err != nil {
-			return nil, fmt.Errorf("%w: %w", ErrStmtExec, err)
+			return nil, fmt.Errorf("%w: %w", ErrScan, err)
 		}
 
 		event := &models.Event{}

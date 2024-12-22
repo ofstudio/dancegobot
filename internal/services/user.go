@@ -33,15 +33,25 @@ func (s *UserService) WithLogger(l *slog.Logger) *UserService {
 }
 
 // Get returns a user by profile.
-// If the user does not exist, it returns a [*models.User] with the given profile.
+// If the user does not exist, it creates a new user with the given profile.
+// If the user exists but the profile is different, it updates the profile.
 func (s *UserService) Get(ctx context.Context, profile models.Profile) (*models.User, error) {
 	user, err := s.store.UserGet(ctx, profile.ID)
-	if err != nil {
-		if errors.Is(err, store.ErrNotFound) {
-			return &models.User{Profile: profile, CreatedAt: nowFn()}, nil
-		}
+	if err != nil && !errors.Is(err, store.ErrNotFound) {
 		return nil, fmt.Errorf("failed to get user: %w", err)
 	}
+
+	// If the user does not exist or the profile should be updated, upsert the user
+	if s.shouldUpdate(user, profile) {
+		user = &models.User{
+			Profile: profile,
+		}
+		if err = s.store.UserUpsertProfile(ctx, user); err != nil {
+			return nil, fmt.Errorf("failed to upsert user profile: %w", err)
+		}
+		s.log.Info("[user service] user upserted", "profile", profile)
+	}
+
 	return user, nil
 }
 
@@ -51,4 +61,12 @@ func (s *UserService) Upsert(ctx context.Context, user *models.User) error {
 		return fmt.Errorf("failed to upsert user: %w", err)
 	}
 	return nil
+}
+
+// shouldUpdate returns true if the user should be updated.
+func (s *UserService) shouldUpdate(user *models.User, profile models.Profile) bool {
+	return user == nil ||
+		user.Profile.FirstName != profile.FirstName ||
+		user.Profile.LastName != profile.LastName ||
+		user.Profile.Username != profile.Username
 }

@@ -105,7 +105,6 @@ const (
 	ResultDancerForbidden                               // The event is forbidden for the dancer
 	ResultPartnerForbidden                              // The event is forbidden for given partner
 	ResultClosedForSingles                              // The event is closed for singles
-	ResultClosedForSingleRole                           // The event is closed for singles  with given role
 )
 
 // IsSuccess returns true if the registration was successful.
@@ -122,8 +121,7 @@ func (r RegistrationResult) IsRetryable() bool {
 		r == ResultPartnerSameRole ||
 		r == ResultSelfNotAllowed ||
 		r == ResultPartnerForbidden ||
-		r == ResultClosedForSingles ||
-		r == ResultClosedForSingleRole
+		r == ResultClosedForSingles
 }
 
 func (r RegistrationResult) String() string {
@@ -158,8 +156,6 @@ func (r RegistrationResult) String() string {
 		return "partner_forbidden"
 	case ResultClosedForSingles:
 		return "closed_for_singles"
-	case ResultClosedForSingleRole:
-		return "closed_for_single_role"
 	default:
 		return fmt.Sprintf("unknown_result_%d", r)
 	}

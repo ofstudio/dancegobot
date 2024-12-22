@@ -582,32 +582,6 @@ func (suite *TestEventHandlerSuite) TestSingleAdd() {
 		suite.Require().Len(handler.notif, 0)
 	})
 
-	suite.Run("event is closed for single leaders", func() {
-		event := sampleEvent()
-		event.Settings.ClosedFor = models.ClosedForSingleLeaders
-		handler := NewEventHandler(&event)
-		d := &models.Dancer{
-			Profile:  &models.Profile{ID: 600, FirstName: "Alice", LastName: "Wonder"},
-			Role:     models.RoleLeader,
-			FullName: "Alice Wonder",
-		}
-
-		got := handler.SingleAdd(d)
-
-		suite.Require().NotNil(got)
-		suite.Equal(models.ResultClosedForSingleRole, got.Result)
-		suite.Equal(models.StatusNotRegistered, got.Status)
-		suite.Nil(got.Partner)
-		suite.Nil(got.Related)
-		suite.Equal(d.ID, got.ID)
-		suite.Equal(d.FullName, got.FullName)
-		suite.Equal(models.RoleLeader, got.Role)
-		suite.False(got.AsSingle)
-
-		suite.Require().Len(event.Singles, 2)
-		suite.Require().Len(handler.hist, 0)
-		suite.Require().Len(handler.notif, 0)
-	})
 }
 
 func (suite *TestEventHandlerSuite) TestSingleAdd_autoPair() {
@@ -691,11 +665,11 @@ func (suite *TestEventHandlerSuite) TestSingleAdd_autoPair() {
 		suite.Equal(got.Dancer, handler.notif[0].Payload.Partner)
 	})
 
-	suite.Run("closed for single leaders but found matching partner", func() {
+	suite.Run("closed for singles but found matching partner", func() {
 		config.SetBotProfile(botUser)
 		event := sampleEvent()
 		event.Settings.AutoPairing = true
-		event.Settings.ClosedFor = models.ClosedForSingleLeaders
+		event.Settings.ClosedFor = models.ClosedForSingles
 		handler := NewEventHandler(&event)
 		d := &models.Dancer{
 			Profile: &models.Profile{ID: 700, FirstName: "Bobby", LastName: "Fisher"},
@@ -709,10 +683,10 @@ func (suite *TestEventHandlerSuite) TestSingleAdd_autoPair() {
 		suite.Equal(models.StatusInCouple, got.Status)
 	})
 
-	suite.Run("closed for single followers and no matching partners", func() {
+	suite.Run("closed for singles and no matching partners", func() {
 		event := sampleEvent()
 		event.Settings.AutoPairing = true
-		event.Settings.ClosedFor = models.ClosedForSingleFollowers
+		event.Settings.ClosedFor = models.ClosedForSingles
 		handler := NewEventHandler(&event)
 		d := &models.Dancer{
 			Profile: &models.Profile{ID: 600, FirstName: "Mary"},
@@ -722,7 +696,7 @@ func (suite *TestEventHandlerSuite) TestSingleAdd_autoPair() {
 		got := handler.SingleAdd(d)
 
 		suite.Require().NotNil(got)
-		suite.Equal(models.ResultClosedForSingleRole, got.Result)
+		suite.Equal(models.ResultClosedForSingles, got.Result)
 		suite.Equal(models.StatusNotRegistered, got.Status)
 	})
 

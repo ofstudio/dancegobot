@@ -35,9 +35,7 @@ type EventSettings struct {
 type ClosedFor string
 
 const (
-	ClosedForNone            ClosedFor = ""                 // Open for all
-	ClosedForAll             ClosedFor = "all"              // Closed for all. No modifications allowed
-	ClosedForSingles         ClosedFor = "singles"          // Closed for singles
-	ClosedForSingleLeaders   ClosedFor = "single_leaders"   // Closed for single leaders
-	ClosedForSingleFollowers ClosedFor = "single_followers" // Closed for single followers
+	ClosedForNone    ClosedFor = ""        // Open for all
+	ClosedForAll     ClosedFor = "all"     // Closed for all. No modifications allowed
+	ClosedForSingles ClosedFor = "singles" // Closed for singles
 )

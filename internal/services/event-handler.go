@@ -104,7 +104,7 @@ func (h *EventHandler) CoupleAdd(d, p *models.Dancer) *models.Registration {
 		return reg
 	}
 
-	// 8. Register as couple
+	// Register as couple
 	return h.coupleAdd(reg, false)
 }
 
@@ -190,54 +190,46 @@ func (h *EventHandler) coupleAdd(reg *models.Registration, isAutoPair bool) *mod
 // If auto pairing is enabled, tries to auto pair the dancer.
 func (h *EventHandler) SingleAdd(d *models.Dancer) *models.Registration {
 
-	result := models.ResultNoResult
 	reg := h.RegistrationGet(d)
+	reg.Result = models.ResultNoResult
 
 	// Check if event is not forbidden for the dancer
 	if reg.Status == models.StatusForbidden {
-		result = models.ResultDancerForbidden
+		reg.Result = models.ResultDancerForbidden
 	}
 
 	// Check if the dancer not already registered in a couple
 	if reg.Status == models.StatusInCouple {
-		result = models.ResultAlreadyInCouple
+		reg.Result = models.ResultAlreadyInCouple
 	}
 
-	// 3. Check if dancer not already registered as single
+	// Check if dancer not already registered as single
 	if reg.Status == models.StatusAsSingle {
-		result = models.ResultAlreadyAsSingle
+		reg.Result = models.ResultAlreadyAsSingle
 	}
 
-	// 4. Check if event is not closed for new registrations
+	// Check if event is not closed for new registrations
 	if h.event.Settings.ClosedFor == models.ClosedForAll {
-		result = models.ResultEventClosed
+		reg.Result = models.ResultEventClosed
 	}
 
-	// 5. Try to auto pair the reg
+	// Try to auto pair the reg if possible
+	// This should be done before checking if singles are allowed
 	if autoPairReg := h.tryAutoPair(reg); autoPairReg != nil {
 		return autoPairReg
 	}
 
-	// 6. Check if singles are allowed for the event
+	// Check if singles are allowed for the event
 	if h.event.Settings.ClosedFor == models.ClosedForSingles {
-		result = models.ResultClosedForSingles
+		reg.Result = models.ResultClosedForSingles
 	}
 
-	// 7. Check if singles are allowed for the role
-	if (h.event.Settings.ClosedFor == models.ClosedForSingleLeaders &&
-		reg.Dancer.Role == models.RoleLeader) ||
-		(h.event.Settings.ClosedFor == models.ClosedForSingleFollowers &&
-			reg.Dancer.Role == models.RoleFollower) {
-		result = models.ResultClosedForSingleRole
-	}
-
-	// 8. Break if any of the checks failed
-	if result != models.ResultNoResult {
-		reg.Result = result
+	// Return registration if any of the checks above failed
+	if reg.Result != models.ResultNoResult {
 		return reg
 	}
 
-	// 9. Create a single and add to the event
+	// Create a single and add to the event
 	reg.Dancer.AsSingle = true
 	h.event.Singles = append(h.event.Singles, *reg.Dancer)
 	h.hist = append(h.hist, &models.HistoryItem{
@@ -248,7 +240,7 @@ func (h *EventHandler) SingleAdd(d *models.Dancer) *models.Registration {
 		CreatedAt: nowFn(),
 	})
 
-	// 11. Return the update result
+	// Return the update result
 	reg.Status = models.StatusAsSingle
 	reg.Result = models.ResultRegisteredAsSingle
 	reg.Partner = nil

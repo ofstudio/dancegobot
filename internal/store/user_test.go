@@ -74,3 +74,40 @@ func (suite *TestStoreSuite) TestUserUpsert() {
 		suite.Equal(updatedUser.Profile, user.Profile)
 	})
 }
+
+func (suite *TestStoreSuite) TestUserUpsertProfile() {
+	suite.Run("insert new user", func() {
+		// Insert new user into the database
+		user := &models.User{
+			Profile: models.Profile{ID: 4, FirstName: "NewUser"},
+		}
+		err := suite.store.UserUpsertProfile(context.Background(), user)
+		suite.Require().NoError(err)
+
+		// Get user from the database
+		got, err := suite.store.UserGet(context.Background(), 4)
+		suite.Require().NoError(err)
+		suite.Equal(user.Profile, got.Profile)
+	})
+
+	suite.Run("update existing user", func() {
+		// Add user to the database
+		_, err := suite.store.db.Exec(`
+		INSERT INTO users (id, profile, session)
+		VALUES (5, '{"id": 5, "first_name": "ExistingUser"}', '{"action": "signup"}')`)
+		suite.Require().NoError(err)
+
+		// Update user in the database
+		updatedUser := &models.User{
+			Profile: models.Profile{ID: 5, FirstName: "UpdatedUser", LastName: "Test", Username: "test"},
+		}
+		err = suite.store.UserUpsertProfile(context.Background(), updatedUser)
+		suite.Require().NoError(err)
+
+		// Get user from the database
+		got, err := suite.store.UserGet(context.Background(), 5)
+		suite.Require().NoError(err)
+		suite.Equal(updatedUser.Profile, got.Profile)
+		suite.Equal(models.SessionSignup, got.Session.Action)
+	})
+}

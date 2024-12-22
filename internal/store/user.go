@@ -90,6 +90,36 @@ RETURNING id, profile, session, settings, created_at, updated_at
 	return s.userUnmarshalRow(row, user)
 }
 
+// UserUpsertProfile updates the user profile.
+func (s *SQLiteStore) UserUpsertProfile(ctx context.Context, user *models.User) error {
+	const query =
+	// language=SQLite
+	`INSERT INTO users (id, profile)
+VALUES (?1, ?2)
+ON CONFLICT (id) DO UPDATE SET profile    = excluded.profile,
+                               updated_at = CURRENT_TIMESTAMP
+RETURNING id, profile, session, settings, created_at, updated_at
+`
+
+	stmt, err := s.stmt(ctx, query)
+	if err != nil {
+		return fmt.Errorf("%w: %w", ErrStmtPrepare, err)
+	}
+
+	jsonProfile, err := json.Marshal(user.Profile)
+	if err != nil {
+		return fmt.Errorf("%w: user.profile, user.id=%d, %w", ErrMarshal, user.Profile.ID, err)
+	}
+
+	var row userRow
+	if err = stmt.QueryRowxContext(ctx, user.Profile.ID, jsonProfile).
+		StructScan(&row); err != nil {
+		return fmt.Errorf("%w: %w", ErrStmtExec, err)
+	}
+
+	return s.userUnmarshalRow(row, user)
+}
+
 func (s *SQLiteStore) userUnmarshalRow(row userRow, user *models.User) error {
 	if user == nil {
 		return errors.New("user is nil")

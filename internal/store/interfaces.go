@@ -18,6 +18,7 @@ type Store interface {
 	EventRemoveDraftsBefore(ctx context.Context, before time.Time) ([]string, error)
 	UserGet(ctx context.Context, id int64) (*models.User, error)
 	UserUpsert(ctx context.Context, user *models.User) error
+	UserUpsertProfile(ctx context.Context, user *models.User) error
 	HistoryInsert(ctx context.Context, item *models.HistoryItem) error
 	HistoryRemoveByEventIDs(ctx context.Context, eventIDs []string) (int, error)
 }

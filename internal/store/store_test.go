@@ -7,6 +7,7 @@ import (
 
 	"github.com/stretchr/testify/suite"
 
+	"github.com/ofstudio/dancegobot/internal/config"
 	"github.com/ofstudio/dancegobot/internal/models"
 )
 
@@ -20,7 +21,7 @@ type TestStoreSuite struct {
 }
 
 func (suite *TestStoreSuite) SetupSubTest() {
-	db, err := NewSQLite(":memory:", 1)
+	db, err := NewSQLite(":memory:", config.Default().DB.Version)
 	suite.Require().NoError(err)
 	suite.store = NewSQLiteStore(db)
 }
@@ -32,26 +33,20 @@ func (suite *TestStoreSuite) TearDownSubTest() {
 
 func (suite *TestStoreSuite) TestStoreTx() {
 	suite.Run("tx and non-tx requests", func() {
-		time.Sleep(300 * time.Millisecond)
-		db, err := NewSQLite(":memory:", 1)
-		suite.Require().NoError(err)
-
-		store := NewSQLiteStore(db)
-		defer store.Close()
 
 		go func() {
-			tx, err := store.BeginTx(context.Background())
+			tx, err := suite.store.Begin(context.Background())
 			suite.Require().NoError(err)
 
-			time.Sleep(700 * time.Millisecond)
-			err = tx.UserUpsert(context.Background(), &models.User{})
-			suite.Require().NoError(err)
+			time.Sleep(200 * time.Millisecond)
+
+			suite.Require().
+				NoError(tx.UserUpsertProfile(context.Background(), &models.User{Profile: models.Profile{ID: 1}}))
 			suite.Require().NoError(tx.Commit())
 		}()
 
-		time.Sleep(300 * time.Millisecond)
-		err = store.UserUpsert(context.Background(), &models.User{})
-		suite.Require().NoError(err)
-
+		time.Sleep(100 * time.Millisecond)
+		suite.Require().
+			NoError(suite.store.UserUpsertProfile(context.Background(), &models.User{Profile: models.Profile{ID: 2}}))
 	})
 }

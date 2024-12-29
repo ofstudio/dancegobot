@@ -3,7 +3,6 @@ package store
 import (
 	"context"
 	"database/sql"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"time"
@@ -12,7 +11,7 @@ import (
 )
 
 // EventGet returns an event by its id.
-// If the event does not exist, returns ErrNotFound.
+// If the event does not exist, returns nil.
 func (s *SQLiteStore) EventGet(ctx context.Context, eventID string) (*models.Event, error) {
 	const query = `SELECT data FROM events WHERE id = ?1`
 	stmt, err := s.stmt(ctx, query)
@@ -22,20 +21,20 @@ func (s *SQLiteStore) EventGet(ctx context.Context, eventID string) (*models.Eve
 	var data []byte
 	if err = stmt.QueryRowxContext(ctx, eventID).Scan(&data); err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			return nil, ErrNotFound
+			return nil, nil
 		}
 		return nil, fmt.Errorf("%w: %w", ErrStmtExec, err)
 	}
 
 	event := &models.Event{}
-	if err = json.Unmarshal(data, event); err != nil {
-		return nil, fmt.Errorf("%w: %w", ErrUnmarshal, err)
+	if err = s.unmarshal("data", data, event); err != nil {
+		return nil, err
 	}
 
 	return event, nil
 }
 
-// EventUpsert inserts or updates an event.
+// EventUpsert creates new event or updates existing one.
 func (s *SQLiteStore) EventUpsert(ctx context.Context, event *models.Event) error {
 	const query =
 	// language=SQLite
@@ -49,9 +48,9 @@ ON CONFLICT (id) DO UPDATE SET owner_id   = excluded.owner_id,
 		return fmt.Errorf("%w: %w", ErrStmtPrepare, err)
 	}
 
-	data, err := json.Marshal(event)
+	data, err := s.marshal("data", event)
 	if err != nil {
-		return fmt.Errorf("%w: %w", ErrMarshal, err)
+		return err
 	}
 
 	if _, err = stmt.ExecContext(ctx, event.ID, event.Owner.ID, data); err != nil {
@@ -88,10 +87,9 @@ WHERE updated_at > ?1
 		}
 
 		event := &models.Event{}
-		if err = json.Unmarshal(data, event); err != nil {
-			return nil, fmt.Errorf("%w: %w", ErrUnmarshal, err)
+		if err = s.unmarshal("data", data, event); err != nil {
+			return nil, err
 		}
-
 		events = append(events, event)
 	}
 
@@ -139,7 +137,7 @@ RETURNING id;`
 //   - events where the user is a participant: either in a couple or as a single
 func (s *SQLiteStore) EventGetMy(ctx context.Context, profile *models.Profile) ([]string, error) {
 	if profile == nil {
-		return nil, ErrNilProfile
+		return nil, ErrNil
 	}
 	// language=SQLite
 	const query = `SELECT id

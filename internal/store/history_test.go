@@ -7,7 +7,7 @@ import (
 	"github.com/ofstudio/dancegobot/internal/models"
 )
 
-func (suite *TestStoreSuite) TestStoreHistoryInsert() {
+func (suite *TestStoreSuite) TestStoreHistoryCreate() {
 	suite.Run("success", func() {
 		eventID := "abc"
 		item := &models.HistoryItem{
@@ -20,7 +20,7 @@ func (suite *TestStoreSuite) TestStoreHistoryInsert() {
 			Details: `{"foo": "bar"}`,
 		}
 
-		err := suite.store.HistoryInsert(context.Background(), item)
+		err := suite.store.HistoryCreate(context.Background(), item)
 		suite.Require().NoError(err)
 
 		rows, err := suite.store.db.Query(`SELECT initiator_id, event_id, data

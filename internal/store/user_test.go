@@ -17,7 +17,6 @@ VALUES (1, '{"id": 1, "first_name": "Test"}', '{}', ?1, ?2)`, now, now)
 
 		suite.Require().NoError(err)
 
-		// Get user from the database
 		user, err := suite.store.UserGet(context.Background(), 1)
 		suite.Require().NoError(err)
 		suite.Equal(models.Profile{ID: 1, FirstName: "Test"}, user.Profile)
@@ -26,88 +25,119 @@ VALUES (1, '{"id": 1, "first_name": "Test"}', '{}', ?1, ?2)`, now, now)
 	})
 
 	suite.Run("not found", func() {
-		// Get user from the database
 		user, err := suite.store.UserGet(context.Background(), 1)
-		suite.ErrorIs(err, ErrNotFound)
+		suite.NoError(err)
 		suite.Nil(user)
 	})
 }
 
-func (suite *TestStoreSuite) TestUserUpsert() {
-	suite.Run("insert new user", func() {
-		// Insert new user into the database
-		user := &models.User{
-			Profile:  models.Profile{ID: 2, FirstName: "NewUser"},
-			Session:  models.Session{Action: "start"},
-			Settings: models.UserSettings{},
-		}
-		err := suite.store.UserUpsert(context.Background(), user)
-		suite.Require().NoError(err)
-
-		// Get user from the database
-		insertedUser, err := suite.store.UserGet(context.Background(), 2)
-		suite.Require().NoError(err)
-		suite.Equal(user.Profile, insertedUser.Profile)
-		suite.Equal(user.Session, insertedUser.Session)
-	})
-
-	suite.Run("update existing user", func() {
-		// Add user to the database
-		now := time.Now().Truncate(time.Second).UTC()
-		_, err := suite.store.db.Exec(`
-		INSERT INTO users (id, profile, session, created_at, updated_at)
-		VALUES (3, '{"id": 3, "first_name": "ExistingUser"}', '{}', ?1, ?2)`, now, now)
-		suite.Require().NoError(err)
-
-		// Update user in the database
-		updatedUser := &models.User{
-			Profile:  models.Profile{ID: 3, FirstName: "UpdatedUser"},
-			Session:  models.Session{},
-			Settings: models.UserSettings{},
-		}
-		err = suite.store.UserUpsert(context.Background(), updatedUser)
-		suite.Require().NoError(err)
-
-		// Get user from the database
-		user, err := suite.store.UserGet(context.Background(), 3)
-		suite.Require().NoError(err)
-		suite.Equal(updatedUser.Profile, user.Profile)
-	})
-}
-
 func (suite *TestStoreSuite) TestUserUpsertProfile() {
-	suite.Run("insert new user", func() {
-		// Insert new user into the database
+	suite.Run("new user", func() {
 		user := &models.User{
-			Profile: models.Profile{ID: 4, FirstName: "NewUser"},
+			Profile:  models.Profile{ID: 1, FirstName: "Test"},
+			Settings: models.UserSettings{Event: models.EventSettings{AutoPairing: true}},
 		}
 		err := suite.store.UserUpsertProfile(context.Background(), user)
 		suite.Require().NoError(err)
 
-		// Get user from the database
-		got, err := suite.store.UserGet(context.Background(), 4)
+		got, err := suite.store.UserGet(context.Background(), 1)
 		suite.Require().NoError(err)
 		suite.Equal(user.Profile, got.Profile)
+		suite.Equal(user.Settings, got.Settings)
+		suite.NotEmpty(user.CreatedAt)
+		suite.NotEmpty(user.UpdatedAt)
 	})
 
-	suite.Run("update existing user", func() {
+	suite.Run("update existing user profile", func() {
 		// Add user to the database
+		now := time.Now().Truncate(time.Second).Add(-1 * time.Second).UTC()
 		_, err := suite.store.db.Exec(`
-		INSERT INTO users (id, profile, session)
-		VALUES (5, '{"id": 5, "first_name": "ExistingUser"}', '{"action": "signup"}')`)
+INSERT INTO users (id, profile, session, settings, created_at, updated_at)
+VALUES (1, '{"id": 1, "first_name": "Test"}', '{}', '{"event": {"auto_pairing": true}}', ?1, ?2)`, now, now)
 		suite.Require().NoError(err)
 
-		// Update user in the database
-		updatedUser := &models.User{
-			Profile: models.Profile{ID: 5, FirstName: "UpdatedUser", LastName: "Test", Username: "test"},
+		user := &models.User{
+			Profile: models.Profile{ID: 1, FirstName: "Test2"},
 		}
-		err = suite.store.UserUpsertProfile(context.Background(), updatedUser)
+
+		err = suite.store.UserUpsertProfile(context.Background(), user)
+		suite.Require().NoError(err)
+		suite.Equal(models.Profile{ID: 1, FirstName: "Test2"}, user.Profile)
+		suite.Equal(models.UserSettings{Event: models.EventSettings{AutoPairing: true}}, user.Settings)
+		suite.NotEmpty(user.CreatedAt)
+		suite.NotEmpty(user.UpdatedAt)
+		suite.NotEqual(user.CreatedAt, user.UpdatedAt)
+	})
+}
+
+func (suite *TestStoreSuite) TestUserUpdateSession() {
+	suite.Run("update session", func() {
+		// Add user to the database
+		now := time.Now().Truncate(time.Second).Add(-1 * time.Second).UTC()
+		_, err := suite.store.db.Exec(`
+		INSERT INTO users (id, profile, session, created_at, updated_at)
+		VALUES (1, '{"id": 1, "first_name": "Test"}', '{}', ?1, ?2)`, now, now)
 		suite.Require().NoError(err)
 
-		// Get user from the database
-		got, err := suite.store.UserGet(context.Background(), 5)
+		user := &models.User{
+			Profile: models.Profile{ID: 1},
+			Session: models.Session{EventID: "test_event"},
+		}
+
+		err = suite.store.UserUpdateSession(context.Background(), user)
 		suite.Require().NoError(err)
-		suite.Equal(updatedUser.Profile, got.Profile)
-		suite.Equal(models.SessionSignup, got.Session.Action)
+
+		got, err := suite.store.UserGet(context.Background(), 1)
+		suite.Require().NoError(err)
+		suite.Equal(user.Session, got.Session)
+		suite.Equal("test_event", got.Session.EventID)
+		suite.NotEmpty(got.UpdatedAt)
+		suite.NotEqual(got.CreatedAt, got.UpdatedAt)
+	})
+
+	suite.Run("user not found", func() {
+		user := &models.User{
+			Profile: models.Profile{ID: 2},
+			Session: models.Session{EventID: "test_event"},
+		}
+
+		err := suite.store.UserUpdateSession(context.Background(), user)
+		suite.Require().ErrorIs(err, ErrNotFound)
+	})
+}
+
+func (suite *TestStoreSuite) TestUserUpdateSettings() {
+	suite.Run("update settings", func() {
+		// Add user to the database
+		now := time.Now().Truncate(time.Second).Add(-1 * time.Second).UTC()
+		_, err := suite.store.db.Exec(`
+		INSERT INTO users (id, profile, session, settings, created_at, updated_at)
+		VALUES (1, '{"id": 1, "first_name": "Test"}', '{}', '{}', ?1, ?2)`, now, now)
+		suite.Require().NoError(err)
+
+		user := &models.User{
+			Profile:  models.Profile{ID: 1},
+			Settings: models.UserSettings{Event: models.EventSettings{AutoPairing: true}},
+		}
+
+		err = suite.store.UserUpdateSettings(context.Background(), user)
+		suite.Require().NoError(err)
+
+		got, err := suite.store.UserGet(context.Background(), 1)
+		suite.Require().NoError(err)
+		suite.Equal(user.Settings, got.Settings)
+		suite.Equal(models.EventSettings{AutoPairing: true}, got.Settings.Event)
+		suite.NotEmpty(got.UpdatedAt)
+		suite.NotEqual(got.CreatedAt, got.UpdatedAt)
+	})
+
+	suite.Run("user not found", func() {
+		user := &models.User{
+			Profile:  models.Profile{ID: 2},
+			Settings: models.UserSettings{Event: models.EventSettings{AutoPairing: true}},
+		}
+
+		err := suite.store.UserUpdateSettings(context.Background(), user)
+		suite.Require().ErrorIs(err, ErrNotFound)
 	})
 }

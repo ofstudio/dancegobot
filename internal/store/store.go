@@ -3,6 +3,7 @@ package store
 import (
 	"context"
 	"database/sql"
+	"encoding/json"
 	"fmt"
 	"sync"
 
@@ -61,8 +62,8 @@ func (s *SQLiteStore) Rollback() error {
 	return tx.Rollback()
 }
 
-// BeginTx returns a new [SQLiteStore] within a transaction.
-func (s *SQLiteStore) BeginTx(ctx context.Context) (Store, error) {
+// Begin returns a new [SQLiteStore] within a transaction.
+func (s *SQLiteStore) Begin(ctx context.Context) (Store, error) {
 	if s.execer != s.db {
 		return nil, fmt.Errorf("unable to start a transaction within another transaction")
 	}
@@ -124,6 +125,21 @@ func (s *SQLiteStore) closeAllStmts() {
 		_ = stmt.Close()
 		delete(s.namedStmtsIdx, query)
 	}
+}
+
+func (s *SQLiteStore) marshal(filedName string, field any) ([]byte, error) {
+	data, err := json.Marshal(field)
+	if err != nil {
+		return nil, fmt.Errorf("%w %s: %w", ErrMarshal, filedName, err)
+	}
+	return data, nil
+}
+
+func (s *SQLiteStore) unmarshal(filedName string, data []byte, field any) error {
+	if err := json.Unmarshal(data, field); err != nil {
+		return fmt.Errorf("%w %s: %w", ErrUnmarshal, filedName, err)
+	}
+	return nil
 }
 
 // execer - interface for executing queries to the database.

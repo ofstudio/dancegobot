@@ -7,6 +7,37 @@ import (
 	"github.com/ofstudio/dancegobot/internal/models"
 )
 
+func (suite *TestStoreSuite) TestEventGet() {
+	suite.Run("success", func() {
+		_, err := suite.store.db.Exec(`
+INSERT INTO events (id, owner_id, data)
+VALUES ('event_1', 1, '{"id": "event_1", "owner": {"id": 1}}')
+`)
+		suite.Require().NoError(err)
+
+		event, err := suite.store.EventGet(context.Background(), "event_1")
+		suite.Require().NoError(err)
+		suite.Equal(&models.Event{
+			ID: "event_1",
+			Owner: models.Profile{
+				ID: 1,
+			},
+		}, event)
+	})
+
+	suite.Run("not found", func() {
+		_, err := suite.store.db.Exec(`
+INSERT INTO events (id, owner_id, data)
+VALUES ('event_1', 1, '{"id": "event_1", "owner": {"id": 1}}')
+`)
+		suite.Require().NoError(err)
+
+		event, err := suite.store.EventGet(context.Background(), "event_2")
+		suite.Require().NoError(err)
+		suite.Nil(event)
+	})
+}
+
 func (suite *TestStoreSuite) TestEventUpsert() {
 	suite.Run("insert", func() {
 		event := &models.Event{
@@ -46,37 +77,6 @@ func (suite *TestStoreSuite) TestEventUpsert() {
 		got, err := suite.store.EventGet(context.Background(), event.ID)
 		suite.Require().NoError(err)
 		suite.Equal(event, got)
-	})
-}
-
-func (suite *TestStoreSuite) TestEventGet() {
-	suite.Run("success", func() {
-		_, err := suite.store.db.Exec(`
-INSERT INTO events (id, owner_id, data)
-VALUES ('event_1', 1, '{"id": "event_1", "owner": {"id": 1}}')
-`)
-		suite.Require().NoError(err)
-
-		event, err := suite.store.EventGet(context.Background(), "event_1")
-		suite.Require().NoError(err)
-		suite.Equal(&models.Event{
-			ID: "event_1",
-			Owner: models.Profile{
-				ID: 1,
-			},
-		}, event)
-	})
-
-	suite.Run("not found", func() {
-		_, err := suite.store.db.Exec(`
-INSERT INTO events (id, owner_id, data)
-VALUES ('event_1', 1, '{"id": "event_1", "owner": {"id": 1}}')
-`)
-		suite.Require().NoError(err)
-
-		event, err := suite.store.EventGet(context.Background(), "event_2")
-		suite.ErrorIs(err, ErrNotFound)
-		suite.Nil(event)
 	})
 }
 

@@ -2,7 +2,6 @@ package store
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 
 	"github.com/jmoiron/sqlx"
@@ -10,7 +9,8 @@ import (
 	"github.com/ofstudio/dancegobot/internal/models"
 )
 
-func (s *SQLiteStore) HistoryInsert(ctx context.Context, item *models.HistoryItem) error {
+// HistoryCreate creates a new history item.
+func (s *SQLiteStore) HistoryCreate(ctx context.Context, item *models.HistoryItem) error {
 	const query =
 	// language=SQLite
 	`INSERT INTO history (action, initiator_id, event_id, data)
@@ -20,9 +20,9 @@ VALUES (?1, ?2, ?3, $4);`
 		return fmt.Errorf("%w: %w", ErrStmtPrepare, err)
 	}
 
-	data, err := json.Marshal(item)
+	data, err := s.marshal("data", item)
 	if err != nil {
-		return fmt.Errorf("%w: %w", ErrMarshal, err)
+		return err
 	}
 
 	var initiatorID *int64

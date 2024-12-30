@@ -1,4 +1,4 @@
-package telegram
+package views
 
 import (
 	"testing"
@@ -15,7 +15,7 @@ func Test_notifyText(t *testing.T) {
 			TmplCode: models.TmplRegisteredWithSingle,
 			Payload:  testPayload,
 		}
-		text, err := notifyText(n)
+		text, err := notifyTextBuilder(n)
 		require.NoError(t, err)
 		assert.Equal(t,
 			"🔔 Test Event\n\n<a href=\"tg://user?id=1\">Test Partner</a> зарегистрировался с тобой в паре! 🎉",
@@ -27,7 +27,7 @@ func Test_notifyText(t *testing.T) {
 			TmplCode: models.TmplCanceledWithSingle,
 			Payload:  testPayload,
 		}
-		text, err := notifyText(n)
+		text, err := notifyTextBuilder(n)
 		require.NoError(t, err)
 		assert.Equal(t,
 			"🔔 Test Event\n\n<a href=\"tg://user?id=1\">Test Partner</a> отменил вашу регистрацию. Я вернул тебя в список ищущих пару 🤗",
@@ -39,7 +39,7 @@ func Test_notifyText(t *testing.T) {
 			TmplCode: models.TmplCanceledByPartner,
 			Payload:  testPayload,
 		}
-		text, err := notifyText(n)
+		text, err := notifyTextBuilder(n)
 		require.NoError(t, err)
 		assert.Equal(t,
 			"🔔 Test Event\n\n<a href=\"tg://user?id=1\">Test Partner</a> отменил вашу регистрацию.",
@@ -51,7 +51,7 @@ func Test_notifyText(t *testing.T) {
 			TmplCode: models.TmplAutoPairPartnerFound,
 			Payload:  testPayload,
 		}
-		text, err := notifyText(n)
+		text, err := notifyTextBuilder(n)
 		require.NoError(t, err)
 		assert.Equal(t,
 			"🔔 Test Event\n\nЯ подобрал тебе в пару <a href=\"tg://user?id=1\">Test Partner</a> 👌",
@@ -63,7 +63,7 @@ func Test_notifyText(t *testing.T) {
 			TmplCode: models.TmplAutoPairPartnerChanged,
 			Payload:  testPayload,
 		}
-		text, err := notifyText(n)
+		text, err := notifyTextBuilder(n)
 		require.NoError(t, err)
 		assert.Equal(t,
 			"🔔 Test Event\n\n<a href=\"tg://user?id=1\">Test Partner</a> отменил вашу регистрацию. \nЯ записал тебя вместе с <a href=\"https://t.me/new_partner\">New Partner</a> 👌",

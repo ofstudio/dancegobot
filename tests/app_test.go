@@ -1,4 +1,4 @@
-package app
+package tests
 
 import (
 	"context"
@@ -9,6 +9,7 @@ import (
 	"github.com/h2non/gock"
 	"github.com/stretchr/testify/suite"
 
+	"github.com/ofstudio/dancegobot/internal/app"
 	"github.com/ofstudio/dancegobot/internal/config"
 	"github.com/ofstudio/dancegobot/pkg/telegock"
 )
@@ -19,7 +20,7 @@ func TestApp(t *testing.T) {
 
 type AppTestSuite struct {
 	telegock.Suite
-	app    *App
+	app    *app.App
 	ctx    context.Context
 	cancel context.CancelFunc
 }
@@ -43,7 +44,10 @@ func (suite *AppTestSuite) SetupSubTest() {
 	gock.New(telegock.SetMyCommands).
 		Reply(200).JSON(telegock.Result(true))
 
-	suite.app = New(cfg).WithLogger(slog.Default())
+	gock.New(telegock.DeleteWebhook).
+		Reply(200).JSON(telegock.Result(true))
+
+	suite.app = app.New(cfg).WithLogger(slog.Default())
 	go func() {
 		suite.Require().NoError(suite.app.Start(suite.ctx))
 	}()

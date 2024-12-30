@@ -11,14 +11,19 @@ import (
 	"github.com/ofstudio/dancegobot/internal/services"
 	"github.com/ofstudio/dancegobot/internal/store"
 	"github.com/ofstudio/dancegobot/internal/telegram"
+	"github.com/ofstudio/dancegobot/internal/telegram/views"
 	"github.com/ofstudio/dancegobot/pkg/noplog"
 )
 
 type App struct {
-	cfg   config.Config
-	store store.Store
-	srv   *services.Services
-	log   *slog.Logger
+	cfg             config.Config
+	Bot             *tele.Bot
+	Store           store.Store
+	EventService    *services.EventService
+	UserService     *services.UserService
+	NotifierService *services.NotifierService
+	RenderService   *services.RenderService
+	log             *slog.Logger
 }
 
 // New creates a new application with the given configuration.
@@ -37,74 +42,55 @@ func (a *App) WithLogger(log *slog.Logger) *App {
 // Start starts the application.
 // Application stops when the context is done.
 func (a *App) Start(ctx context.Context) error {
+	var err error
 
-	// 1. Create a new Telegram bot
-	bot, err := telegram.NewBot(a.cfg.Bot, a.log)
+	// Create a new Telegram bot
+	a.Bot, err = telegram.NewBot(a.cfg.Bot, a.log)
 	if err != nil {
 		return fmt.Errorf("failed to create bot: %w", err)
 	}
-	config.SetBotProfile(bot.Me)
+	config.SetBotProfile(a.Bot.Me)
 	a.log.Info("Bot created", "", config.BotProfile(), "", a.cfg.Bot)
 
-	// 2. Connect the database and store
+	// Connect the database and store
 	db, err := store.NewSQLite(a.cfg.DB.Filepath, a.cfg.DB.Version)
 	if err != nil {
 		return fmt.Errorf("failed to connect database: %w", err)
 	}
 	a.log.Info("Database connected", "", a.cfg.DB)
-	a.store = store.NewSQLiteStore(db)
-	defer a.store.Close()
+	a.Store = store.NewSQLiteStore(db)
+	defer a.Store.Close()
 
-	// 3. Initialize services
-	a.srv = services.NewServices(
-		a.cfg.Settings,
-		a.store,
-		telegram.RenderPost(bot),
-		telegram.Notify(bot),
-	).WithLogger(a.log)
+	// Initialize services
+	a.RenderService = services.
+		NewRenderService(a.cfg.Settings, a.Store, views.Render(a.Bot)).
+		WithLogger(a.log)
+	a.NotifierService = services.
+		NewNotifierService(a.cfg.Settings, a.Store, views.Notify(a.Bot)).
+		WithLogger(a.log)
+	a.EventService = services.
+		NewEventService(a.cfg.Settings, a.Store, a.RenderService, a.NotifierService).
+		WithLogger(a.log)
+	a.UserService = services.
+		NewUserService(a.cfg.Settings, a.Store).
+		WithLogger(a.log)
 
-	// 4. Start background tasks
-	a.srv.Event.Start(ctx)
-	a.srv.Render.Start(ctx)
+	// Start background tasks
+	a.EventService.Start(ctx)
+	a.RenderService.Start(ctx)
 
-	// 5. Initialize middleware and handlers
-	m := telegram.NewMiddleware(a.cfg.Settings, a.srv.Event, a.srv.User).WithLogger(a.log)
-	h := telegram.NewHandlers(a.cfg.Settings, a.srv.Event, a.srv.User).WithLogger(a.log)
+	// Wire middleware and handlers
+	a.wire(ctx)
 
-	// 6. Set up bot middleware and handlers
-	bot.Use(m.Context(ctx))
-	bot.Use(m.Trace())
-	bot.Use(m.Logger())
-	bot.Use(m.ChatMessage())
-	bot.Use(m.PassPrivateMessages())
-	bot.Use(m.User())
-
-	bot.Handle("/start", h.Start)
-	bot.Handle("/partner", h.Partner)
-	bot.Handle("/settings", h.Settings)
-
-	bot.Handle(tele.OnText, h.Text)
-	bot.Handle(tele.OnUserShared, h.UserShared)
-	bot.Handle(tele.OnQuery, h.Query)
-	bot.Handle(tele.OnInlineResult, h.InlineResult)
-
-	bot.Handle(&telegram.BtnCbSignup, h.CbSignup)
-	bot.Handle(&telegram.BtnCbSettingsAutoPair, h.CbSettingsAutoPair)
-	bot.Handle(&telegram.BtnCbSettingsHelp, h.CbSettingsHelp)
-	bot.Handle(&telegram.BtnCbSettingsBack, h.CbSettingsBack)
-
-	// This is needed to handle channel posts
-	bot.Handle(tele.OnChannelPost, func(_ tele.Context) error { return nil })
-
-	// 7. Start the bot
-	go bot.Start()
+	// Start the bot
+	go a.Bot.Start()
 	a.log.Info("Bot started")
 
-	// 8. Wait for the context to be done
+	// Wait for the context to be done
 	<-ctx.Done()
 
-	// 9. Stop the bot
-	bot.Stop()
+	// Stop the bot
+	a.Bot.Stop()
 	a.log.Info("Bot stopped")
 
 	return nil

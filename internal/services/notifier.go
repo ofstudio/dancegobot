@@ -56,7 +56,7 @@ func (s *NotifierService) Notify(ctx context.Context, n *models.Notification) {
 		Details:   n,
 		CreatedAt: nowFn(),
 	}
-	if err := s.store.HistoryInsert(ctx, h); err != nil {
+	if err := s.store.HistoryCreate(ctx, h); err != nil {
 		s.log.Error("[notifier service] failed to insert history item: "+err.Error(), trace.Attr(ctx))
 	}
 }

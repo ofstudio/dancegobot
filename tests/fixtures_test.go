@@ -1,4 +1,4 @@
-package app
+package tests
 
 import tele "gopkg.in/telebot.v4"
 
@@ -45,6 +45,5 @@ var (
 )
 
 var (
-	rxUrlSignupLeader   = `^https://t.me/` + botUser.Username + `\?start=.+-signup-.+leader$`
-	rxUrlSignupFollower = `^https://t.me/` + botUser.Username + `\?start=.+-signup-.+follower$`
+	rxUrlSignupLeader = `^https://t.me/` + botUser.Username + `\?start=.+-signup-.+leader$`
 )

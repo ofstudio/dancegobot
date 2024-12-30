@@ -1,4 +1,4 @@
-package app
+package tests
 
 import (
 	"context"
@@ -81,7 +81,7 @@ func (suite *AppTestSuite) TestEventDraft() {
 
 		suite.NoPending()
 		suite.NoUnmatched()
-		event, err := suite.app.srv.Event.Get(context.Background(), eventID)
+		event, err := suite.app.EventService.Get(context.Background(), eventID)
 		suite.NoError(err)
 		suite.NotNil(event)
 		suite.Equal("Test text", event.Caption)
@@ -180,7 +180,7 @@ func (suite *AppTestSuite) TestEventPostAdd() {
 		suite.NoPending()
 		suite.NoUnmatched()
 
-		event, err := suite.app.srv.Event.Get(context.Background(), eventID)
+		event, err := suite.app.EventService.Get(context.Background(), eventID)
 		suite.NoError(err)
 		suite.Require().NotNil(event)
 		suite.Equal(eventID, event.ID)
@@ -216,7 +216,7 @@ func (suite *AppTestSuite) TestEventPostAdd() {
 		suite.NoPending()
 		suite.NoUnmatched()
 
-		event, err := suite.app.srv.Event.Get(context.Background(), eventID)
+		event, err := suite.app.EventService.Get(context.Background(), eventID)
 		suite.NoError(err)
 		suite.Require().NotNil(event)
 		suite.Equal(eventID, event.ID)
@@ -249,7 +249,7 @@ func (suite *AppTestSuite) TestEventPostAdd() {
 		suite.NoPending()
 		suite.NoUnmatched()
 
-		event, err := suite.app.srv.Event.Get(context.Background(), eventID)
+		event, err := suite.app.EventService.Get(context.Background(), eventID)
 		suite.Require().NoError(err)
 		suite.Require().NotNil(event)
 		suite.Equal(eventID, event.ID)
@@ -304,7 +304,7 @@ func (suite *AppTestSuite) TestPostChatAdd() {
 		suite.NoPending()
 		suite.NoUnmatched()
 
-		event, err := suite.app.srv.Event.Get(context.Background(), eventID)
+		event, err := suite.app.EventService.Get(context.Background(), eventID)
 		suite.Require().NoError(err)
 		suite.Require().NotNil(event)
 		suite.Require().NotNil(event.Post)
@@ -362,7 +362,7 @@ func (suite *AppTestSuite) TestPostChatAdd() {
 		suite.NoPending()
 		suite.NoUnmatched()
 
-		event, err := suite.app.srv.Event.Get(context.Background(), eventID)
+		event, err := suite.app.EventService.Get(context.Background(), eventID)
 		suite.Require().NoError(err)
 		suite.Require().NotNil(event)
 		suite.Require().NotNil(event.Post)

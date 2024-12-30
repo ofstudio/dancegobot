@@ -19,21 +19,26 @@ const (
 
 …и нажми «Опубликовать»
 `
+	Ok = "Ок"
+
 	CmdDescriptionStart    = "📖 Справка"
-	CmdDescriptionSettings = "⚙️ Настройки"
+	CmdDescriptionSettings = "🔧️ Настройки"
 
-	BtnTry   = "👉 Попробовать"
-	BtnClose = "✖️Закрыть"
-	BtnBack  = "🔙 Назад"
-	Ok       = "Ок"
+	BtnTry           = "👉 Попробовать"
+	BtnClose         = "✖️Закрыть"
+	BtnBack          = "🔙 Назад"
+	BtnChatLink      = "Посмотреть в чате"
+	BtnMyPrev        = "‹‹ Пред"
+	BtnMyNext        = "След ››"
+	BtnEventSettings = "🔧️ Настройки мероприятия"
 
-	ErrNotImplemented    = "Пока в разработке 🚧"
 	ErrSomethingWrong    = "Что-то пошло не так 👾"
 	ErrStartPayload      = "Некорректные параметры 👾"
 	ErrDancerNameTooLong = "Имя партнера слишком длинное 🤔"
 	ErrSingleNotFound    = "Такой танцор не найден 🤷‍♀️"
 
-	PostCouples = "👫 <b>Пары</b>\n"
+	IconPostClosed = "🔒 "
+	PostCouples    = "👫 <b>Пары</b>\n"
 
 	SignupPlaceholder   = "Введи имя партнера…"
 	SignupNotRegistered = "Отправь мне имя партнера или выбери из списка..."
@@ -41,7 +46,9 @@ const (
 	SignupInCouple      = "👫Вы записаны в паре с %s"
 	SignupForbidden     = "Тебе запрещено записываться на это мероприятие 😔\n\nОбратись к организатору, чтобы уточнить причину."
 	BtnSignupContact    = "👥 Из списка контактов"
-	BtnRemove           = "🗑️ Удалить регистрацию"
+	BtnSignupModify     = " Изменить"
+	BtnSignupRefresh    = "🔄 Обновить"
+	BtnDancerRemove     = "🗑️ Удалить регистрацию"
 
 	ResultSuccessCouple       = "👫 Вы зарегистрировались в паре с %s"
 	ResultSuccessSingle       = "%s Добавил тебя в список ищущих пару.\n\nЕсли кто-то зарегистрируется вместе с тобой, я об этом сообщу 🤗"
@@ -57,15 +64,13 @@ const (
 	ResultEventRemoved        = "Кажется, запись на это мероприятие удалена 🤔"
 	ResultDancerForbidden     = SignupForbidden
 	ResultPartnerForbidden    = "Твоему партнеру запрещено записываться на это мероприятие 😔\n\nОбратитесь к организатору, чтобы уточнить причину."
-	ResultClosedForSingles    = "На это мероприятие можно записаться только в паре 😔"
-	ResultClosedForSingleRole = "На это мероприятие можно записаться только в паре 😔"
-)
 
-const (
-	SettingsCaption = "🔧 <b>Настройки для организаторов</b>\n\n"
-	BtnSettingsHelp = "Подробнее о настройках"
+	MyEventHeader = "🗓️<i>%s</i>\n"
+	MyNoEvents    = "🙃 Ты еще никуда не записан и не создал ни одного мероприятия.\n\nПопробуй сейчас!"
 
-	SettingsHelp = `🔧 <b>Настройки для организаторов</b>
+	UserSettingsCaption = "🔧 <b>Настройки для организаторов</b>\n\n"
+	BtnUserSettingsHelp = "Подробнее о настройках"
+	UserSettingsHelp    = `🔧 <b>Настройки для организаторов</b>
 
 🙋‍♀️ <b>Подбор пар</b>
 По-умолчанию танцоры могут выбирать любого партнера из списка ожидания.
@@ -78,15 +83,37 @@ const (
 `
 )
 
-var SettingsAutoPairing = map[bool]string{
+var EventSettingsAutoPair = map[bool]string{
 	false: "🙋‍♀️ Можно выбирать из списка ожидания",
 	true:  "🙋‍♀️ Пары подбираются автоматически",
 }
 
-var BtnAutoPairing = map[bool]string{
+var BtnEventSettingsAutoPair = map[bool]string{
 	false: "🙋‍♀️ Подбирать пару автоматически",
 	true:  "🙋‍♀️ Разрешить выбор из списка ожидания",
 }
+
+var EventSettingsClosed = map[bool]string{
+	false: "🟢 Запись открыта",
+	true:  "🔴 Запись закрыта",
+}
+
+var BtnEventSettingsClosed = map[bool]string{
+	false: "🔴 Закрыть запись",
+	true:  "🟢 Открыть запись",
+}
+
+const (
+	EventSettingsCaption   = "🔧 <b>Настройки мероприятия</b>\n\n"
+	EventSettingsLimitNone = "👫 Приходят все записавшиеся пары"
+	EventSettingsLimit     = "👫 %s %d %s"
+	BtnEventSettingsLimit  = "👫 Ограничить количество пар"
+)
+
+var (
+	NumLimitCome     = numerals.Ru("приходит первая", "приходят первые", "приходят первые")
+	NameLimitCouples = numerals.Ru("пара", "пары", "пар")
+)
 
 const (
 	QueryTextEmpty        = "✏️ Напиши текст анонса"
@@ -119,5 +146,3 @@ var IconSingle = roleMap{
 	models.RoleLeader:   "🙋‍♂️",
 	models.RoleFollower: "🙋‍♀️",
 }
-
-const BtnChatLink = "Посмотреть"

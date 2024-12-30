@@ -68,7 +68,7 @@ func (s *EventService) Create(
 		return nil, fmt.Errorf("failed to upsert event: %w", err)
 	}
 
-	go s.historyInsert(ctx, &models.HistoryItem{
+	go s.historyItemsCreate(ctx, &models.HistoryItem{
 		Action:    models.HistoryEventCreated,
 		Initiator: &event.Owner,
 		EventID:   &event.ID,
@@ -84,6 +84,49 @@ func (s *EventService) Get(ctx context.Context, id string) (*models.Event, error
 	event, err := s.store.EventGet(ctx, id)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get event: %w", err)
+	}
+	return event, nil
+}
+
+// GetMy returns slice of event id related to the specified profile:
+//   - non-draft events owned by the user
+//   - events where the user is a participant: either in a couple or as a single
+func (s *EventService) GetMy(ctx context.Context, profile *models.Profile) ([]string, error) {
+	if profile == nil {
+		return nil, fmt.Errorf("profile is nil")
+	}
+	ids, err := s.store.EventGetMy(ctx, profile)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get my events: %w", err)
+	}
+	return ids, nil
+}
+
+// CanManage returns true if the profile can manage the event.
+func (s *EventService) CanManage(event *models.Event, profile *models.Profile) bool {
+	if event == nil || profile == nil {
+		return false
+	}
+	return NewEventHandler(event).CanManage(profile)
+}
+
+// UpdateSettings updates event settings.
+func (s *EventService) UpdateSettings(
+	ctx context.Context,
+	eventID string,
+	initiator *models.Profile,
+	settings models.EventSettings,
+) (*models.Event, error) {
+	if initiator == nil {
+		return nil, fmt.Errorf("initiator is nil")
+	}
+	var event *models.Event
+	err := s.update(ctx, eventID, func(h *EventHandler) error {
+		event = h.Event()
+		return h.UpdateSettings(initiator, settings)
+	})
+	if err != nil {
+		return nil, fmt.Errorf("failed to update event settings: %w", err)
 	}
 	return event, nil
 }
@@ -110,12 +153,12 @@ func (s *EventService) PostAdd(
 	inlineMessageID string,
 ) (*models.Event, *models.Post, error) {
 	if inlineMessageID == "" {
-		return nil, nil, fmt.Errorf("inline message ID must be provided")
+		return nil, nil, fmt.Errorf("inline message is empty")
 	}
 
 	var event *models.Event
 	var post *models.Post
-	err := s.handle(ctx, eventID, func(h *EventHandler) {
+	err := s.update(ctx, eventID, func(h *EventHandler) error {
 		if h.Event().Post == nil {
 			h.Event().Post = &models.Post{}
 		}
@@ -128,6 +171,7 @@ func (s *EventService) PostAdd(
 			EventID:   &h.event.ID,
 			Details:   h.event.Post,
 		})
+		return nil
 	})
 	return event, post, err
 }
@@ -149,7 +193,7 @@ func (s *EventService) PostChatAdd(
 	// Update the event
 	var event *models.Event
 	var post *models.Post
-	err := s.handle(ctx, eventID, func(h *EventHandler) {
+	err := s.update(ctx, eventID, func(h *EventHandler) error {
 		if h.Event().Post == nil {
 			h.Event().Post = &models.Post{}
 		}
@@ -163,6 +207,7 @@ func (s *EventService) PostChatAdd(
 			EventID:   &h.event.ID,
 			Details:   chat,
 		})
+		return nil
 	})
 	return event, post, err
 }
@@ -177,9 +222,8 @@ func (s *EventService) CoupleAdd(
 	role models.Role,
 	other any,
 ) (*models.Registration, error) {
-
 	if profile == nil {
-		return nil, fmt.Errorf("profile must be provided")
+		return nil, fmt.Errorf("profile is nil")
 	}
 	dancer := &models.Dancer{
 		Profile:   profile,
@@ -214,8 +258,9 @@ func (s *EventService) CoupleAdd(
 	}
 
 	var reg *models.Registration
-	err := s.handle(ctx, eventID, func(h *EventHandler) {
+	err := s.update(ctx, eventID, func(h *EventHandler) error {
 		reg = h.CoupleAdd(dancer, partner)
+		return nil
 	})
 	return reg, err
 }
@@ -230,7 +275,7 @@ func (s *EventService) SingleAdd(
 ) (*models.Registration, error) {
 
 	if profile == nil {
-		return nil, fmt.Errorf("profile must be provided")
+		return nil, fmt.Errorf("profile is nil")
 	}
 	dancer := &models.Dancer{
 		Profile:   profile,
@@ -243,8 +288,9 @@ func (s *EventService) SingleAdd(
 	}
 
 	var reg *models.Registration
-	err := s.handle(ctx, eventID, func(h *EventHandler) {
+	err := s.update(ctx, eventID, func(h *EventHandler) error {
 		reg = h.SingleAdd(dancer)
+		return nil
 	})
 	return reg, err
 }
@@ -264,26 +310,27 @@ func (s *EventService) DancerRemove(
 	profile *models.Profile,
 ) (*models.Registration, error) {
 	if profile == nil {
-		return nil, fmt.Errorf("profile must be provided")
+		return nil, fmt.Errorf("profile is nil")
 	}
 	var reg *models.Registration
-	err := s.handle(ctx, eventID, func(h *EventHandler) {
+	err := s.update(ctx, eventID, func(h *EventHandler) error {
 		reg = h.DancerRemove(&models.Dancer{
 			Profile:  profile,
 			FullName: profile.FullName(),
 		})
+		return nil
 	})
 	return reg, err
 }
 
-// handle is a wrapper for the event handler.
-func (s *EventService) handle(
+// update is a wrapper for the event handler.
+func (s *EventService) update(
 	ctx context.Context,
 	eventID string,
-	handlerFunc func(*EventHandler),
+	updateFunc func(*EventHandler) error,
 ) error {
 	// Begin tx
-	tx, err := s.store.BeginTx(ctx)
+	tx, err := s.store.Begin(ctx)
 	if err != nil {
 		return fmt.Errorf("failed to begin tx: %w", err)
 	}
@@ -300,7 +347,9 @@ func (s *EventService) handle(
 	handler := NewEventHandler(event)
 
 	// Run update function
-	handlerFunc(handler)
+	if err = updateFunc(handler); err != nil {
+		return fmt.Errorf("failed to update event: %w", err)
+	}
 
 	// After event handling is done, we need to:
 	// - upsert the event in the store
@@ -315,23 +364,23 @@ func (s *EventService) handle(
 		return fmt.Errorf("failed to commit tx: %w", err)
 	}
 	go s.renderer.Render(ctx, event)
-	go s.historyInsert(ctx, handler.History()...)
-	go s.notify(ctx, handler.Notifications()...)
+	go s.historyItemsCreate(ctx, handler.History()...)
+	go s.notificationsSend(ctx, handler.Notifications()...)
 
 	return nil
 }
 
-// historyInsert inserts a history item.
-func (s *EventService) historyInsert(ctx context.Context, items ...*models.HistoryItem) {
+// historyItemsCreate creates history items in the store.
+func (s *EventService) historyItemsCreate(ctx context.Context, items ...*models.HistoryItem) {
 	for _, item := range items {
-		if err := s.store.HistoryInsert(ctx, item); err != nil {
+		if err := s.store.HistoryCreate(ctx, item); err != nil {
 			s.log.Error("[event service] failed to insert history item: "+err.Error(), trace.Attr(ctx))
 		}
 	}
 }
 
-// notify sends notifications.
-func (s *EventService) notify(ctx context.Context, items ...*models.Notification) {
+// notificationsSend sends notifications.
+func (s *EventService) notificationsSend(ctx context.Context, items ...*models.Notification) {
 	for _, item := range items {
 		s.notifier.Notify(ctx, item)
 	}

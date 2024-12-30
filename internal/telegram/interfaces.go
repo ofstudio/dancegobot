@@ -8,7 +8,8 @@ import (
 
 type UserService interface {
 	Get(ctx context.Context, profile models.Profile) (*models.User, error)
-	Upsert(ctx context.Context, user *models.User) error
+	UpdateSession(ctx context.Context, user *models.User) error
+	UpdateSettings(ctx context.Context, user *models.User) error
 }
 
 type EventService interface {

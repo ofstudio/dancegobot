@@ -2,6 +2,7 @@ package telegram
 
 import (
 	"context"
+	"fmt"
 	"log/slog"
 	"strings"
 
@@ -17,19 +18,19 @@ import (
 
 // Middleware is a collection of middlewares.
 type Middleware struct {
-	cfg    config.Settings
-	events EventService
-	users  UserService
-	log    *slog.Logger
+	cfg          config.Settings
+	eventService EventService
+	userService  UserService
+	log          *slog.Logger
 }
 
 // NewMiddleware creates a new middleware collection.
-func NewMiddleware(cfg config.Settings, es EventService, us UserService) *Middleware {
+func NewMiddleware(cfg config.Settings, eventService EventService, userService UserService) *Middleware {
 	return &Middleware{
-		cfg:    cfg,
-		events: es,
-		users:  us,
-		log:    noplog.Logger(),
+		cfg:          cfg,
+		eventService: eventService,
+		userService:  userService,
+		log:          noplog.Logger(),
 	}
 }
 
@@ -102,11 +103,9 @@ func (m *Middleware) User() tele.MiddlewareFunc {
 	return func(next tele.HandlerFunc) tele.HandlerFunc {
 		return func(c tele.Context) error {
 			if c.Sender() != nil {
-				profile := models.NewProfile(*c.Sender())
-				user, err := m.users.Get(m.ctx(c), profile)
+				user, err := m.userService.Get(m.ctx(c), models.NewProfile(*c.Sender()))
 				if err != nil {
-					m.log.Error("[middleware] failed to get user: "+err.Error(), telelog.Trace(c))
-					return next(c)
+					return fmt.Errorf("failed to get user: %w", err)
 				}
 				c.Set("user", user)
 			}
@@ -125,7 +124,7 @@ func (m *Middleware) ChatMessage() tele.MiddlewareFunc {
 			if ok {
 				chatMessageID := c.Message().ID
 				chat := models.NewChat(c.Message().Chat)
-				event, post, err := m.events.PostChatAdd(m.ctx(c), eventID, &chat, chatMessageID)
+				event, post, err := m.eventService.PostChatAdd(m.ctx(c), eventID, &chat, chatMessageID)
 				if err != nil {
 					m.log.Error("[middleware] failed to add chat to the event post: "+err.Error(),
 						"event_id", eventID,

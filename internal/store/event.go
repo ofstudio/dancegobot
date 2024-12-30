@@ -143,7 +143,7 @@ func (s *SQLiteStore) EventGetMy(ctx context.Context, profile *models.Profile) (
 	const query = `SELECT id
 FROM events
 WHERE data ->> 'post.inline_message_id' IS NOT NULL -- Skip draft events
-  AND data ->> 'removed' != true -- Skip removed events
+  AND ifnull(data ->> 'removed', FALSE) == FALSE -- Skip removed events
   AND (
     -- Search by owner_id
     owner_id == ?1

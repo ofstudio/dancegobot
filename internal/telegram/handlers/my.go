@@ -97,11 +97,19 @@ func (h *Handlers) myScene(c tele.Context, offset int) (string, *tele.ReplyMarku
 	if err != nil {
 		return "", nil, err
 	}
+	if event == nil {
+		return "", nil, errors.New("event not found")
+	}
+
+	// If event marked as removed, delete it from the session MyEvents list
+	if event.Removed {
+		u.Session.MyEvents = append(u.Session.MyEvents[:offset], u.Session.MyEvents[offset+1:]...)
+		h.userUpdateSession(c, u)
+		return h.myScene(c, offset)
+	}
+
 	canManage := h.eventService.CanManage(event, &u.Profile)
 	reg := h.eventService.RegistrationGet(event, &u.Profile, models.RoleLeader) // role doesn't matter here
-	if reg == nil {
-		return "", nil, errors.New("failed to get registration")
-	}
 
 	return views.MySceneMsg(event), views.BtnMyScene(reg, canManage, offset, next), nil
 }

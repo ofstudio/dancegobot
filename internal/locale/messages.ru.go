@@ -111,8 +111,14 @@ const (
 )
 
 var (
-	NumLimitCome     = numerals.Ru("приходит первая", "приходят первые", "приходят первые")
+	NumLimitCome     = numerals.Ru("Приходит первая", "Приходят первые", "Приходят первые")
 	NameLimitCouples = numerals.Ru("пара", "пары", "пар")
+)
+
+const (
+	BtnEventSettingsLimitNone = "👫 Без ограничений"
+	BtnEventSettingsLimitMore = "Больше ››"
+	BtnEventSettingsLimitLess = "‹‹ Меньше"
 )
 
 const (

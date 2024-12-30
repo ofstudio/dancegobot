@@ -122,3 +122,72 @@ func (h *Handlers) CbEventSettingsToggles(c tele.Context) error {
 	return c.Edit(views.EventSettingsMsg(event), views.BtnEventSettingsScene(event, offset),
 		tele.ModeHTML, tele.NoPreview, tele.RemoveKeyboard)
 }
+
+// CbEventSettingsLimitScene handles event settings limit scene.
+func (h *Handlers) CbEventSettingsLimitScene(c tele.Context) error {
+	h.log.Info("[handlers] event settings limit scene callback received", telelog.Attr(c))
+	if len(c.Args()) < 4 {
+		h.log.Error("[handlers] event settings limit scene callback: not enough arguments",
+			"args", c.Args(),
+			telelog.Attr(c))
+		return c.RespondAlert(locale.ErrSomethingWrong)
+	}
+
+	eventID := c.Args()[0]
+	page, _ := strconv.Atoi(c.Args()[1])
+	offset := c.Args()[2]
+
+	event, err := h.eventService.Get(h.ctx(c), eventID)
+	if err != nil {
+		h.log.Error("[handlers] event settings limit scene callback: failed to get event: "+err.Error(),
+			"event_id", eventID,
+			telelog.Trace(c))
+		return h.respondErr(c, locale.ErrSomethingWrong)
+	}
+	_ = c.Respond()
+	msg := views.EventSettingsMsg(event)
+	rm := views.BtnEventSettingsLimitScene(eventID, page, offset)
+	return c.Edit(msg, rm, tele.ModeHTML, tele.NoPreview, tele.RemoveKeyboard)
+}
+
+// CbEventSettingsLimitNum handles event settings limit number callback buttons
+// in event settings limit scene.
+func (h *Handlers) CbEventSettingsLimitNum(c tele.Context) error {
+	h.log.Info("[handlers] event settings limit number callback received", telelog.Attr(c))
+	if len(c.Args()) < 3 {
+		h.log.Error("[handlers] event settings limit number callback: not enough arguments",
+			"args", c.Args(),
+			telelog.Attr(c))
+		return c.RespondAlert(locale.ErrSomethingWrong)
+	}
+
+	eventID := c.Args()[0]
+	limit, _ := strconv.Atoi(c.Args()[1])
+	offset := c.Args()[2]
+
+	event, err := h.eventService.Get(h.ctx(c), eventID)
+	if err != nil {
+		h.log.Error("[handlers] event settings limit number callback: failed to get event: "+err.Error(),
+			"event_id", eventID,
+			telelog.Trace(c))
+		return h.respondErr(c, locale.ErrSomethingWrong)
+	}
+
+	event.Settings.Limit = limit
+	if event, err = h.eventService.UpdateSettings(h.ctx(c), event.ID, &h.userGet(c).Profile, event.Settings); err != nil {
+		h.log.Error("[handlers] event settings limit number callback: failed to update event settings: "+err.Error(),
+			"event_id", eventID,
+			telelog.Trace(c))
+		return h.respondErr(c, locale.ErrSomethingWrong)
+	}
+
+	h.log.Info("[handlers] event settings updated",
+		"event", event.LogValue(),
+		"settings", event.Settings.LogValue(),
+		telelog.Trace(c))
+
+	_ = c.Respond()
+	return c.Edit(views.EventSettingsMsg(event), views.BtnEventSettingsScene(event, offset),
+		tele.ModeHTML, tele.NoPreview, tele.RemoveKeyboard)
+
+}

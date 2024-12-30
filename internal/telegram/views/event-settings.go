@@ -2,6 +2,7 @@ package views
 
 import (
 	"fmt"
+	"strconv"
 
 	tele "gopkg.in/telebot.v4"
 
@@ -14,6 +15,7 @@ var (
 	BtnEventSettings         = tele.Btn{Unique: "evt_set"}
 	BtnEventSettingsAutoPair = tele.Btn{Unique: "evt_set_auto_pair"}
 	BtnEventSettingsLimit    = tele.Btn{Unique: "evt_set_lim"}
+	BtnEventSettingsLimitNum = tele.Btn{Unique: "evt_set_lim_num"}
 	BtnEventSettingsClose    = tele.Btn{Unique: "evt_set_closed"}
 	BtnEventSettingsBack     = tele.Btn{Unique: "evt_set_back"}
 )
@@ -33,6 +35,7 @@ func BtnEventSettingsScene(event *models.Event, offset string) *tele.ReplyMarkup
 			locale.BtnEventSettingsLimit,
 			BtnEventSettingsLimit.Unique,
 			event.ID,
+			"0", // page number
 			offset,
 			randtoken.New(2),
 		)),
@@ -50,6 +53,58 @@ func BtnEventSettingsScene(event *models.Event, offset string) *tele.ReplyMarkup
 			randtoken.New(2),
 		)),
 	)
+	return rm
+}
+
+// BtnEventSettingsLimitScene creates a buttons for the event settings limit scene
+func BtnEventSettingsLimitScene(eventID string, page int, offset string) *tele.ReplyMarkup {
+	rm := &tele.ReplyMarkup{}
+
+	// Add no limit button
+	rows := []tele.Row{
+		rm.Row(rm.Data(
+			locale.BtnEventSettingsLimitNone,
+			BtnEventSettingsLimitNum.Unique,
+			eventID,
+			"0",
+			offset,
+			randtoken.New(2),
+		)),
+	}
+
+	// Add 2 rows with 5 buttons each
+	for i := 0; i < 2; i++ {
+		var row tele.Row
+		for j := 0; j < 5; j++ {
+			limit := strconv.Itoa(page*10 + i*5 + j + 1)
+			row = append(row, rm.Data(
+				limit,
+				BtnEventSettingsLimitNum.Unique,
+				eventID,
+				limit,
+				offset,
+			))
+		}
+		rows = append(rows, row)
+	}
+
+	// Add 'more' or 'less' button
+	pageStr := "0"
+	caption := locale.BtnEventSettingsLimitLess
+	if page == 0 {
+		pageStr = "1"
+		caption = locale.BtnEventSettingsLimitMore
+	}
+	rows = append(rows, rm.Row(rm.Data(
+		caption,
+		BtnEventSettingsLimit.Unique,
+		eventID,
+		pageStr,
+		offset,
+		randtoken.New(2),
+	)))
+
+	rm.Inline(rows...)
 	return rm
 }
 

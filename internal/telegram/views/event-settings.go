@@ -11,41 +11,41 @@ import (
 )
 
 var (
-	BtnCbEventSettings         = tele.Btn{Unique: "event_settings"}
-	BtnCbEventSettingsAutoPair = tele.Btn{Unique: "event_settings_auto_pair"}
-	BtnCbEventSettingsLimit    = tele.Btn{Unique: "event_settings_limit"}
-	BtnCbEventSettingsClosed   = tele.Btn{Unique: "event_settings_closed_for"}
-	BtnCbEventSettingsBack     = tele.Btn{Unique: "event_settings_back"}
+	BtnEventSettings         = tele.Btn{Unique: "evt_set"}
+	BtnEventSettingsAutoPair = tele.Btn{Unique: "evt_set_auto_pair"}
+	BtnEventSettingsLimit    = tele.Btn{Unique: "evt_set_lim"}
+	BtnEventSettingsClose    = tele.Btn{Unique: "evt_set_closed"}
+	BtnEventSettingsBack     = tele.Btn{Unique: "evt_set_back"}
 )
 
-// BtnEventSettings creates a buttons for the event settings
-func BtnEventSettings(event *models.Event, offset string) *tele.ReplyMarkup {
+// BtnEventSettingsScene creates a buttons for the event settings scene
+func BtnEventSettingsScene(event *models.Event, offset string) *tele.ReplyMarkup {
 	rm := &tele.ReplyMarkup{}
 	rm.Inline(
 		rm.Row(rm.Data(
 			locale.BtnEventSettingsAutoPair[event.Settings.AutoPairing],
-			BtnCbEventSettingsAutoPair.Unique,
+			BtnEventSettingsAutoPair.Unique,
 			event.ID,
 			offset,
 			randtoken.New(2),
 		)),
 		rm.Row(rm.Data(
 			locale.BtnEventSettingsLimit,
-			BtnCbEventSettingsLimit.Unique,
+			BtnEventSettingsLimit.Unique,
 			event.ID,
 			offset,
 			randtoken.New(2),
 		)),
 		rm.Row(rm.Data(
 			locale.BtnEventSettingsClosed[event.Settings.Closed],
-			BtnCbEventSettingsClosed.Unique,
+			BtnEventSettingsClose.Unique,
 			event.ID,
 			offset,
 			randtoken.New(2),
 		)),
 		rm.Row(rm.Data(
 			locale.BtnBack,
-			BtnCbEventSettingsBack.Unique,
+			BtnEventSettingsBack.Unique,
 			offset,
 			randtoken.New(2),
 		)),

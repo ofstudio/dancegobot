@@ -55,10 +55,10 @@ func (a *App) wire(ctx context.Context) {
 	a.Bot.Handle(&views.BtnMyRefresh, h.CbMyRefresh)
 
 	// Event settings buttons
-	a.Bot.Handle(&views.BtnCbEventSettings, h.CbEventSettings)
-	a.Bot.Handle(&views.BtnCbEventSettingsBack, h.CbEventSettingsBack)
-	a.Bot.Handle(&views.BtnCbEventSettingsAutoPair, h.CbEventSettingsToggles)
-	a.Bot.Handle(&views.BtnCbEventSettingsClosed, h.CbEventSettingsToggles)
+	a.Bot.Handle(&views.BtnEventSettings, h.CbEventSettings)
+	a.Bot.Handle(&views.BtnEventSettingsBack, h.CbEventSettingsBack)
+	a.Bot.Handle(&views.BtnEventSettingsAutoPair, h.CbEventSettingsToggles)
+	a.Bot.Handle(&views.BtnEventSettingsClose, h.CbEventSettingsToggles)
 
 	// This is needed to receive channel posts
 	a.Bot.Handle(tele.OnChannelPost, func(_ tele.Context) error { return nil })

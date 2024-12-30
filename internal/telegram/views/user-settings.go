@@ -9,9 +9,9 @@ import (
 )
 
 var (
-	BtnUserSettingsAutoPair = tele.Btn{Unique: "user_settings_auto_pair"}
-	BtnUserSettingsHelp     = tele.Btn{Unique: "user_settings_help"}
-	BtnUserSettingsBack     = tele.Btn{Unique: "user_settings_back"}
+	BtnUserSettingsAutoPair = tele.Btn{Unique: "usr_set_auto_pair"}
+	BtnUserSettingsHelp     = tele.Btn{Unique: "usr_set_help"}
+	BtnUserSettingsBack     = tele.Btn{Unique: "usr_set_back"}
 )
 
 // btnUserSettingsScene creates buttons for the user settings scene.

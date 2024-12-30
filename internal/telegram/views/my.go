@@ -49,7 +49,7 @@ func BtnMyScene(reg *models.Registration, canManage bool, offset, next int) *tel
 	if canManage {
 		rows = append(rows, rm.Row(rm.Data(
 			locale.BtnEventSettings,
-			BtnCbEventSettings.Unique,
+			BtnEventSettings.Unique,
 			reg.Event.ID,
 			strconv.Itoa(offset),
 			strconv.Itoa(next),

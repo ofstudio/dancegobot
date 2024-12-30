@@ -10,7 +10,7 @@ import (
 	"github.com/ofstudio/dancegobot/pkg/telelog"
 )
 
-// CbEventSettings - handles event settings callback button in /my scene.
+// CbEventSettings - handles event settings callback button.
 func (h *Handlers) CbEventSettings(c tele.Context) error {
 	h.log.Info("[handlers] event settings callback received", telelog.Attr(c))
 	if len(c.Args()) < 3 {
@@ -41,11 +41,11 @@ func (h *Handlers) CbEventSettings(c tele.Context) error {
 	}
 
 	_ = c.Respond()
-	return c.Edit(views.EventSettingsMsg(event), views.BtnEventSettings(event, offset),
+	return c.Edit(views.EventSettingsMsg(event), views.BtnEventSettingsScene(event, offset),
 		tele.ModeHTML, tele.NoPreview, tele.RemoveKeyboard)
 }
 
-// CbEventSettingsBack - handles event settings back callback button in /my scene.
+// CbEventSettingsBack - handles event settings scene back callback button.
 func (h *Handlers) CbEventSettingsBack(c tele.Context) error {
 	h.log.Info("[handlers] event_settings_back callback received", telelog.Attr(c))
 	if len(c.Args()) < 2 {
@@ -67,7 +67,7 @@ func (h *Handlers) CbEventSettingsBack(c tele.Context) error {
 	return c.Edit(text, rm, tele.ModeHTML, tele.RemoveKeyboard, tele.NoPreview)
 }
 
-// CbEventSettingsToggles - handles event settings toggles callback buttons in /my scene.
+// CbEventSettingsToggles - handles event settings scene callback buttons toggles.
 func (h *Handlers) CbEventSettingsToggles(c tele.Context) error {
 	h.log.Info("[handlers] event settings toggle callback received", telelog.Attr(c))
 	if len(c.Args()) < 3 {
@@ -95,9 +95,9 @@ func (h *Handlers) CbEventSettingsToggles(c tele.Context) error {
 	}
 
 	switch unique {
-	case views.BtnCbEventSettingsAutoPair.Unique:
+	case views.BtnEventSettingsAutoPair.Unique:
 		event.Settings.AutoPairing = !event.Settings.AutoPairing
-	case views.BtnCbEventSettingsClosed.Unique:
+	case views.BtnEventSettingsClose.Unique:
 		event.Settings.Closed = !event.Settings.Closed
 	default:
 		h.log.Error("[handlers] event settings toggle callback: unknown unique",
@@ -113,12 +113,12 @@ func (h *Handlers) CbEventSettingsToggles(c tele.Context) error {
 		return h.respondErr(c, locale.ErrSomethingWrong)
 	}
 
-	h.log.Info("[handlers] event settings toggle callback: event settings updated",
+	h.log.Info("[handlers] event settings updated",
 		"event", event.LogValue(),
 		"settings", event.Settings.LogValue(),
 		telelog.Trace(c))
 
 	_ = c.Respond()
-	return c.Edit(views.EventSettingsMsg(event), views.BtnEventSettings(event, offset),
+	return c.Edit(views.EventSettingsMsg(event), views.BtnEventSettingsScene(event, offset),
 		tele.ModeHTML, tele.NoPreview, tele.RemoveKeyboard)
 }

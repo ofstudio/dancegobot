@@ -177,6 +177,32 @@ func (suite *TestEventHandlerSuite) TestRegistrationGet_byName() {
 }
 
 func (suite *TestEventHandlerSuite) TestCoupleAdd() {
+
+	suite.Run("event removed", func() {
+		event := sampleEvent()
+		event.Removed = true
+		handler := NewEventHandler(&event)
+		d1 := &models.Dancer{
+			Profile: &models.Profile{ID: 600, FirstName: "Alice", LastName: "Wonder"},
+			Role:    models.RoleLeader,
+		}
+		d2 := &models.Dancer{
+			Profile: &models.Profile{ID: 700, FirstName: "Bob", LastName: "Builder"},
+			Role:    models.RoleFollower,
+		}
+
+		got := handler.CoupleAdd(d1, d2)
+
+		suite.Require().NotNil(got)
+		suite.Equal(models.ResultEventRemoved, got.Result)
+		suite.Equal(models.StatusNotRegistered, got.Status)
+		suite.Nil(got.Partner)
+		suite.Require().NotNil(got.Related)
+		suite.Nil(got.Related.Partner)
+		suite.Require().Len(handler.hist, 0)
+		suite.Require().Len(handler.notif, 0)
+	})
+
 	suite.Run("both dancers not registered", func() {
 		event := sampleEvent()
 		handler := NewEventHandler(&event)
@@ -446,6 +472,33 @@ func (suite *TestEventHandlerSuite) TestCoupleAdd() {
 }
 
 func (suite *TestEventHandlerSuite) TestSingleAdd() {
+
+	suite.Run("event removed", func() {
+		event := sampleEvent()
+		event.Removed = true
+		handler := NewEventHandler(&event)
+		d := &models.Dancer{
+			Profile: &models.Profile{ID: 600, FirstName: "Alice", LastName: "Wonder"},
+			Role:    models.RoleLeader,
+		}
+
+		got := handler.SingleAdd(d)
+
+		suite.Require().NotNil(got)
+		suite.Equal(models.ResultEventRemoved, got.Result)
+		suite.Equal(models.StatusNotRegistered, got.Status)
+		suite.Nil(got.Partner)
+		suite.Nil(got.Related)
+		suite.Equal(d.Profile.ID, got.ID)
+		suite.Equal(d.FullName, got.FullName)
+		suite.Equal(models.RoleLeader, got.Role)
+		suite.False(got.AsSingle)
+
+		suite.Require().Len(event.Singles, 2)
+		suite.Require().Len(handler.hist, 0)
+		suite.Require().Len(handler.notif, 0)
+	})
+
 	suite.Run("dancer not registered", func() {
 		event := sampleEvent()
 		handler := NewEventHandler(&event)
@@ -703,6 +756,26 @@ func (suite *TestEventHandlerSuite) TestSingleAdd_autoPair() {
 }
 
 func (suite *TestEventHandlerSuite) TestDancerRemove() {
+
+	suite.Run("event removed", func() {
+		event := sampleEvent()
+		event.Removed = true
+		handler := NewEventHandler(&event)
+		d := &models.Dancer{
+			Profile: &models.Profile{ID: 1, FirstName: "John", LastName: "Doe"},
+		}
+
+		got := handler.DancerRemove(d)
+
+		suite.Require().NotNil(got)
+		suite.Equal(models.ResultEventRemoved, got.Result)
+		suite.Equal(models.StatusInCouple, got.Status)
+		suite.NotNil(got.Partner)
+		suite.Nil(got.Related)
+		suite.Require().Len(handler.hist, 0)
+		suite.Require().Len(handler.notif, 0)
+	})
+
 	suite.Run("dancer not registered", func() {
 		event := sampleEvent()
 		handler := NewEventHandler(&event)

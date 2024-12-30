@@ -7,22 +7,28 @@ import (
 
 // Event - is a dance event
 type Event struct {
-	ID        string        `json:"id"`         // Random string to identify the event
-	Caption   string        `json:"caption"`    // Event caption
-	Post      *Post         `json:"post"`       // Event post in a Telegram chat
-	Settings  EventSettings `json:"settings"`   // Event settings
-	Couples   []Couple      `json:"couples"`    // List of couples signed in
-	Singles   []Dancer      `json:"singles"`    // List of singles signed in
-	Owner     Profile       `json:"owner"`      // Telegram profile of the event owner
-	CreatedAt time.Time     `json:"created_at"` // Creation time
+	ID          string        `json:"id"`                     // Random string to identify the event
+	Caption     string        `json:"caption"`                // Event caption
+	Post        *Post         `json:"post"`                   // Event post in a Telegram chat
+	Settings    EventSettings `json:"settings"`               // Event settings
+	Couples     []Couple      `json:"couples"`                // List of couples signed in
+	Singles     []Dancer      `json:"singles"`                // List of singles signed in
+	Owner       Profile       `json:"owner"`                  // Telegram profile of the event owner
+	RenderFails int           `json:"render_fails,omitempty"` // Number of failed attempts to render the event post
+	Removed     bool          `json:"removed,omitempty"`      // Is the event removed due to exceeding the number of render failed attempts
+	CreatedAt   time.Time     `json:"created_at"`             // Creation time
 }
 
 // LogValue implements slog.Valuer interface for Event model.
 func (e Event) LogValue() slog.Value {
-	return slog.GroupValue(
+	attrs := []slog.Attr{
 		slog.String("id", e.ID),
 		slog.Any("owner", e.Owner.LogValue()),
-	)
+	}
+	if e.Removed {
+		attrs = append(attrs, slog.Bool("removed", e.Removed))
+	}
+	return slog.GroupValue(attrs...)
 }
 
 // EventSettings - is a settings for the event

@@ -1,6 +1,7 @@
 package services
 
 import (
+	"fmt"
 	"sort"
 
 	"github.com/ofstudio/dancegobot/internal/config"
@@ -37,6 +38,28 @@ func (h *EventHandler) Notifications() []*models.Notification {
 	return h.notif
 }
 
+// CanManage checks if the profile can manage the event.
+// Returns true if the profile is the owner of the event.
+func (h *EventHandler) CanManage(profile *models.Profile) bool {
+	return profile != nil && profile.ID == h.event.Owner.ID
+}
+
+// UpdateSettings updates the event settings.
+func (h *EventHandler) UpdateSettings(initiator *models.Profile, settings models.EventSettings) error {
+	if !h.CanManage(initiator) {
+		return fmt.Errorf("profile is not allowed to update the event settings")
+	}
+	h.event.Settings = settings
+	h.hist = append(h.hist, &models.HistoryItem{
+		Action:    models.HistoryEventSettingsUpdated,
+		Initiator: initiator,
+		EventID:   &h.event.ID,
+		Details:   settings,
+		CreatedAt: nowFn(),
+	})
+	return nil
+}
+
 // RegistrationGet returns registration for given dancer at the event.
 // If the dancer is not registered, returns a new registration.
 func (h *EventHandler) RegistrationGet(dancer *models.Dancer) *models.Registration {
@@ -57,50 +80,57 @@ func (h *EventHandler) RegistrationGet(dancer *models.Dancer) *models.Registrati
 // CoupleAdd registers a couple for the event.
 // If the partner initially was registered as a single, the partner will be notified.
 func (h *EventHandler) CoupleAdd(d, p *models.Dancer) *models.Registration {
-	result := models.ResultNoResult
 	reg := h.RegistrationGet(d)
+	reg.Result = models.ResultNoResult
 	reg.Related = h.RegistrationGet(p)
+
+	// Check if event not removed
+	if h.event.Removed {
+		reg.Result = models.ResultEventRemoved
+		return reg
+	}
+
+	// Check if event is not closed for new registrations
+	if h.event.Settings.ClosedFor == models.ClosedForAll {
+		reg.Result = models.ResultEventClosed
+		return reg
+	}
 
 	// Check if event is not forbidden for the dancer or partner
 	if reg.Status == models.StatusForbidden {
-		result = models.ResultDancerForbidden
+		reg.Result = models.ResultDancerForbidden
+		return reg
 	}
 	if reg.Related.Status == models.StatusForbidden {
-		result = models.ResultPartnerForbidden
-	}
-
-	// Check if the partner is already registered in a couple
-	if reg.Related.Status == models.StatusInCouple {
-		result = models.ResultPartnerTaken
+		reg.Result = models.ResultPartnerForbidden
+		return reg
 	}
 
 	// Check if the dancer is already registered in a couple
 	if reg.Status == models.StatusInCouple {
 		if h.isSame(reg.Partner, reg.Related.Dancer) {
-			result = models.ResultAlreadyInSameCouple
+			reg.Result = models.ResultAlreadyInSameCouple
 		} else {
-			result = models.ResultAlreadyInCouple
+			reg.Result = models.ResultAlreadyInCouple
 		}
+		return reg
 	}
 
-	// Check if event is not closed for new registrations
-	if h.event.Settings.ClosedFor == models.ClosedForAll {
-		result = models.ResultEventClosed
-	}
-
-	// Check if the partner has the same role as the partner
-	if reg.Role == reg.Related.Role {
-		result = models.ResultPartnerSameRole
+	// Check if the partner is already registered in a couple
+	if reg.Related.Status == models.StatusInCouple {
+		reg.Result = models.ResultPartnerTaken
+		return reg
 	}
 
 	// Check if the dancer is trying to register with itself
 	if h.isSame(reg.Dancer, reg.Related.Dancer) {
-		result = models.ResultSelfNotAllowed
+		reg.Result = models.ResultSelfNotAllowed
+		return reg
 	}
 
-	// Break if any of the checks failed
-	if result != models.ResultNoResult {
-		reg.Result = result
+	// Check if the partner has the same role as the partner
+	if reg.Role == reg.Related.Role {
+		reg.Result = models.ResultPartnerSameRole
 		return reg
 	}
 
@@ -193,24 +223,34 @@ func (h *EventHandler) SingleAdd(d *models.Dancer) *models.Registration {
 	reg := h.RegistrationGet(d)
 	reg.Result = models.ResultNoResult
 
+	// Check if event not removed
+	if h.event.Removed {
+		reg.Result = models.ResultEventRemoved
+		return reg
+	}
+
 	// Check if event is not forbidden for the dancer
 	if reg.Status == models.StatusForbidden {
 		reg.Result = models.ResultDancerForbidden
+		return reg
 	}
 
 	// Check if the dancer not already registered in a couple
 	if reg.Status == models.StatusInCouple {
 		reg.Result = models.ResultAlreadyInCouple
+		return reg
 	}
 
 	// Check if dancer not already registered as single
 	if reg.Status == models.StatusAsSingle {
 		reg.Result = models.ResultAlreadyAsSingle
+		return reg
 	}
 
 	// Check if event is not closed for new registrations
 	if h.event.Settings.ClosedFor == models.ClosedForAll {
 		reg.Result = models.ResultEventClosed
+		return reg
 	}
 
 	// Try to auto pair the reg if possible
@@ -222,10 +262,6 @@ func (h *EventHandler) SingleAdd(d *models.Dancer) *models.Registration {
 	// Check if singles are allowed for the event
 	if h.event.Settings.ClosedFor == models.ClosedForSingles {
 		reg.Result = models.ResultClosedForSingles
-	}
-
-	// Return registration if any of the checks above failed
-	if reg.Result != models.ResultNoResult {
 		return reg
 	}
 
@@ -259,6 +295,12 @@ func (h *EventHandler) SingleAdd(d *models.Dancer) *models.Registration {
 // the partner will be notified that the dancer has left the event.
 func (h *EventHandler) DancerRemove(d *models.Dancer) *models.Registration {
 	reg := h.RegistrationGet(d)
+
+	// Check if event not removed
+	if h.event.Removed {
+		reg.Result = models.ResultEventRemoved
+		return reg
+	}
 
 	// Check if event is closed for new registrations
 	if h.event.Settings.ClosedFor == models.ClosedForAll {

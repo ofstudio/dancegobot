@@ -3,6 +3,7 @@ package services
 import (
 	"context"
 	"log/slog"
+	"strings"
 	"time"
 
 	"github.com/ofstudio/dancegobot/internal/config"
@@ -74,9 +75,13 @@ func (s *RenderService) render(ctx context.Context, event *models.Event) {
 		s.log.Error("[render service] failed to render event: event is nil", trace.Attr(ctx))
 		return
 	case event.Post == nil || event.Post.InlineMessageID == "":
-		s.log.Warn("[render service] skipping render: inline message ID is not set",
+		s.log.Info("[render service] skipping render: inline message ID is not set",
 			"event", event.LogValue(),
 			trace.Attr(ctx))
+		return
+	case event.Removed:
+		s.log.Info("[render service] skipping render: event marked as removed",
+			"event", event.LogValue(), trace.Attr(ctx))
 		return
 	default:
 		// Add event to the rendering queue.
@@ -118,16 +123,76 @@ func (s *RenderService) queueHandler(ctx context.Context) {
 		select {
 		case item := <-s.queue:
 			if err := s.renderFunc(item.event, item.event.Post.InlineMessageID); err != nil {
-				s.log.Error(
-					"[render service] failed to render event: "+err.Error(),
-					"event", item.event.LogValue(),
-					trace.Attr(item.ctx))
+				if s.errIsPostRemoved(err) {
+					s.log.Error("[render service] event post was probably removed: "+err.Error(),
+						"event", item.event.LogValue(), trace.Attr(item.ctx))
+					s.eventRenderFail(item.ctx, item.event.ID)
+				} else {
+					s.log.Error("[render service] failed to render event: "+err.Error(),
+						"event", item.event.LogValue(), trace.Attr(item.ctx))
+				}
 			}
 		case <-ctx.Done():
 			s.log.Info("[render service] render queue stopped", trace.Attr(ctx))
 			return
 		}
 	}
+}
+
+// eventRenderFail increases the rendering failure counter for the event.
+// If the fail counter exceeds the limit, the event is marked as removed.
+func (s *RenderService) eventRenderFail(ctx context.Context, eventID string) {
+	// Start transaction.
+	tx, err := s.store.Begin(ctx)
+	if err != nil {
+		s.log.Error("[render service] failed to start transaction: "+err.Error(), trace.Attr(ctx))
+		return
+	}
+	//goland:noinspection ALL
+	defer tx.Rollback()
+
+	// Get event.
+	event, err := tx.EventGet(ctx, eventID)
+	if err != nil {
+		s.log.Error("[render service] failed to get event: "+err.Error(), trace.Attr(ctx))
+		return
+	}
+
+	// Update rendering failure count.
+	event.RenderFails++
+
+	// If the number of rendering failures exceeds the limit, mark the event as removed.
+	if event.RenderFails >= s.cfg.RenderFailsMax {
+		event.Removed = true
+		// Create history item.
+		if err = tx.HistoryCreate(ctx, &models.HistoryItem{
+			Action:    models.HistoryEventRemoved,
+			Initiator: config.BotProfile(),
+			EventID:   &event.ID,
+			Details:   event,
+		}); err != nil {
+			s.log.Error("[render service] failed to create history item: "+err.Error(), trace.Attr(ctx))
+		}
+		s.log.Info("[render service] event marked as removed due to rendering failures",
+			"event", event.LogValue(), trace.Attr(ctx))
+	}
+
+	// Update event.
+	if err = tx.EventUpsert(ctx, event); err != nil {
+		s.log.Error("[render service] failed to update event: "+err.Error(), trace.Attr(ctx))
+		return
+	}
+
+	// Commit transaction.
+	if err = tx.Commit(); err != nil {
+		s.log.Error("[render service] failed to commit transaction: "+err.Error(), trace.Attr(ctx))
+		return
+	}
+}
+
+// errIsPostRemoved returns true if the error is due to event post was probably removed.
+func (s *RenderService) errIsPostRemoved(err error) bool {
+	return strings.Contains(err.Error(), "Bad Request: MESSAGE_ID_INVALID")
 }
 
 // queueItem - rendering queue item.

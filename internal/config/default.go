@@ -42,6 +42,7 @@ func Default() Config {
 			EventIDLen:       12,
 			EventTextMaxLen:  2048,
 			DancerNameMaxLen: 64,
+			RenderFailsMax:   3,
 			RendererRepeats: []time.Duration{
 				03 * time.Second,
 				10 * time.Second,

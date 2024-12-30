@@ -302,6 +302,9 @@ func sendResult(c tele.Context, reg *models.Registration, singles []models.Sessi
 		return c.Send(locale.ResultPartnerForbidden, opts)
 	case models.ResultClosedForSingles:
 		return c.Send(locale.ResultClosedForSingles, opts)
+	case models.ResultEventRemoved:
+		return c.Send(locale.ResultEventRemoved, opts)
+
 	default:
 		_ = c.Send(locale.ErrSomethingWrong, tele.RemoveKeyboard)
 		return fmt.Errorf("unexpected registration result: '%s'", reg.Result.String())

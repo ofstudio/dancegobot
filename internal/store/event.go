@@ -133,8 +133,8 @@ RETURNING id;`
 }
 
 // EventGetMy returns slice of event id related to the specified profile:
-//   - non-draft events owned by the user
-//   - events where the user is a participant: either in a couple or as a single
+//   - non-draft and not removed events owned by the user
+//   - not removed events where the user is a participant: either in a couple or as a single
 func (s *SQLiteStore) EventGetMy(ctx context.Context, profile *models.Profile) ([]string, error) {
 	if profile == nil {
 		return nil, ErrNil
@@ -143,6 +143,7 @@ func (s *SQLiteStore) EventGetMy(ctx context.Context, profile *models.Profile) (
 	const query = `SELECT id
 FROM events
 WHERE data ->> 'post.inline_message_id' IS NOT NULL -- Skip draft events
+  AND data ->> 'removed' != true -- Skip removed events
   AND (
     -- Search by owner_id
     owner_id == ?1

@@ -105,6 +105,7 @@ const (
 	ResultDancerForbidden                               // The event is forbidden for the dancer
 	ResultPartnerForbidden                              // The event is forbidden for given partner
 	ResultClosedForSingles                              // The event is closed for singles
+	ResultEventRemoved                                  // The event was marked as removed
 )
 
 // IsSuccess returns true if the registration was successful.
@@ -156,6 +157,8 @@ func (r RegistrationResult) String() string {
 		return "partner_forbidden"
 	case ResultClosedForSingles:
 		return "closed_for_singles"
+	case ResultEventRemoved:
+		return "event_removed"
 	default:
 		return fmt.Sprintf("unknown_result_%d", r)
 	}

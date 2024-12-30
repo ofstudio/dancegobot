@@ -27,6 +27,7 @@ type Settings struct {
 	EventIDLen            int             // Length of event ID
 	EventTextMaxLen       int             // Maximum length for event text in runes
 	DancerNameMaxLen      int             // Maximum length for dancer name in runes
+	RenderFailsMax        int             // Maximum number of failed event rendering attempts
 	RendererRepeats       []time.Duration // Time intervals for event rendering repeats
 	ReRenderOnStartup     time.Duration   // Re-render on startup the recent events that were updated not older than this duration
 	DraftCleanupOlderThan time.Duration   // Cleanup event drafts that were created older than this duration

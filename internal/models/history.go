@@ -37,14 +37,15 @@ func (h HistoryItem) LogValue() slog.Value {
 type HistoryAction string
 
 const (
-	HistoryEventCreated     HistoryAction = "event_created"
-	HistoryEventClosed      HistoryAction = "event_closed"
-	HistoryEventReopened    HistoryAction = "event_reopened"
-	HistoryCoupleAdded      HistoryAction = "couple_added"
-	HistoryCoupleRemoved    HistoryAction = "couple_removed"
-	HistorySingleAdded      HistoryAction = "single_added"
-	HistorySingleRemoved    HistoryAction = "single_removed"
-	HistoryNotificationSent HistoryAction = "notification_sent"
-	HistoryPostAdded        HistoryAction = "post_added"
-	HistoryPostChatAdded    HistoryAction = "post_chat_added"
+	HistoryEventCreated         HistoryAction = "event_created"
+	HistoryCoupleAdded          HistoryAction = "couple_added"
+	HistoryCoupleRemoved        HistoryAction = "couple_removed"
+	HistorySingleAdded          HistoryAction = "single_added"
+	HistorySingleRemoved        HistoryAction = "single_removed"
+	HistoryNotificationSent     HistoryAction = "notification_sent"
+	HistoryPostAdded            HistoryAction = "post_added"
+	HistoryPostChatAdded        HistoryAction = "post_chat_added"
+	HistoryEventSettingsUpdated HistoryAction = "event_settings_updated"
+	HistoryUserSettingsUpdated  HistoryAction = "user_settings_updated"
+	HistoryEventRemoved         HistoryAction = "event_removed"
 )

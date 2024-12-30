@@ -314,6 +314,14 @@ func (h *Handlers) signupScene(c tele.Context, eventID string, role models.Role)
 	}
 	h.userUpsert(c, u)
 
+	if event.Settings.ClosedFor == models.ClosedForAll {
+		return c.Send(locale.ResultEventClosed, tele.RemoveKeyboard, tele.NoPreview, tele.ModeHTML)
+	}
+
+	if event.Removed {
+		return c.Send(locale.ResultEventRemoved, tele.RemoveKeyboard, tele.NoPreview, tele.ModeHTML)
+	}
+
 	h.log.Info("[handlers] signup scene", "", reg, telelog.Trace(c))
 	return sendSignupScene(c, reg, singles)
 }

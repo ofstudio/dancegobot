@@ -54,6 +54,7 @@ const (
 	ResultSelfNotAllowed      = "Не получится записаться в пару с самим собой 🤓"
 	ResultNotRegistered       = "Не могу удалить, так как не вижу в списке участников 🤔"
 	ResultEventClosed         = "Сожалеем, но запись на это мероприятие закрыта 😔"
+	ResultEventRemoved        = "Кажется, запись на это мероприятие удалена 🤔"
 	ResultDancerForbidden     = SignupForbidden
 	ResultPartnerForbidden    = "Твоему партнеру запрещено записываться на это мероприятие 😔\n\nОбратитесь к организатору, чтобы уточнить причину."
 	ResultClosedForSingles    = "На это мероприятие можно записаться только в паре 😔"

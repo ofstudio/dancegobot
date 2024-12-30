@@ -101,10 +101,9 @@ const (
 	ResultPartnerSameRole                               // Partner has the same role as dancer
 	ResultSelfNotAllowed                                // Not allowed to register in couple with yourself
 	ResultWasNotRegistered                              // The dancer was not registered for the event
-	ResultEventClosed                                   // The event is closed for new registrations
 	ResultDancerForbidden                               // The event is forbidden for the dancer
 	ResultPartnerForbidden                              // The event is forbidden for given partner
-	ResultClosedForSingles                              // The event is closed for singles
+	ResultEventClosed                                   // The event is closed for new registrations
 	ResultEventRemoved                                  // The event was marked as removed
 )
 
@@ -121,8 +120,7 @@ func (r RegistrationResult) IsRetryable() bool {
 	return r == ResultPartnerTaken ||
 		r == ResultPartnerSameRole ||
 		r == ResultSelfNotAllowed ||
-		r == ResultPartnerForbidden ||
-		r == ResultClosedForSingles
+		r == ResultPartnerForbidden
 }
 
 func (r RegistrationResult) String() string {
@@ -149,14 +147,12 @@ func (r RegistrationResult) String() string {
 		return "self_not_allowed"
 	case ResultWasNotRegistered:
 		return "not_registered"
-	case ResultEventClosed:
-		return "event_closed"
 	case ResultDancerForbidden:
 		return "dancer_forbidden"
 	case ResultPartnerForbidden:
 		return "partner_forbidden"
-	case ResultClosedForSingles:
-		return "closed_for_singles"
+	case ResultEventClosed:
+		return "event_closed"
 	case ResultEventRemoved:
 		return "event_removed"
 	default:

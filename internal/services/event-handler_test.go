@@ -448,7 +448,7 @@ func (suite *TestEventHandlerSuite) TestCoupleAdd() {
 
 	suite.Run("event is closed for new registrations", func() {
 		event := sampleEvent()
-		event.Settings.ClosedFor = models.ClosedForAll
+		event.Settings.Closed = true
 		handler := NewEventHandler(&event)
 		d1 := &models.Dancer{
 			Profile: &models.Profile{ID: 600, FirstName: "Alice", LastName: "Wonder"},
@@ -583,7 +583,7 @@ func (suite *TestEventHandlerSuite) TestSingleAdd() {
 
 	suite.Run("event is closed for new registrations", func() {
 		event := sampleEvent()
-		event.Settings.ClosedFor = models.ClosedForAll
+		event.Settings.Closed = true
 		handler := NewEventHandler(&event)
 		d := &models.Dancer{
 			Profile:  &models.Profile{ID: 600, FirstName: "Alice", LastName: "Wonder"},
@@ -595,33 +595,6 @@ func (suite *TestEventHandlerSuite) TestSingleAdd() {
 
 		suite.Require().NotNil(got)
 		suite.Equal(models.ResultEventClosed, got.Result)
-		suite.Equal(models.StatusNotRegistered, got.Status)
-		suite.Nil(got.Partner)
-		suite.Nil(got.Related)
-		suite.Equal(d.ID, got.ID)
-		suite.Equal(d.FullName, got.FullName)
-		suite.Equal(models.RoleLeader, got.Role)
-		suite.False(got.AsSingle)
-
-		suite.Require().Len(event.Singles, 2)
-		suite.Require().Len(handler.hist, 0)
-		suite.Require().Len(handler.notif, 0)
-	})
-
-	suite.Run("event is closed for singles", func() {
-		event := sampleEvent()
-		event.Settings.ClosedFor = models.ClosedForSingles
-		handler := NewEventHandler(&event)
-		d := &models.Dancer{
-			Profile:  &models.Profile{ID: 600, FirstName: "Alice", LastName: "Wonder"},
-			Role:     models.RoleLeader,
-			FullName: "Alice Wonder",
-		}
-
-		got := handler.SingleAdd(d)
-
-		suite.Require().NotNil(got)
-		suite.Equal(models.ResultClosedForSingles, got.Result)
 		suite.Equal(models.StatusNotRegistered, got.Status)
 		suite.Nil(got.Partner)
 		suite.Nil(got.Related)
@@ -716,41 +689,6 @@ func (suite *TestEventHandlerSuite) TestSingleAdd_autoPair() {
 		suite.Equal(models.TmplAutoPairPartnerFound, handler.notif[0].TmplCode)
 		suite.Equal(got.Partner.Profile, handler.notif[0].Recipient)
 		suite.Equal(got.Dancer, handler.notif[0].Payload.Partner)
-	})
-
-	suite.Run("closed for singles but found matching partner", func() {
-		config.SetBotProfile(botUser)
-		event := sampleEvent()
-		event.Settings.AutoPairing = true
-		event.Settings.ClosedFor = models.ClosedForSingles
-		handler := NewEventHandler(&event)
-		d := &models.Dancer{
-			Profile: &models.Profile{ID: 700, FirstName: "Bobby", LastName: "Fisher"},
-			Role:    models.RoleLeader,
-		}
-
-		got := handler.SingleAdd(d)
-
-		suite.Require().NotNil(got)
-		suite.Equal(models.ResultRegisteredInCouple, got.Result)
-		suite.Equal(models.StatusInCouple, got.Status)
-	})
-
-	suite.Run("closed for singles and no matching partners", func() {
-		event := sampleEvent()
-		event.Settings.AutoPairing = true
-		event.Settings.ClosedFor = models.ClosedForSingles
-		handler := NewEventHandler(&event)
-		d := &models.Dancer{
-			Profile: &models.Profile{ID: 600, FirstName: "Mary"},
-			Role:    models.RoleFollower,
-		}
-
-		got := handler.SingleAdd(d)
-
-		suite.Require().NotNil(got)
-		suite.Equal(models.ResultClosedForSingles, got.Result)
-		suite.Equal(models.StatusNotRegistered, got.Status)
 	})
 
 }
@@ -886,7 +824,7 @@ func (suite *TestEventHandlerSuite) TestDancerRemove() {
 
 	suite.Run("event is closed for all", func() {
 		event := sampleEvent()
-		event.Settings.ClosedFor = models.ClosedForAll
+		event.Settings.Closed = true
 		dancer := event.Couples[0].Dancers[0]
 		partner := event.Couples[0].Dancers[1]
 		handler := NewEventHandler(&event)
@@ -899,32 +837,6 @@ func (suite *TestEventHandlerSuite) TestDancerRemove() {
 		suite.Equal(&partner, got.Partner)
 	})
 
-	suite.Run("partner as single, event is closed for singles", func() {
-		event := sampleEvent()
-		event.Settings.ClosedFor = models.ClosedForSingles
-		couple := event.Couples[0]
-		dancer := couple.Dancers[0]
-		partner := couple.Dancers[1]
-		handler := NewEventHandler(&event)
-
-		got := handler.DancerRemove(&dancer)
-
-		suite.Require().NotNil(got)
-		suite.Equal(models.ResultRegistrationRemoved, got.Result)
-		suite.Equal(models.StatusNotRegistered, got.Status)
-		suite.Equal(&dancer, got.Dancer)
-		suite.Nil(got.Partner)
-
-		suite.Require().NotNil(got.Related)
-		suite.Equal(models.StatusAsSingle, got.Related.Status)
-		suite.Equal(models.ResultRegisteredAsSingle, got.Related.Result)
-		suite.Equal(&partner, got.Related.Dancer)
-		suite.Nil(got.Related.Partner)
-
-		suite.Require().Len(event.Couples, 1)
-		suite.Require().Len(event.Singles, 3)
-		suite.Equal(partner, event.Singles[1])
-	})
 }
 
 func (suite *TestEventHandlerSuite) TestDancerRemove_autoPair() {
@@ -1019,57 +931,6 @@ func (suite *TestEventHandlerSuite) TestDancerRemove_autoPair() {
 		suite.Equal(&dancer, handler.notif[0].Payload.Partner)
 	})
 
-	suite.Run("partner as single, event is closed for singles, found new partner", func() {
-		config.SetBotProfile(botUser)
-		event := sampleEvent()
-		event.Settings.AutoPairing = true
-		event.Settings.ClosedFor = models.ClosedForSingles
-		couple := event.Couples[1]
-		dancer := couple.Dancers[1]
-		partner := couple.Dancers[0]
-		newPartner := event.Singles[0]
-		handler := NewEventHandler(&event)
-
-		got := handler.DancerRemove(&dancer)
-
-		suite.Require().NotNil(got)
-		suite.Equal(models.ResultRegistrationRemoved, got.Result)
-		suite.Equal(models.StatusNotRegistered, got.Status)
-		suite.Equal(&dancer, got.Dancer)
-		suite.Nil(got.Partner)
-
-		suite.Require().NotNil(got.Related)
-		suite.Equal(models.StatusInCouple, got.Related.Status)
-		suite.Equal(models.ResultRegisteredInCouple, got.Related.Result)
-		suite.Equal(&partner, got.Related.Dancer)
-		suite.Require().NotNil(got.Related.Partner)
-		suite.Equal(&newPartner, got.Related.Partner)
-	})
-
-	suite.Run("partner as single, event is closed for singles, no matching partner", func() {
-		config.SetBotProfile(botUser)
-		event := sampleEvent()
-		event.Settings.AutoPairing = true
-		event.Settings.ClosedFor = models.ClosedForSingles
-		couple := event.Couples[0]
-		dancer := couple.Dancers[0]
-		partner := couple.Dancers[1]
-		handler := NewEventHandler(&event)
-
-		got := handler.DancerRemove(&dancer)
-
-		suite.Require().NotNil(got)
-		suite.Equal(models.ResultRegistrationRemoved, got.Result)
-		suite.Equal(models.StatusNotRegistered, got.Status)
-		suite.Equal(&dancer, got.Dancer)
-		suite.Nil(got.Partner)
-
-		suite.Require().NotNil(got.Related)
-		suite.Equal(models.StatusAsSingle, got.Related.Status)
-		suite.Equal(models.ResultRegisteredAsSingle, got.Related.Result)
-		suite.Equal(&partner, got.Related.Dancer)
-		suite.Nil(got.Related.Partner)
-	})
 }
 
 func sampleEvent() models.Event {

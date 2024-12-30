@@ -91,7 +91,7 @@ func (h *EventHandler) CoupleAdd(d, p *models.Dancer) *models.Registration {
 	}
 
 	// Check if event is not closed for new registrations
-	if h.event.Settings.ClosedFor == models.ClosedForAll {
+	if h.event.Settings.Closed {
 		reg.Result = models.ResultEventClosed
 		return reg
 	}
@@ -248,7 +248,7 @@ func (h *EventHandler) SingleAdd(d *models.Dancer) *models.Registration {
 	}
 
 	// Check if event is not closed for new registrations
-	if h.event.Settings.ClosedFor == models.ClosedForAll {
+	if h.event.Settings.Closed {
 		reg.Result = models.ResultEventClosed
 		return reg
 	}
@@ -257,12 +257,6 @@ func (h *EventHandler) SingleAdd(d *models.Dancer) *models.Registration {
 	// This should be done before checking if singles are allowed
 	if autoPairReg := h.tryAutoPair(reg); autoPairReg != nil {
 		return autoPairReg
-	}
-
-	// Check if singles are allowed for the event
-	if h.event.Settings.ClosedFor == models.ClosedForSingles {
-		reg.Result = models.ResultClosedForSingles
-		return reg
 	}
 
 	// Create a single and add to the event
@@ -303,7 +297,7 @@ func (h *EventHandler) DancerRemove(d *models.Dancer) *models.Registration {
 	}
 
 	// Check if event is closed for new registrations
-	if h.event.Settings.ClosedFor == models.ClosedForAll {
+	if h.event.Settings.Closed {
 		reg.Result = models.ResultEventClosed
 		return reg
 	}

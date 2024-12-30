@@ -33,15 +33,16 @@ func (e Event) LogValue() slog.Value {
 
 // EventSettings - is a settings for the event
 type EventSettings struct {
-	Limit       int       `json:"limit,omitempty"`        // Maximum number of couples allowed to sign-in. Zero means no limit
-	ClosedFor   ClosedFor `json:"closed_for,omitempty"`   // Is event closed for new signups or modifications
-	AutoPairing bool      `json:"auto_pairing,omitempty"` // Automatically pair single dancers
+	Limit       int  `json:"limit,omitempty"`        // Maximum number of couples allowed to sign-in. Zero means no limit
+	Closed      bool `json:"closed,omitempty"`       // Is event closed for new signups or modifications
+	AutoPairing bool `json:"auto_pairing,omitempty"` // Automatically pair single dancers
 }
 
-type ClosedFor string
-
-const (
-	ClosedForNone    ClosedFor = ""        // Open for all
-	ClosedForAll     ClosedFor = "all"     // Closed for all. No modifications allowed
-	ClosedForSingles ClosedFor = "singles" // Closed for singles
-)
+// LogValue implements slog.Valuer interface for EventSettings model.
+func (s EventSettings) LogValue() slog.Value {
+	return slog.GroupValue(
+		slog.Int("limit", s.Limit),
+		slog.Bool("closed", s.Closed),
+		slog.Bool("auto_pairing", s.AutoPairing),
+	)
+}

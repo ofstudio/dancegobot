@@ -94,14 +94,25 @@ func init() {
 	var err error
 
 	// Parse notification base template
-	notifyT, err = template.New("").Funcs(template.FuncMap{
-		"urlTo": func(p *models.Profile) template.URL {
-			return template.URL(profileURL(p))
+	notifyT = template.New("").Funcs(template.FuncMap{
+		"fmtDancer": func(dancer *models.Dancer) template.HTML {
+			if dancer.Profile == nil {
+				return template.HTML(dancer.FullName)
+			}
+			return template.HTML(fmt.Sprintf(
+				"<a href=\"%s\">%s</a>",
+				profileURL(dancer.Profile),
+				dancer.FullName,
+			))
 		},
-	}).Parse(locale.NotificationsBase)
-	if err != nil {
-		panic(fmt.Sprintf("failed to parse notification base template: %v", err))
-	}
+		"fmtProfile": func(p *models.Profile) template.HTML {
+			return template.HTML(fmt.Sprintf(
+				"<a href=\"%s\">%s</a>",
+				profileURL(p),
+				p.FullName(),
+			))
+		},
+	})
 
 	// Parse notification templates
 	for name, tmpl := range locale.Notifications {

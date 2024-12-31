@@ -212,6 +212,28 @@ func (s *EventService) PostChatAdd(
 	return event, post, err
 }
 
+// LimitChangeAffected returns list of affected couples after the limit change.
+// Returns true as second argument if the limit was increased, otherwise false.
+// Returns the start index of the affected couples as the third argument.
+func (s *EventService) LimitChangeAffected(event *models.Event, oldLimit int) ([]models.Couple, bool, int) {
+	if event == nil {
+		return nil, false, 0
+	}
+	return NewEventHandler(event).LimitChangeAffected(oldLimit)
+}
+
+// LimitChangeNotify notifies the affected dancers about the event limit change.
+func (s *EventService) LimitChangeNotify(ctx context.Context, eventID string, oldLimit int) {
+	err := s.update(ctx, eventID, func(h *EventHandler) error {
+		h.LimitChangeNotify(oldLimit)
+		return nil
+	})
+	if err != nil {
+		s.log.Error("[event service] failed to notify about event limit change: "+err.Error(),
+			"event_id", eventID, trace.Attr(ctx))
+	}
+}
+
 // CoupleAdd registers a couple for the event.
 // If the partner initially was registered as a single, the partner will be notified.
 // The partner can be either specified by a profile or a full name.

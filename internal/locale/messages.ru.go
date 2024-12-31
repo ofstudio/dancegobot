@@ -37,8 +37,9 @@ const (
 	ErrDancerNameTooLong = "Имя партнера слишком длинное 🤔"
 	ErrSingleNotFound    = "Такой танцор не найден 🤷‍♀️"
 
-	IconPostClosed = "🔒 "
-	PostCouples    = "👫 <b>Пары</b>\n"
+	IconPostClosed  = "🔒 "
+	PostCouples     = "👫 <b>Пары</b>\n"
+	PostCouplesWait = "\n⏳ <b>Список ожидания</b>\n"
 
 	SignupPlaceholder   = "Введи имя партнера…"
 	SignupNotRegistered = "Отправь мне имя партнера или выбери из списка..."
@@ -119,6 +120,26 @@ const (
 	BtnEventSettingsLimitNone = "👫 Без ограничений"
 	BtnEventSettingsLimitMore = "Больше ››"
 	BtnEventSettingsLimitLess = "‹‹ Меньше"
+	LimitChangedNoLimit       = "👫 Лимит пар отключен и "
+	LimitChangedIncreased     = "👫 Лимит пар увеличился и "
+	LimitChangedDecreased     = "👫 Лимит пар уменьшился и "
+	BtnLimitChangedNotify     = "🔔 Уведомить участников"
+	BtnLimitChangedSkip       = "Не уведомлять"
+	LimitChangedNotified      = "Уведомления отправлены 👌"
+)
+
+var (
+	NumLimitIncreased = numerals.Ru(
+		"%d пара вышла из списка ожидания:\n\n",
+		"%d пары вышли из списка ожидания:\n\n",
+		"%d пар вышло из списка ожидания:\n\n",
+	)
+
+	NumLimitDecreased = numerals.Ru(
+		"%d пара добавлена в список ожидания:\n\n",
+		"%d пары добавлены в список ожидания:\n\n",
+		"%d пар добавлено в список ожидания:\n\n",
+	)
 )
 
 const (

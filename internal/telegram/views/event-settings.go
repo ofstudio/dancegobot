@@ -3,6 +3,7 @@ package views
 import (
 	"fmt"
 	"strconv"
+	"strings"
 
 	tele "gopkg.in/telebot.v4"
 
@@ -18,6 +19,8 @@ var (
 	BtnEventSettingsLimitNum = tele.Btn{Unique: "evt_set_lim_num"}
 	BtnEventSettingsClose    = tele.Btn{Unique: "evt_set_closed"}
 	BtnEventSettingsBack     = tele.Btn{Unique: "evt_set_back"}
+	BtnLimitChangedNotify    = tele.Btn{Unique: "lim_chg_ntf"}
+	BtnLimitChangedSkip      = tele.Btn{Unique: "lim_chg_skp"}
 )
 
 // BtnEventSettingsScene creates a buttons for the event settings scene
@@ -108,6 +111,28 @@ func BtnEventSettingsLimitScene(eventID string, page int, offset string) *tele.R
 	return rm
 }
 
+// BtnLimitChanged creates a buttons for the limit changed prompt
+func BtnLimitChanged(eventID string, oldLimit int) *tele.ReplyMarkup {
+	rm := &tele.ReplyMarkup{}
+	rm.Inline(
+		rm.Row(rm.Data(
+			locale.BtnLimitChangedNotify,
+			BtnLimitChangedNotify.Unique,
+			eventID,
+			strconv.Itoa(oldLimit),
+			randtoken.New(2),
+		)),
+		rm.Row(rm.Data(
+			locale.BtnLimitChangedSkip,
+			BtnLimitChangedSkip.Unique,
+			eventID,
+			strconv.Itoa(oldLimit),
+			randtoken.New(2),
+		)),
+	)
+	return rm
+}
+
 // EventSettingsMsg returns a message with the event settings
 func EventSettingsMsg(event *models.Event) string {
 	date := event.CreatedAt.Format("02.01.2006")
@@ -128,4 +153,33 @@ func EventSettingsMsg(event *models.Event) string {
 	}
 
 	return msg + locale.EventSettingsClosed[event.Settings.Closed]
+}
+
+// LimitChangedMsg returns prompt text about the event settings limit change
+func LimitChangedMsg(event *models.Event, increased bool, couples []models.Couple, idx int) string {
+	sb := &strings.Builder{}
+
+	switch {
+	case event.Settings.Limit == 0:
+		sb.WriteString(locale.LimitChangedNoLimit)
+	case increased:
+		sb.WriteString(locale.LimitChangedIncreased)
+	default:
+		sb.WriteString(locale.LimitChangedDecreased)
+	}
+
+	if increased {
+		sb.WriteString(fmt.Sprintf(
+			locale.NumLimitIncreased.N(len(couples)),
+			len(couples),
+		))
+	} else {
+		sb.WriteString(fmt.Sprintf(
+			locale.NumLimitDecreased.N(len(couples)),
+			len(couples),
+		))
+	}
+
+	postCouplesBuild(sb, couples, 0, idx)
+	return sb.String()
 }

@@ -933,6 +933,129 @@ func (suite *TestEventHandlerSuite) TestDancerRemove_autoPair() {
 
 }
 
+func (suite *TestEventHandlerSuite) TestLimitChangeAffected() {
+	event := anotherSampleEvent()
+	handler := NewEventHandler(&event)
+
+	suite.Run("limit is increased from 3 to no-limit", func() {
+		event.Settings.Limit = 0
+		got, increased, idx := handler.LimitChangeAffected(3)
+
+		suite.Require().Len(got, 2)
+		suite.Require().True(increased)
+		suite.Equal(3, idx)
+		suite.Equal("Grace Hopper", got[0].Dancers[0].FullName)
+		suite.Equal("Ivy League", got[1].Dancers[0].FullName)
+	})
+
+	suite.Run("limit is increased from 3 to 4", func() {
+		event.Settings.Limit = 4
+		got, increased, idx := handler.LimitChangeAffected(3)
+
+		suite.Require().Len(got, 1)
+		suite.Require().True(increased)
+		suite.Equal(3, idx)
+		suite.Equal("Grace Hopper", got[0].Dancers[0].FullName)
+	})
+
+	suite.Run("limit is decreased from no-limit to 2", func() {
+		event.Settings.Limit = 2
+		got, increased, idx := handler.LimitChangeAffected(0)
+
+		suite.Require().Len(got, 3)
+		suite.Require().False(increased)
+		suite.Equal(2, idx)
+		suite.Equal("Eve Green", got[0].Dancers[0].FullName)
+		suite.Equal("Grace Hopper", got[1].Dancers[0].FullName)
+		suite.Equal("Ivy League", got[2].Dancers[0].FullName)
+	})
+
+	suite.Run("limit is decreased from 4 to 3", func() {
+		event.Settings.Limit = 3
+		got, increased, idx := handler.LimitChangeAffected(4)
+
+		suite.Require().Len(got, 1)
+		suite.Require().False(increased)
+		suite.Equal(3, idx)
+		suite.Equal("Grace Hopper", got[0].Dancers[0].FullName)
+	})
+}
+
+func (suite *TestEventHandlerSuite) TestLimitChangeNotify() {
+
+	suite.Run("limit is increased from 2 to no-limit", func() {
+		event := anotherSampleEvent()
+		event.Settings.Limit = 0
+		handler := NewEventHandler(&event)
+		handler.LimitChangeNotify(2)
+
+		suite.Require().Len(handler.notif, 4)
+		suite.Equal(models.TmplEventLimitIncreased, handler.notif[0].TmplCode)
+		suite.Equal("test98765432", handler.notif[0].Payload.Event.ID)
+
+		suite.Equal("Eve Green", handler.notif[0].Recipient.FullName())
+		suite.Equal("Frank Ocean", handler.notif[0].Payload.Partner.FullName)
+
+		suite.Equal("Frank Ocean", handler.notif[1].Recipient.FullName())
+		suite.Equal("Eve Green", handler.notif[1].Payload.Partner.FullName)
+
+		suite.Equal("Hank Hill", handler.notif[2].Recipient.FullName())
+		suite.Equal("Grace Hopper", handler.notif[2].Payload.Partner.FullName)
+
+		suite.Equal("Ivy League", handler.notif[3].Recipient.FullName())
+		suite.Equal("Jack Sparrow", handler.notif[3].Payload.Partner.FullName)
+	})
+
+	suite.Run("limit is decreased from 4 to 2", func() {
+		event := anotherSampleEvent()
+		event.Settings.Limit = 2
+		handler := NewEventHandler(&event)
+		handler.LimitChangeNotify(4)
+
+		suite.Require().Len(handler.notif, 3)
+		suite.Equal(models.TmplEventLimitDecreased, handler.notif[0].TmplCode)
+		suite.Equal("test98765432", handler.notif[0].Payload.Event.ID)
+
+		suite.Equal("Eve Green", handler.notif[0].Recipient.FullName())
+		suite.Equal("Frank Ocean", handler.notif[0].Payload.Partner.FullName)
+
+		suite.Equal("Frank Ocean", handler.notif[1].Recipient.FullName())
+		suite.Equal("Eve Green", handler.notif[1].Payload.Partner.FullName)
+
+		suite.Equal("Hank Hill", handler.notif[2].Recipient.FullName())
+		suite.Equal("Grace Hopper", handler.notif[2].Payload.Partner.FullName)
+	})
+}
+
+func Test_limitChangeRange(t *testing.T) {
+	tests := []struct {
+		from, to, couplesNum int
+		wantStart, wantEnd   int
+		wantIncreased        bool
+	}{
+		{from: 0, to: 0, couplesNum: 5, wantStart: 0, wantEnd: 0, wantIncreased: false},
+		{from: 0, to: 3, couplesNum: 5, wantStart: 3, wantEnd: 5, wantIncreased: false},
+		{from: 3, to: 5, couplesNum: 5, wantStart: 3, wantEnd: 5, wantIncreased: true},
+		{from: 5, to: 3, couplesNum: 5, wantStart: 3, wantEnd: 5, wantIncreased: false},
+		{from: 3, to: 3, couplesNum: 5, wantStart: 0, wantEnd: 0, wantIncreased: false},
+		{from: 6, to: 1, couplesNum: 5, wantStart: 1, wantEnd: 5, wantIncreased: false},
+		{from: 9, to: 0, couplesNum: 5, wantStart: 0, wantEnd: 0, wantIncreased: false},
+		{from: 3, to: 0, couplesNum: 5, wantStart: 3, wantEnd: 5, wantIncreased: true},
+	}
+
+	for _, tt := range tests {
+		gotStart, gotEnd, gotIncreased := limitChangeRange(tt.from, tt.to, tt.couplesNum)
+		if gotStart != tt.wantStart || gotEnd != tt.wantEnd || gotIncreased != tt.wantIncreased {
+			t.Errorf(
+				"limitChangeRange(%d, %d, %d) = %d, %d, %v; want %d, %d, %v",
+				tt.from, tt.to, tt.couplesNum,
+				gotStart, gotEnd, gotIncreased,
+				tt.wantStart, tt.wantEnd, tt.wantIncreased,
+			)
+		}
+	}
+}
+
 func sampleEvent() models.Event {
 	return models.Event{
 		ID:      "test12345678",
@@ -994,6 +1117,114 @@ func sampleEvent() models.Event {
 			},
 		},
 		Owner:     models.Profile{ID: 1000, FirstName: "Test", LastName: "Owner"},
+		CreatedAt: nowFn(),
+	}
+}
+
+func anotherSampleEvent() models.Event {
+	return models.Event{
+		ID:      "test98765432",
+		Caption: "This is another test event",
+		Post:    &models.Post{InlineMessageID: "987test654"},
+		Couples: []models.Couple{
+			{
+				// Couple 1
+				Dancers: []models.Dancer{
+					{
+						Profile:   &models.Profile{ID: 6, FirstName: "Alice", LastName: "Wonder"},
+						FullName:  "Alice Wonder",
+						Role:      models.RoleLeader,
+						CreatedAt: nowFn(),
+					},
+					{
+						Profile:   &models.Profile{ID: 7, FirstName: "Bob", LastName: "Builder"},
+						FullName:  "Bob Builder",
+						Role:      models.RoleFollower,
+						CreatedAt: nowFn(),
+					},
+				},
+				CreatedBy: models.Profile{ID: 6, FirstName: "Alice", LastName: "Wonder"},
+				CreatedAt: nowFn(),
+			},
+			{
+				// Couple 2
+				Dancers: []models.Dancer{
+					{
+						Profile:   &models.Profile{ID: 8, FirstName: "Charlie", LastName: "Brown"},
+						FullName:  "Charlie Brown",
+						Role:      models.RoleLeader,
+						CreatedAt: nowFn(),
+					},
+					{
+						Profile:   &models.Profile{ID: 9, FirstName: "Daisy", LastName: "Duck"},
+						FullName:  "Daisy Duck",
+						Role:      models.RoleFollower,
+						CreatedAt: nowFn(),
+					},
+				},
+				CreatedBy: models.Profile{ID: 8, FirstName: "Charlie", LastName: "Brown"},
+				CreatedAt: nowFn(),
+			},
+			{
+				// Couple 3 - follower was registered as single
+				Dancers: []models.Dancer{
+					{
+						Profile:   &models.Profile{ID: 10, FirstName: "Eve", LastName: "Green"},
+						FullName:  "Eve Green",
+						Role:      models.RoleLeader,
+						CreatedAt: nowFn(),
+					},
+					{
+						Profile:   &models.Profile{ID: 11, FirstName: "Frank", LastName: "Ocean"},
+						FullName:  "Frank Ocean",
+						AsSingle:  true,
+						Role:      models.RoleFollower,
+						CreatedAt: nowFn(),
+					},
+				},
+				CreatedBy: models.Profile{ID: 10, FirstName: "Eve", LastName: "Green"},
+				CreatedAt: nowFn(),
+			},
+			{
+				// Couple 4 - couple was registered by a follower, leader has no profile
+				Dancers: []models.Dancer{
+					{
+						FullName:  "Grace Hopper",
+						Role:      models.RoleLeader,
+						CreatedAt: nowFn(),
+					},
+					{
+						Profile:   &models.Profile{ID: 13, FirstName: "Hank", LastName: "Hill"},
+						FullName:  "Hank Hill",
+						Role:      models.RoleFollower,
+						CreatedAt: nowFn(),
+					},
+				},
+				CreatedBy: models.Profile{ID: 13, FirstName: "Hank", LastName: "Hill"},
+				CreatedAt: nowFn(),
+			},
+			{
+				// Couple 5
+				Dancers: []models.Dancer{
+					{
+						Profile:   &models.Profile{ID: 14, FirstName: "Ivy", LastName: "League"},
+						FullName:  "Ivy League",
+						Role:      models.RoleLeader,
+						CreatedAt: nowFn(),
+					},
+					{
+						Profile:   &models.Profile{ID: 15, FirstName: "Jack", LastName: "Sparrow"},
+						FullName:  "Jack Sparrow",
+						Role:      models.RoleFollower,
+						CreatedAt: nowFn(),
+					},
+				},
+				CreatedBy: models.Profile{ID: 14, FirstName: "Ivy", LastName: "League"},
+				CreatedAt: nowFn(),
+			},
+		},
+		Singles:   []models.Dancer{},
+		Owner:     models.Profile{ID: 1001, FirstName: "Another", LastName: "Owner"},
 		CreatedAt: nowFn(),
 	}
 }

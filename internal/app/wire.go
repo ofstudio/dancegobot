@@ -61,6 +61,8 @@ func (a *App) wire(ctx context.Context) {
 	a.Bot.Handle(&views.BtnEventSettingsClose, h.CbEventSettingsToggles)
 	a.Bot.Handle(&views.BtnEventSettingsLimit, h.CbEventSettingsLimitScene)
 	a.Bot.Handle(&views.BtnEventSettingsLimitNum, h.CbEventSettingsLimitNum)
+	a.Bot.Handle(&views.BtnLimitChangedNotify, h.CbLimitChangedNotify)
+	a.Bot.Handle(&views.BtnLimitChangedSkip, h.CbLimitChangedSkip)
 
 	// This is needed to receive channel posts
 	a.Bot.Handle(tele.OnChannelPost, func(_ tele.Context) error { return nil })

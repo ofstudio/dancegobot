@@ -6,7 +6,9 @@ import (
 	tele "gopkg.in/telebot.v4"
 
 	"github.com/ofstudio/dancegobot/internal/locale"
+	"github.com/ofstudio/dancegobot/internal/models"
 	"github.com/ofstudio/dancegobot/internal/telegram/views"
+	"github.com/ofstudio/dancegobot/pkg/errutil"
 	"github.com/ofstudio/dancegobot/pkg/telelog"
 )
 
@@ -173,6 +175,7 @@ func (h *Handlers) CbEventSettingsLimitNum(c tele.Context) error {
 		return h.respondErr(c, locale.ErrSomethingWrong)
 	}
 
+	oldLimit := event.Settings.Limit
 	event.Settings.Limit = limit
 	if event, err = h.eventService.UpdateSettings(h.ctx(c), event.ID, &h.userGet(c).Profile, event.Settings); err != nil {
 		h.log.Error("[handlers] event settings limit number callback: failed to update event settings: "+err.Error(),
@@ -187,7 +190,62 @@ func (h *Handlers) CbEventSettingsLimitNum(c tele.Context) error {
 		telelog.Trace(c))
 
 	_ = c.Respond()
-	return c.Edit(views.EventSettingsMsg(event), views.BtnEventSettingsScene(event, offset),
-		tele.ModeHTML, tele.NoPreview, tele.RemoveKeyboard)
+	return errutil.Append(
+		c.Edit(views.EventSettingsMsg(event), views.BtnEventSettingsScene(event, offset),
+			tele.ModeHTML, tele.NoPreview, tele.RemoveKeyboard),
+		h.limitChangedPrompt(c, event, oldLimit),
+	)
+}
 
+// CbLimitChangedNotify handles the limit changed notification callback.
+func (h *Handlers) CbLimitChangedNotify(c tele.Context) error {
+	h.log.Info("[handlers] limit changed notification callback received", telelog.Attr(c))
+	if len(c.Args()) < 3 {
+		h.log.Error("[handlers] limit changed notification callback: not enough arguments",
+			"args", c.Args(),
+			telelog.Attr(c))
+		return c.RespondAlert(locale.ErrSomethingWrong)
+	}
+
+	eventID := c.Args()[0]
+	oldLimit, err := strconv.Atoi(c.Args()[1])
+	if err != nil {
+		h.log.Error("[handlers] limit changed notification callback: failed to parse old limit: "+err.Error(),
+			"old_limit", c.Args()[1],
+			telelog.Trace(c))
+	}
+	_ = c.Respond()
+
+	err = c.Edit(&tele.ReplyMarkup{}, tele.ModeHTML, tele.NoPreview, tele.RemoveKeyboard)
+	h.eventService.LimitChangeNotify(h.ctx(c), eventID, oldLimit)
+
+	return errutil.Append(
+		err,
+		c.Send(locale.LimitChangedNotified, tele.RemoveKeyboard, tele.NoPreview, tele.ModeHTML),
+	)
+}
+
+// CbLimitChangedSkip handles the limit changed skip notification callback.
+func (h *Handlers) CbLimitChangedSkip(c tele.Context) error {
+	h.log.Info("[handlers] limit changed skip notification callback received", telelog.Attr(c))
+	_ = c.Respond()
+	return c.Edit(&tele.ReplyMarkup{}, tele.ModeHTML, tele.NoPreview, tele.RemoveKeyboard)
+}
+
+// limitChangedPrompt sends a prompt message about the limit change.
+func (h *Handlers) limitChangedPrompt(c tele.Context, event *models.Event, oldLimit int) error {
+	// Skip if the limit hasn't changed
+	if event.Settings.Limit == oldLimit {
+		return nil
+	}
+	couples, increased, idx := h.eventService.LimitChangeAffected(event, oldLimit)
+	// Skip if no couples affected
+	if len(couples) == 0 {
+		return nil
+	}
+
+	// Send a prompt message about affected couples
+	msg := views.LimitChangedMsg(event, increased, couples, idx)
+	rm := views.BtnLimitChanged(event.ID, oldLimit)
+	return c.Send(msg, rm, tele.ModeHTML, tele.NoPreview, tele.RemoveKeyboard)
 }

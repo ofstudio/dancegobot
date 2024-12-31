@@ -6,7 +6,7 @@ type Session struct {
 	EventID  string          `json:"event_id,omitempty"`      // Current event id related to the session
 	Role     Role            `json:"event_role,omitempty"`    // Current role related to the session
 	Singles  []SessionSingle `json:"event_singles,omitempty"` // List of singles available for signup with the current user role
-	MyEvents []string        `json:"my_events,omitempty"`     // List of events for /my command
+	MyEvents []string        `json:"my_events,omitempty"`     // List of event IDs for /my scene
 }
 
 // SessionAction - is a user action related to the session

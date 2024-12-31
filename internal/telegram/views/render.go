@@ -81,7 +81,7 @@ func postTextBuilder(event *models.Event) *strings.Builder {
 
 	if len(event.Couples) > 0 {
 		sb.WriteString(locale.PostCouples)
-		postCouplesBuild(sb, event.Couples)
+		postCouplesBuild(sb, event.Couples, event.Settings.Limit, 0)
 		sb.WriteByte('\n')
 	}
 
@@ -99,9 +99,12 @@ func postTextBuilder(event *models.Event) *strings.Builder {
 }
 
 // postCouplesBuild appends the couples list to the strings.Builder.
-func postCouplesBuild(sb *strings.Builder, couples []models.Couple) {
+func postCouplesBuild(sb *strings.Builder, couples []models.Couple, limit, startIdx int) {
 	for i, c := range couples {
-		sb.WriteString(strconv.Itoa(i + 1))
+		if limit > 0 && i == limit {
+			sb.WriteString(locale.PostCouplesWait)
+		}
+		sb.WriteString(strconv.Itoa(startIdx + i + 1))
 		sb.WriteString(". ")
 		sb.WriteString(fmtDancer(&c.Dancers[0]))
 		sb.WriteString(" – ")

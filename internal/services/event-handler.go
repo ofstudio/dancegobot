@@ -77,6 +77,47 @@ func (h *EventHandler) RegistrationGet(dancer *models.Dancer) *models.Registrati
 	}
 }
 
+// LimitChangeAffected returns list of affected couples after the limit change.
+// Returns true as second argument if the limit was increased, otherwise false.
+// Returns the start index of the affected couples as the third argument.
+func (h *EventHandler) LimitChangeAffected(oldLimit int) ([]models.Couple, bool, int) {
+	start, end, increased := limitChangeRange(oldLimit, h.event.Settings.Limit, len(h.event.Couples))
+	return h.event.Couples[start:end], increased, start
+}
+
+// LimitChangeNotify notifies the affected dancers about the event limit change.
+func (h *EventHandler) LimitChangeNotify(oldLimit int) {
+	// Get the affected couples
+	from, to, increased := limitChangeRange(oldLimit, h.event.Settings.Limit, len(h.event.Couples))
+	couples := h.event.Couples[from:to]
+
+	// Select the template code
+	tmplCode := models.TmplEventLimitDecreased
+	if increased {
+		tmplCode = models.TmplEventLimitIncreased
+	}
+
+	// Iterate over the couples and create notifications
+	for _, couple := range couples {
+		// Iterate over the dancers in the couple
+		for i, dancer := range couple.Dancers {
+			// Notify only the couple creator or who signed up as a single
+			if dancer.Profile != nil &&
+				(dancer.Profile.ID == couple.CreatedBy.ID || dancer.AsSingle) {
+				partner := couple.Dancers[i^1]
+				h.notif = append(h.notif, &models.Notification{
+					TmplCode:  tmplCode,
+					Recipient: dancer.Profile,
+					Payload: models.NotificationPayload{
+						Event:   h.event,
+						Partner: &partner,
+					},
+				})
+			}
+		}
+	}
+}
+
 // CoupleAdd registers a couple for the event.
 // If the partner initially was registered as a single, the partner will be notified.
 func (h *EventHandler) CoupleAdd(d, p *models.Dancer) *models.Registration {
@@ -528,6 +569,32 @@ func (h *EventHandler) isSame(dancer, other *models.Dancer) bool {
 		return (ok1 && ok2) && (u1 == u2)
 	default:
 		return false
+	}
+}
+
+// limitChangeRange calculates the range of couples affected by the limit change.
+// Returns the start and end indexes of the couples list
+// and a boolean indicating if the limit was increased or decreased.
+//
+// Zero values for from and to will be treated as no limit.
+//
+// The start index is inclusive and the end index is exclusive
+// so the range can be used as a slice index: couples[start:end].
+func limitChangeRange(from, to, couplesNum int) (int, int, bool) {
+	if from == 0 || from > couplesNum {
+		from = couplesNum
+	}
+	if to == 0 || to > couplesNum {
+		to = couplesNum
+	}
+
+	switch {
+	case from == to:
+		return 0, 0, false
+	case from < to:
+		return from, to, true
+	default:
+		return to, from, false
 	}
 }
 

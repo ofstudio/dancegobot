@@ -66,7 +66,31 @@ func Test_notifyText(t *testing.T) {
 		text, err := notifyTextBuilder(n)
 		require.NoError(t, err)
 		assert.Equal(t,
-			"🔔 Test Event\n\n<a href=\"tg://user?id=1\">Test Partner</a> отменил вашу регистрацию. \nЯ записал тебя вместе с <a href=\"https://t.me/new_partner\">New Partner</a> 👌",
+			"🔔 Test Event\n\n<a href=\"tg://user?id=1\">Test Partner</a> отменил вашу регистрацию. \nЯ записал тебя вместе с <a href=\"https://t.me/new_partner\">Another</a> 👌",
+			text.String())
+	})
+
+	t.Run("TmplEventLimitIncreased", func(t *testing.T) {
+		n := &models.Notification{
+			TmplCode: models.TmplEventLimitIncreased,
+			Payload:  testPayload,
+		}
+		text, err := notifyTextBuilder(n)
+		require.NoError(t, err)
+		assert.Equal(t,
+			"🔔 Test Event\n\n<a href=\"tg://user?id=100\">Test Owner</a> увеличил лимит пар и вы вместе с <a href=\"tg://user?id=1\">Test Partner</a> вышли из списка ожидания 🎉\n\nЕсли планы изменились, и вы не сможете принять участие, пожалуйста, отмените вашу регистрацию.",
+			text.String())
+	})
+
+	t.Run("TmplEventLimitDecreased", func(t *testing.T) {
+		n := &models.Notification{
+			TmplCode: models.TmplEventLimitDecreased,
+			Payload:  testPayload,
+		}
+		text, err := notifyTextBuilder(n)
+		require.NoError(t, err)
+		assert.Equal(t,
+			"🔔 Test Event\n\n<a href=\"tg://user?id=100\">Test Owner</a> уменьшил лимит пар и вы вместе с <a href=\"tg://user?id=1\">Test Partner</a> теперь в списке ожидания.\n\nЕсли кто-то отменит регистрацию и вы попадете в список участников, то я сообщу об этом 🤗",
 			text.String())
 	})
 }
@@ -74,18 +98,22 @@ func Test_notifyText(t *testing.T) {
 var testPayload = models.NotificationPayload{
 	Event: &models.Event{
 		Caption: "Test Event",
+		Owner:   models.Profile{ID: 100, FirstName: "Test", LastName: "Owner"},
 	},
 	Partner: &models.Dancer{
 		Profile: &models.Profile{
-			ID: 1,
+			ID:        1,
+			FirstName: "Test",
+			LastName:  "Partner",
 		},
 		FullName: "Test Partner",
 	},
 	NewPartner: &models.Dancer{
 		Profile: &models.Profile{
-			ID:       2,
-			Username: "new_partner",
+			ID:        2,
+			FirstName: "Another",
+			Username:  "new_partner",
 		},
-		FullName: "New Partner",
+		FullName: "Another",
 	},
 }

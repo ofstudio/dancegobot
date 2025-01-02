@@ -933,6 +933,39 @@ func (suite *TestEventHandlerSuite) TestDancerRemove_autoPair() {
 
 }
 
+func (suite *TestEventHandlerSuite) TestDancerRemove_limit() {
+
+	suite.Run("num of couples not changed, couple within limit", func() {
+		config.SetBotProfile(botUser)
+		event := anotherSampleEvent()
+		event.Settings.AutoPairing = true
+		event.Settings.Limit = 3
+		coupleRemoved := event.Couples[2]
+		dancerRemoved := coupleRemoved.Dancers[0]
+		partner := coupleRemoved.Dancers[1]
+		newDancer := event.Singles[0]
+		handler := NewEventHandler(&event)
+
+		got := handler.DancerRemove(&dancerRemoved)
+
+		suite.Require().NotNil(got)
+		suite.Equal(models.ResultRegistrationRemoved, got.Result)
+
+		suite.Require().Len(event.Couples, 5)
+		suite.Equal(newDancer, event.Couples[2].Dancers[0])
+		suite.Equal(partner, event.Couples[2].Dancers[1])
+
+		suite.Require().Len(handler.notif, 2)
+		suite.Equal(models.TmplAutoPairPartnerFound, handler.notif[0].TmplCode)
+		suite.Equal(newDancer.Profile, handler.notif[0].Recipient)
+		suite.Equal(&partner, handler.notif[0].Payload.Partner)
+		suite.Equal(models.TmplAutoPairPartnerChanged, handler.notif[1].TmplCode)
+		suite.Equal(partner.Profile, handler.notif[1].Recipient)
+		suite.Equal(&dancerRemoved, handler.notif[1].Payload.Partner)
+		suite.Equal(&newDancer, handler.notif[1].Payload.NewPartner)
+	})
+}
+
 func (suite *TestEventHandlerSuite) TestLimitChangeAffected() {
 	event := anotherSampleEvent()
 	handler := NewEventHandler(&event)
@@ -1144,7 +1177,7 @@ func anotherSampleEvent() models.Event {
 					},
 				},
 				CreatedBy: models.Profile{ID: 6, FirstName: "Alice", LastName: "Wonder"},
-				CreatedAt: nowFn(),
+				CreatedAt: nowFn().Add(1 * time.Second),
 			},
 			{
 				// Couple 2
@@ -1163,7 +1196,7 @@ func anotherSampleEvent() models.Event {
 					},
 				},
 				CreatedBy: models.Profile{ID: 8, FirstName: "Charlie", LastName: "Brown"},
-				CreatedAt: nowFn(),
+				CreatedAt: nowFn().Add(2 * time.Second),
 			},
 			{
 				// Couple 3 - follower was registered as single
@@ -1172,7 +1205,7 @@ func anotherSampleEvent() models.Event {
 						Profile:   &models.Profile{ID: 10, FirstName: "Eve", LastName: "Green"},
 						FullName:  "Eve Green",
 						Role:      models.RoleLeader,
-						CreatedAt: nowFn(),
+						CreatedAt: nowFn().Add(3 * time.Second),
 					},
 					{
 						Profile:   &models.Profile{ID: 11, FirstName: "Frank", LastName: "Ocean"},
@@ -1183,7 +1216,7 @@ func anotherSampleEvent() models.Event {
 					},
 				},
 				CreatedBy: models.Profile{ID: 10, FirstName: "Eve", LastName: "Green"},
-				CreatedAt: nowFn(),
+				CreatedAt: nowFn().Add(3 * time.Second),
 			},
 			{
 				// Couple 4 - couple was registered by a follower, leader has no profile
@@ -1201,7 +1234,7 @@ func anotherSampleEvent() models.Event {
 					},
 				},
 				CreatedBy: models.Profile{ID: 13, FirstName: "Hank", LastName: "Hill"},
-				CreatedAt: nowFn(),
+				CreatedAt: nowFn().Add(4 * time.Second),
 			},
 			{
 				// Couple 5
@@ -1220,10 +1253,17 @@ func anotherSampleEvent() models.Event {
 					},
 				},
 				CreatedBy: models.Profile{ID: 14, FirstName: "Ivy", LastName: "League"},
+				CreatedAt: nowFn().Add(5 * time.Second),
+			},
+		},
+		Singles: []models.Dancer{
+			{
+				Profile:   &models.Profile{ID: 16, FirstName: "Daniel"},
+				FullName:  "Daniel",
+				Role:      models.RoleLeader,
 				CreatedAt: nowFn(),
 			},
 		},
-		Singles:   []models.Dancer{},
 		Owner:     models.Profile{ID: 1001, FirstName: "Another", LastName: "Owner"},
 		CreatedAt: nowFn(),
 	}

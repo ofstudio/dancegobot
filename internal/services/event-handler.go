@@ -3,6 +3,7 @@ package services
 import (
 	"fmt"
 	"sort"
+	"time"
 
 	"github.com/ofstudio/dancegobot/internal/config"
 	"github.com/ofstudio/dancegobot/internal/models"
@@ -176,11 +177,13 @@ func (h *EventHandler) CoupleAdd(d, p *models.Dancer) *models.Registration {
 	}
 
 	// Register as couple
-	return h.coupleAdd(reg, false)
+	return h.coupleAdd(reg, false, nowFn())
 }
 
 // coupleAdd processes the couple registration.
-func (h *EventHandler) coupleAdd(reg *models.Registration, isAutoPair bool) *models.Registration {
+// The autoPair flag indicates if the couple was auto paired.
+// The createdAt time is used for keeping couples order when partner changes.
+func (h *EventHandler) coupleAdd(reg *models.Registration, autoPair bool, createdAt time.Time) *models.Registration {
 	// Check if dancer is in singles and remove from singles
 	if reg.Status == models.StatusAsSingle {
 		h.removeFromSingles(reg.Dancer)
@@ -196,12 +199,13 @@ func (h *EventHandler) coupleAdd(reg *models.Registration, isAutoPair bool) *mod
 	// Check if partner is in singles and remove from singles
 	// and create notification for the partner
 	initiator := reg.Profile
-	if isAutoPair {
+	if autoPair {
 		initiator = config.BotProfile()
 	}
 	if reg.Related.Status == models.StatusAsSingle {
 		h.removeFromSingles(reg.Related.Dancer)
-		// Add history item and notification for the partner
+
+		// Add history item
 		h.hist = append(h.hist, &models.HistoryItem{
 			Action:    models.HistorySingleRemoved,
 			Initiator: initiator,
@@ -209,11 +213,11 @@ func (h *EventHandler) coupleAdd(reg *models.Registration, isAutoPair bool) *mod
 			Details:   reg.Related.Dancer,
 			CreatedAt: nowFn(),
 		})
-		var tmplCode models.NotificationTmpl
-		if isAutoPair {
+
+		// Add notification for the partner
+		tmplCode := models.TmplRegisteredWithSingle
+		if autoPair {
 			tmplCode = models.TmplAutoPairPartnerFound
-		} else {
-			tmplCode = models.TmplRegisteredWithSingle
 		}
 		h.notif = append(h.notif, &models.Notification{
 			TmplCode:  tmplCode,
@@ -228,8 +232,8 @@ func (h *EventHandler) coupleAdd(reg *models.Registration, isAutoPair bool) *mod
 	// Create a couple
 	couple := models.Couple{
 		CreatedBy: *reg.Profile,
-		AutoPair:  isAutoPair,
-		CreatedAt: nowFn(),
+		AutoPair:  autoPair,
+		CreatedAt: createdAt, // Use provided time to keep couples order
 	}
 	if reg.Role == models.RoleLeader {
 		couple.Dancers = []models.Dancer{*reg.Dancer, *reg.Related.Dancer}
@@ -246,8 +250,13 @@ func (h *EventHandler) coupleAdd(reg *models.Registration, isAutoPair bool) *mod
 		CreatedAt: nowFn(),
 	})
 
-	// Add couple to the event and return the registration
+	// Add couple to the event
 	h.event.Couples = append(h.event.Couples, couple)
+
+	// Keep couples ordered by creation time
+	sort.Sort(CouplesSorter(h.event.Couples))
+
+	// Return the registration
 	reg.Result = models.ResultRegisteredInCouple
 	reg.Status = models.StatusInCouple
 	reg.Partner = reg.Related.Dancer
@@ -296,7 +305,7 @@ func (h *EventHandler) SingleAdd(d *models.Dancer) *models.Registration {
 
 	// Try to auto pair the reg if possible
 	// This should be done before checking if singles are allowed
-	if autoPairReg := h.tryAutoPair(reg); autoPairReg != nil {
+	if autoPairReg := h.tryAutoPair(reg, nowFn()); autoPairReg != nil {
 		return autoPairReg
 	}
 
@@ -365,12 +374,12 @@ func (h *EventHandler) DancerRemove(d *models.Dancer) *models.Registration {
 	}
 
 	// If dancer is in a couple remove the couple
-	removedCouple := h.removeCouple(reg.Dancer)
+	exCouple := h.removeCouple(reg.Dancer)
 	h.hist = append(h.hist, &models.HistoryItem{
 		Action:    models.HistoryCoupleRemoved,
 		Initiator: reg.Dancer.Profile,
 		EventID:   &h.event.ID,
-		Details:   removedCouple,
+		Details:   exCouple,
 		CreatedAt: nowFn(),
 	})
 
@@ -387,12 +396,12 @@ func (h *EventHandler) DancerRemove(d *models.Dancer) *models.Registration {
 
 	// If partner was signed up as a single, move back to singles (or auto pair if available)
 	if reg.Related.AsSingle {
-		reg.Related = h.singleRestore(reg.Related, reg.Dancer)
+		reg.Related = h.singleRestore(reg.Related, reg.Dancer, exCouple.CreatedAt)
 		return reg
 	}
 
 	// Otherwise, if couple was created by the partner send notification to the partner
-	if reg.Related.Profile != nil && removedCouple.CreatedBy.ID == reg.Related.Profile.ID {
+	if reg.Related.Profile != nil && exCouple.CreatedBy.ID == reg.Related.Profile.ID {
 		h.notif = append(h.notif, &models.Notification{
 			TmplCode:  models.TmplCanceledByPartner,
 			Recipient: reg.Related.Profile,
@@ -410,7 +419,9 @@ func (h *EventHandler) DancerRemove(d *models.Dancer) *models.Registration {
 // tryAutoPair tries to auto pair the dancer with a partner from the singles list.
 // Returns the updated registration if the partner was found and paired, otherwise nil.
 // If auto pairing is disabled for the event, returns nil.
-func (h *EventHandler) tryAutoPair(reg *models.Registration) *models.Registration {
+// In case of auto pairing after couple removal the createdAt time should be set
+// to the time of the previous couple creation.
+func (h *EventHandler) tryAutoPair(reg *models.Registration, createdAt time.Time) *models.Registration {
 	// skip if auto pairing is disabled for the event
 	if !h.event.Settings.AutoPairing {
 		return nil
@@ -420,20 +431,23 @@ func (h *EventHandler) tryAutoPair(reg *models.Registration) *models.Registratio
 		return nil
 	}
 	reg.AsSingle = true
-	return h.coupleAdd(reg, true)
+	return h.coupleAdd(reg, true, createdAt)
 }
 
-// singleRestore restores the dancer to the singles list.
+// singleRestore restores the dancer to the singles list after a couple removal.
 // If auto pairing is enabled, tries to auto pair the dancer.
-func (h *EventHandler) singleRestore(reg *models.Registration, ex *models.Dancer) *models.Registration {
+// The exPartner parameter is used to send proper the notification to the dancer.
+// The exCoupleCreatedAt should be provided to keep the order of couples
+// in case of dancer will be auto paired with a new partner.
+func (h *EventHandler) singleRestore(reg *models.Registration, exPartner *models.Dancer, exCoupleCreatedAt time.Time) *models.Registration {
 	// Try to auto pair the dancer
-	if autoPairReg := h.tryAutoPair(reg); autoPairReg != nil {
+	if autoPairReg := h.tryAutoPair(reg, exCoupleCreatedAt); autoPairReg != nil {
 		h.notif = append(h.notif, &models.Notification{
 			TmplCode:  models.TmplAutoPairPartnerChanged,
 			Recipient: autoPairReg.Profile,
 			Payload: models.NotificationPayload{
 				Event:      h.event,
-				Partner:    ex,
+				Partner:    exPartner,
 				NewPartner: autoPairReg.Partner,
 			},
 		})
@@ -454,14 +468,14 @@ func (h *EventHandler) singleRestore(reg *models.Registration, ex *models.Dancer
 		Recipient: reg.Profile,
 		Payload: models.NotificationPayload{
 			Event:   h.event,
-			Partner: ex,
+			Partner: exPartner,
 		},
 	})
 
 	// Add history item
 	h.hist = append(h.hist, &models.HistoryItem{
 		Action:    models.HistorySingleAdded,
-		Initiator: ex.Profile,
+		Initiator: exPartner.Profile,
 		EventID:   &h.event.ID,
 		Details:   reg.Dancer,
 		CreatedAt: nowFn(),
@@ -604,3 +618,10 @@ type SinglesSorter []models.Dancer
 func (s SinglesSorter) Len() int           { return len(s) }
 func (s SinglesSorter) Swap(i, j int)      { s[i], s[j] = s[j], s[i] }
 func (s SinglesSorter) Less(i, j int) bool { return s[i].CreatedAt.Before(s[j].CreatedAt) }
+
+// CouplesSorter is a sorter for couples by creation time.
+type CouplesSorter []models.Couple
+
+func (c CouplesSorter) Len() int           { return len(c) }
+func (c CouplesSorter) Swap(i, j int)      { c[i], c[j] = c[j], c[i] }
+func (c CouplesSorter) Less(i, j int) bool { return c[i].CreatedAt.Before(c[j].CreatedAt) }

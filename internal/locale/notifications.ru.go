@@ -4,11 +4,17 @@ import (
 	"github.com/ofstudio/dancegobot/internal/models"
 )
 
+const NotificationsBase =
+// language=GoTemplate
+`{{define "waitlist"}}{{if .WaitList}}
+
+Ваша пара находится в списке ожидания. Если кто-то отменит регистрацию и вы попадете в список участников, то я сообщу об этом 🤗{{end}}{{end}}`
+
 var Notifications = map[models.NotificationTmpl]string{
 	// language=GoTemplate
 	models.TmplRegisteredWithSingle: `🔔 {{.Event.Caption}}
 
-{{fmtDancer .Partner}} зарегистрировался с тобой в паре! 🎉`,
+{{fmtDancer .Partner}} зарегистрировался с тобой в паре! 🎉{{template "waitlist" .}}`,
 
 	// language=GoTemplate
 	models.TmplCanceledWithSingle: `🔔 {{.Event.Caption}}
@@ -23,13 +29,13 @@ var Notifications = map[models.NotificationTmpl]string{
 	// language=GoTemplate
 	models.TmplAutoPairPartnerFound: `🔔 {{.Event.Caption}}
 
-Я подобрал тебе в пару {{fmtDancer .Partner}} 👌`,
+Я подобрал тебе в пару {{fmtDancer .Partner}} 👌{{template "waitlist" .}}`,
 
 	// language=GoTemplate
 	models.TmplAutoPairPartnerChanged: `🔔 {{.Event.Caption}}
 
 {{fmtDancer .Partner}} отменил вашу регистрацию. 
-Я записал тебя вместе с {{fmtDancer .NewPartner}} 👌`,
+Я записал тебя вместе с {{fmtDancer .NewPartner}} 👌{{template "waitlist" .}}`,
 
 	// language=GoTemplate
 	models.TmplEventLimitIncreased: `🔔 {{.Event.Caption}}

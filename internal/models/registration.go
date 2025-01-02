@@ -7,11 +7,12 @@ import (
 
 // Registration represents the registration of a dancer for an event.
 type Registration struct {
-	*Dancer                    // Dancer who is registered
-	Status  RegistrationStatus // Current registration status for the event
-	Result  RegistrationResult // The result of the registration request
-	Event   *Event             // Event related to the registration
-	Partner *Dancer            // Partner of the dancer if registered in a couple
+	*Dancer                     // Dancer who is registered
+	Status   RegistrationStatus // Current registration status for the event
+	Result   RegistrationResult // The result of the registration request
+	Event    *Event             // Event related to the registration
+	Partner  *Dancer            // Partner of the dancer if registered in a couple
+	WaitList bool               // True if a couple is in the waitlist
 	// Related contains other registration that is related by the current registration request (if any).
 	//   - When a dancer tries to registers in a couple, Related contains the registration of the chosen partner.
 	//   - When a dancer removes their registration in a couple, Related contains the registration of ex-partner.
@@ -31,6 +32,9 @@ func (r *Registration) LogValue() slog.Value {
 		attrs = append(attrs, slog.Any("related", slog.GroupValue(
 			r.Related.attrs()...,
 		)))
+	}
+	if r.WaitList {
+		attrs = append(attrs, slog.Bool("wait_list", r.WaitList))
 	}
 
 	return slog.GroupValue(attrs...)

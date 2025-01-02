@@ -21,6 +21,20 @@ func Test_notifyText(t *testing.T) {
 			"🔔 Test Event\n\n<a href=\"tg://user?id=1\">Test Partner</a> зарегистрировался с тобой в паре! 🎉",
 			text.String())
 	})
+	t.Run("TmplRegisteredWithSingle_waitlist", func(t *testing.T) {
+		payload := testPayload
+		payload.WaitList = true
+		n := &models.Notification{
+			TmplCode: models.TmplRegisteredWithSingle,
+			Payload:  payload,
+		}
+		text, err := notifyTextBuilder(n)
+		require.NoError(t, err)
+		assert.Equal(t,
+			"🔔 Test Event\n\n<a href=\"tg://user?id=1\">Test Partner</a> зарегистрировался с тобой в паре! 🎉"+
+				"\n\nВаша пара находится в списке ожидания. Если кто-то отменит регистрацию и вы попадете в список участников, то я сообщу об этом 🤗",
+			text.String())
+	})
 
 	t.Run("TmplCanceledWithSingle", func(t *testing.T) {
 		n := &models.Notification{
@@ -58,6 +72,21 @@ func Test_notifyText(t *testing.T) {
 			text.String())
 	})
 
+	t.Run("TmplAutoPairPartnerFound_waitlist", func(t *testing.T) {
+		payload := testPayload
+		payload.WaitList = true
+		n := &models.Notification{
+			TmplCode: models.TmplAutoPairPartnerFound,
+			Payload:  payload,
+		}
+		text, err := notifyTextBuilder(n)
+		require.NoError(t, err)
+		assert.Equal(t,
+			"🔔 Test Event\n\nЯ подобрал тебе в пару <a href=\"tg://user?id=1\">Test Partner</a> 👌"+
+				"\n\nВаша пара находится в списке ожидания. Если кто-то отменит регистрацию и вы попадете в список участников, то я сообщу об этом 🤗",
+			text.String())
+	})
+
 	t.Run("TmplAutoPairPartnerChanged", func(t *testing.T) {
 		n := &models.Notification{
 			TmplCode: models.TmplAutoPairPartnerChanged,
@@ -67,6 +96,21 @@ func Test_notifyText(t *testing.T) {
 		require.NoError(t, err)
 		assert.Equal(t,
 			"🔔 Test Event\n\n<a href=\"tg://user?id=1\">Test Partner</a> отменил вашу регистрацию. \nЯ записал тебя вместе с <a href=\"https://t.me/new_partner\">Another</a> 👌",
+			text.String())
+	})
+
+	t.Run("TmplAutoPairPartnerChanged_waitlist", func(t *testing.T) {
+		payload := testPayload
+		payload.WaitList = true
+		n := &models.Notification{
+			TmplCode: models.TmplAutoPairPartnerChanged,
+			Payload:  payload,
+		}
+		text, err := notifyTextBuilder(n)
+		require.NoError(t, err)
+		assert.Equal(t,
+			"🔔 Test Event\n\n<a href=\"tg://user?id=1\">Test Partner</a> отменил вашу регистрацию. \nЯ записал тебя вместе с <a href=\"https://t.me/new_partner\">Another</a> 👌"+
+				"\n\nВаша пара находится в списке ожидания. Если кто-то отменит регистрацию и вы попадете в список участников, то я сообщу об этом 🤗",
 			text.String())
 	})
 

@@ -28,6 +28,7 @@ type NotificationPayload struct {
 	Event      *Event  // Event related to the notification (if any)
 	Partner    *Dancer // Current partner of the recipient (if any)
 	NewPartner *Dancer // New partner of the recipient (if any)
+	WaitList   bool    `json:"wait_list,omitempty"` // True if couple in the waitlist
 }
 
 type NotificationTmpl string

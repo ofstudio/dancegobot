@@ -197,14 +197,12 @@ func (h *EventHandler) coupleAdd(reg *models.Registration, autoPair bool, create
 	}
 
 	// Check if partner is in singles and remove from singles
-	// and create notification for the partner
 	initiator := reg.Profile
 	if autoPair {
 		initiator = config.BotProfile()
 	}
 	if reg.Related.Status == models.StatusAsSingle {
 		h.removeFromSingles(reg.Related.Dancer)
-
 		// Add history item
 		h.hist = append(h.hist, &models.HistoryItem{
 			Action:    models.HistorySingleRemoved,
@@ -212,20 +210,6 @@ func (h *EventHandler) coupleAdd(reg *models.Registration, autoPair bool, create
 			EventID:   &h.event.ID,
 			Details:   reg.Related.Dancer,
 			CreatedAt: nowFn(),
-		})
-
-		// Add notification for the partner
-		tmplCode := models.TmplRegisteredWithSingle
-		if autoPair {
-			tmplCode = models.TmplAutoPairPartnerFound
-		}
-		h.notif = append(h.notif, &models.Notification{
-			TmplCode:  tmplCode,
-			Recipient: reg.Related.Profile,
-			Payload: models.NotificationPayload{
-				Event:   h.event,
-				Partner: reg.Dancer,
-			},
 		})
 	}
 
@@ -241,7 +225,7 @@ func (h *EventHandler) coupleAdd(reg *models.Registration, autoPair bool, create
 		couple.Dancers = []models.Dancer{*reg.Related.Dancer, *reg.Dancer}
 	}
 
-	// Add couple to the event history
+	// Add couple to the history
 	h.hist = append(h.hist, &models.HistoryItem{
 		Action:    models.HistoryCoupleAdded,
 		Initiator: initiator,
@@ -256,13 +240,31 @@ func (h *EventHandler) coupleAdd(reg *models.Registration, autoPair bool, create
 	// Keep couples ordered by creation time
 	sort.Sort(CouplesSorter(h.event.Couples))
 
-	// Return the registration
+	// Get the registration for the couple.
+	// We need to call RegistrationGet again
+	// to get the actual wait list status of the couple.
+	reg = h.RegistrationGet(reg.Dancer)
 	reg.Result = models.ResultRegisteredInCouple
-	reg.Status = models.StatusInCouple
-	reg.Partner = reg.Related.Dancer
+	reg.Related = h.RegistrationGet(reg.Partner)
 	reg.Related.Result = models.ResultRegisteredInCouple
-	reg.Related.Status = models.StatusInCouple
-	reg.Related.Partner = reg.Dancer
+
+	// Add notification for the partner if the partner was registered as a single
+	if reg.Partner.AsSingle {
+		tmplCode := models.TmplRegisteredWithSingle
+		if autoPair {
+			tmplCode = models.TmplAutoPairPartnerFound
+		}
+		h.notif = append(h.notif, &models.Notification{
+			TmplCode:  tmplCode,
+			Recipient: reg.Related.Profile,
+			Payload: models.NotificationPayload{
+				Event:    h.event,
+				Partner:  reg.Dancer,
+				WaitList: reg.WaitList,
+			},
+		})
+	}
+
 	return reg
 }
 
@@ -449,6 +451,7 @@ func (h *EventHandler) singleRestore(reg *models.Registration, exPartner *models
 				Event:      h.event,
 				Partner:    exPartner,
 				NewPartner: autoPairReg.Partner,
+				WaitList:   reg.WaitList,
 			},
 		})
 		return autoPairReg
@@ -491,15 +494,24 @@ func (h *EventHandler) findInCouples(dancer *models.Dancer) *models.Registration
 		Status: models.StatusInCouple,
 		Event:  h.event,
 	}
-	for _, couple := range h.event.Couples {
+
+	var found bool
+	for i, couple := range h.event.Couples {
+
 		if h.isSame(dancer, &couple.Dancers[0]) {
 			reg.Dancer = &couple.Dancers[0]
 			reg.Partner = &couple.Dancers[1]
-			return reg
+			found = true
 		}
 		if h.isSame(dancer, &couple.Dancers[1]) {
 			reg.Dancer = &couple.Dancers[1]
 			reg.Partner = &couple.Dancers[0]
+			found = true
+		}
+		if found {
+			if h.event.Settings.Limit > 0 && i >= h.event.Settings.Limit {
+				reg.WaitList = true
+			}
 			return reg
 		}
 	}

@@ -94,7 +94,7 @@ func init() {
 	var err error
 
 	// Parse notification base template
-	notifyT = template.New("").Funcs(template.FuncMap{
+	notifyT, err = template.New("").Funcs(template.FuncMap{
 		"fmtDancer": func(dancer *models.Dancer) template.HTML {
 			if dancer.Profile == nil {
 				return template.HTML(dancer.FullName)
@@ -112,7 +112,10 @@ func init() {
 				p.FullName(),
 			))
 		},
-	})
+	}).Parse(locale.NotificationsBase)
+	if err != nil {
+		panic(fmt.Sprintf("failed to parse notification base template: %v", err))
+	}
 
 	// Parse notification templates
 	for name, tmpl := range locale.Notifications {

@@ -56,6 +56,9 @@ const (
 	// and new partner has been chosen.
 	TmplAutoPairPartnerChanged NotificationTmpl = "auto_pair_partner_changed"
 
+	// TmplCoupleWaitListLeft - couple has been removed from the waiting list
+	TmplCoupleWaitListLeft NotificationTmpl = "couple_wait_list_left"
+
 	// TmplEventLimitIncreased - event limit has been increased
 	// and the recipient's couple has been out of the waiting list.
 	TmplEventLimitIncreased NotificationTmpl = "event_limit_increased"

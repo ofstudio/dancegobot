@@ -1135,6 +1135,32 @@ func (suite *TestEventHandlerSuite) TestDancerRemove_limit() {
 		suite.Equal(&dancerRemoved, handler.notif[1].Payload.Partner)
 		suite.Equal(&newDancer, handler.notif[1].Payload.NewPartner)
 	})
+
+	suite.Run("num of couples changed, couple left waitlist", func() {
+		event := anotherSampleEvent()
+		event.Settings.Limit = 2
+		removedCouple := event.Couples[1]  // This couple will be removed
+		expectedCouple := event.Couples[2] // This couple expects to leave waitlist
+		handler := NewEventHandler(&event)
+
+		got := handler.DancerRemove(&removedCouple.Dancers[0])
+
+		suite.Require().NotNil(got)
+		suite.Equal(models.ResultRegistrationRemoved, got.Result)
+		suite.Equal(models.StatusNotRegistered, got.Status)
+		suite.Nil(got.Partner)
+		suite.Require().NotNil(got.Related)
+		suite.Equal(models.StatusNotRegistered, got.Related.Status)
+
+		suite.Require().Len(handler.notif, 2)
+		suite.Equal(models.TmplCoupleWaitListLeft, handler.notif[0].TmplCode)
+		suite.Equal(expectedCouple.Dancers[0].Profile, handler.notif[0].Recipient)
+		suite.Equal(&expectedCouple.Dancers[1], handler.notif[0].Payload.Partner)
+		suite.Equal(models.TmplCoupleWaitListLeft, handler.notif[1].TmplCode)
+		suite.Equal(expectedCouple.Dancers[1].Profile, handler.notif[1].Recipient)
+		suite.Equal(&expectedCouple.Dancers[0], handler.notif[1].Payload.Partner)
+	})
+
 }
 
 func (suite *TestEventHandlerSuite) TestLimitChangeAffected() {

@@ -114,6 +114,18 @@ func Test_notifyText(t *testing.T) {
 			text.String())
 	})
 
+	t.Run("TmplCoupleWaitListLeft", func(t *testing.T) {
+		n := &models.Notification{
+			TmplCode: models.TmplCoupleWaitListLeft,
+			Payload:  testPayload,
+		}
+		text, err := notifyTextBuilder(n)
+		require.NoError(t, err)
+		assert.Equal(t,
+			"🔔 Test Event\n\nВы вместе с <a href=\"tg://user?id=1\">Test Partner</a> вышли из списка ожидания 🎉\n\nЕсли планы изменились, и вы не сможете принять участие, пожалуйста, отмените вашу регистрацию.",
+			text.String())
+	})
+
 	t.Run("TmplEventLimitIncreased", func(t *testing.T) {
 		n := &models.Notification{
 			TmplCode: models.TmplEventLimitIncreased,

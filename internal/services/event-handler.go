@@ -98,24 +98,9 @@ func (h *EventHandler) LimitChangeNotify(oldLimit int) {
 		tmplCode = models.TmplEventLimitIncreased
 	}
 
-	// Iterate over the couples and create notifications
+	// Add notifications for the affected couples
 	for _, couple := range couples {
-		// Iterate over the dancers in the couple
-		for i, dancer := range couple.Dancers {
-			// Notify only the couple creator or who signed up as a single
-			if dancer.Profile != nil &&
-				(dancer.Profile.ID == couple.CreatedBy.ID || dancer.AsSingle) {
-				partner := couple.Dancers[i^1]
-				h.notif = append(h.notif, &models.Notification{
-					TmplCode:  tmplCode,
-					Recipient: dancer.Profile,
-					Payload: models.NotificationPayload{
-						Event:   h.event,
-						Partner: &partner,
-					},
-				})
-			}
-		}
+		h.notifyCouple(couple, tmplCode)
 	}
 }
 
@@ -376,6 +361,7 @@ func (h *EventHandler) DancerRemove(d *models.Dancer) *models.Registration {
 	}
 
 	// If dancer is in a couple remove the couple
+	couplesBefore := len(h.event.Couples)
 	exCouple := h.removeCouple(reg.Dancer)
 	h.hist = append(h.hist, &models.HistoryItem{
 		Action:    models.HistoryCoupleRemoved,
@@ -399,11 +385,8 @@ func (h *EventHandler) DancerRemove(d *models.Dancer) *models.Registration {
 	// If partner was signed up as a single, move back to singles (or auto pair if available)
 	if reg.Related.AsSingle {
 		reg.Related = h.singleRestore(reg.Related, reg.Dancer, exCouple.CreatedAt)
-		return reg
-	}
-
-	// Otherwise, if couple was created by the partner send notification to the partner
-	if reg.Related.Profile != nil && exCouple.CreatedBy.ID == reg.Related.Profile.ID {
+	} else if reg.Related.Profile != nil && exCouple.CreatedBy.ID == reg.Related.Profile.ID {
+		// Otherwise, if couple was created by the partner send notification to the partner
 		h.notif = append(h.notif, &models.Notification{
 			TmplCode:  models.TmplCanceledByPartner,
 			Recipient: reg.Related.Profile,
@@ -412,6 +395,13 @@ func (h *EventHandler) DancerRemove(d *models.Dancer) *models.Registration {
 				Partner: reg.Dancer,
 			},
 		})
+	}
+
+	// If event limit is set, check if some couples can be moved from the wait list
+	if h.event.Settings.Limit > 0 &&
+		couplesBefore > len(h.event.Couples) &&
+		len(h.event.Couples) >= h.event.Settings.Limit {
+		h.notifyCouple(h.event.Couples[h.event.Settings.Limit-1], models.TmplCoupleWaitListLeft)
 	}
 
 	// Return the registration
@@ -595,6 +585,25 @@ func (h *EventHandler) isSame(dancer, other *models.Dancer) bool {
 		return (ok1 && ok2) && (u1 == u2)
 	default:
 		return false
+	}
+}
+
+// notifyCouple adds a notification with the given template for the dancers in the couple.
+// The notification will be sent only to the couple creator or who signed up as a single.
+func (h *EventHandler) notifyCouple(couple models.Couple, tmplCode models.NotificationTmpl) {
+	for i := 0; i < 2; i++ {
+		dancer := couple.Dancers[i]
+		if dancer.Profile != nil && (dancer.Profile.ID == couple.CreatedBy.ID || dancer.AsSingle) {
+			partner := couple.Dancers[i^1]
+			h.notif = append(h.notif, &models.Notification{
+				TmplCode:  tmplCode,
+				Recipient: dancer.Profile,
+				Payload: models.NotificationPayload{
+					Event:   h.event,
+					Partner: &partner,
+				},
+			})
+		}
 	}
 }
 

@@ -94,7 +94,11 @@ func SendResult(c tele.Context, reg *models.Registration, singles []models.Sessi
 	case models.ResultRegisteredAsSingle:
 		return c.Send(fmt.Sprintf(locale.ResultSuccessSingle, locale.IconSingle[reg.Role]), opts)
 	case models.ResultRegisteredInCouple:
-		return c.Send(fmt.Sprintf(locale.ResultSuccessCouple, fmtDancer(reg.Partner)), opts)
+		msg := fmt.Sprintf(locale.ResultSuccessCouple, fmtDancer(reg.Partner))
+		if reg.WaitList {
+			msg += locale.ResultCoupleWaitlist
+		}
+		return c.Send(msg, opts)
 	case models.ResultRegistrationRemoved:
 		return c.Send(locale.ResultSuccessRemoved, opts)
 	case models.ResultAlreadyAsSingle:

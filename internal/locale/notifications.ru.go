@@ -38,6 +38,13 @@ var Notifications = map[models.NotificationTmpl]string{
 Я записал тебя вместе с {{fmtDancer .NewPartner}} 👌{{template "waitlist" .}}`,
 
 	// language=GoTemplate
+	models.TmplCoupleWaitListLeft: `🔔 {{.Event.Caption}}
+
+Вы вместе с {{fmtDancer .Partner}} вышли из списка ожидания 🎉
+
+Если планы изменились, и вы не сможете принять участие, пожалуйста, отмените вашу регистрацию.`,
+
+	// language=GoTemplate
 	models.TmplEventLimitIncreased: `🔔 {{.Event.Caption}}
 
 {{fmtProfile .Event.Owner}} увеличил лимит пар и вы вместе с {{fmtDancer .Partner}} вышли из списка ожидания 🎉

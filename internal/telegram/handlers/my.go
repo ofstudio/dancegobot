@@ -71,7 +71,7 @@ func (h *Handlers) My(c tele.Context) error {
 
 // myScene returns text and reply markup for the /my scene.
 func (h *Handlers) myScene(c tele.Context, offset int) (string, *tele.ReplyMarkup, error) {
-	u, err := h.userGetMyEvents(c, false)
+	u, err := h.userGetMyEvents(c)
 	if err != nil {
 		return "", nil, err
 	}

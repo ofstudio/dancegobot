@@ -57,9 +57,9 @@ func (h *Handlers) userGet(c tele.Context) *models.User {
 
 // userGetMyEvents returns user with MyEvents in Session.
 // If user has no events in the session, gets them from the database and saves to the session.
-func (h *Handlers) userGetMyEvents(c tele.Context, force bool) (*models.User, error) {
+func (h *Handlers) userGetMyEvents(c tele.Context, force ...bool) (*models.User, error) {
 	u := h.userGet(c)
-	if len(u.Session.MyEvents) == 0 || force {
+	if len(u.Session.MyEvents) == 0 || (len(force) > 0 && force[0]) {
 		ids, err := h.eventService.GetMy(h.ctx(c), &u.Profile)
 		if err != nil {
 			return nil, err

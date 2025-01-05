@@ -7,7 +7,7 @@ import (
 
 // Registration represents the registration of a dancer for an event.
 type Registration struct {
-	*Dancer                     // Dancer who is registered
+	Dancer                      // Dancer who is registered
 	Status   RegistrationStatus // Current registration status for the event
 	Result   RegistrationResult // The result of the registration request
 	Event    *Event             // Event related to the registration

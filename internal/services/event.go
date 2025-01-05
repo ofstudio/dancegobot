@@ -103,27 +103,21 @@ func (s *EventService) GetMy(ctx context.Context, profile *models.Profile) ([]st
 }
 
 // CanManage returns true if the profile can manage the event.
-func (s *EventService) CanManage(event *models.Event, profile *models.Profile) bool {
-	if event == nil || profile == nil {
-		return false
-	}
+func (s *EventService) CanManage(event *models.Event, profile models.Profile) bool {
 	return NewEventHandler(event).CanManage(profile)
 }
 
-// UpdateSettings updates event settings.
-func (s *EventService) UpdateSettings(
+// SettingsUpdate updates event settings.
+func (s *EventService) SettingsUpdate(
 	ctx context.Context,
 	eventID string,
-	initiator *models.Profile,
+	initiator models.Profile,
 	settings models.EventSettings,
 ) (*models.Event, error) {
-	if initiator == nil {
-		return nil, fmt.Errorf("initiator is nil")
-	}
 	var event *models.Event
 	err := s.update(ctx, eventID, func(h *EventHandler) error {
 		event = h.Event()
-		return h.UpdateSettings(initiator, settings)
+		return h.SettingsUpdate(initiator, settings)
 	})
 	if err != nil {
 		return nil, fmt.Errorf("failed to update event settings: %w", err)
@@ -134,12 +128,9 @@ func (s *EventService) UpdateSettings(
 // RegistrationGet returns registration for the given event by profile and role.
 // If the dancer is not registered, returns a new registration.
 // If event or profile is nil, returns nil.
-func (s *EventService) RegistrationGet(event *models.Event, profile *models.Profile, role models.Role) *models.Registration {
-	if event == nil || profile == nil {
-		return nil
-	}
-	return NewEventHandler(event).RegistrationGet(&models.Dancer{
-		Profile:   profile,
+func (s *EventService) RegistrationGet(event *models.Event, profile models.Profile, role models.Role) models.Registration {
+	return NewEventHandler(event).RegistrationGet(models.Dancer{
+		Profile:   &profile,
 		FullName:  profile.FullName(),
 		Role:      role,
 		CreatedAt: nowFn(),
@@ -243,43 +234,40 @@ func (s *EventService) CoupleAdd(
 	profile *models.Profile,
 	role models.Role,
 	other any,
-) (*models.Registration, error) {
-	if profile == nil {
-		return nil, fmt.Errorf("profile is nil")
-	}
-	dancer := &models.Dancer{
+) (models.Registration, error) {
+	dancer := models.Dancer{
 		Profile:   profile,
 		FullName:  profile.FullName(),
 		Role:      role,
 		CreatedAt: nowFn(),
 	}
 	if err := s.validateDancer(dancer); err != nil {
-		return nil, fmt.Errorf("failed to validate dancer: %w", err)
+		return models.Registration{}, fmt.Errorf("failed to validate dancer: %w", err)
 	}
 
-	var partner *models.Dancer
+	var partner models.Dancer
 	switch v := other.(type) {
 	case *models.Profile:
-		partner = &models.Dancer{
+		partner = models.Dancer{
 			Profile:   v,
 			FullName:  v.FullName(),
 			Role:      role.Opposite(),
 			CreatedAt: nowFn(),
 		}
 	case string:
-		partner = &models.Dancer{
+		partner = models.Dancer{
 			FullName:  v,
 			Role:      role.Opposite(),
 			CreatedAt: nowFn(),
 		}
 	default:
-		return nil, fmt.Errorf("invalid type of other person: %T", other)
+		return models.Registration{}, fmt.Errorf("invalid type of other person: %T", other)
 	}
 	if err := s.validateDancer(partner); err != nil {
-		return nil, fmt.Errorf("failed to validate partner: %w", err)
+		return models.Registration{}, fmt.Errorf("failed to validate partner: %w", err)
 	}
 
-	var reg *models.Registration
+	var reg models.Registration
 	err := s.update(ctx, eventID, func(h *EventHandler) error {
 		reg = h.CoupleAdd(dancer, partner)
 		return nil
@@ -292,24 +280,20 @@ func (s *EventService) CoupleAdd(
 func (s *EventService) SingleAdd(
 	ctx context.Context,
 	eventID string,
-	profile *models.Profile,
+	profile models.Profile,
 	role models.Role,
-) (*models.Registration, error) {
-
-	if profile == nil {
-		return nil, fmt.Errorf("profile is nil")
-	}
-	dancer := &models.Dancer{
-		Profile:   profile,
+) (models.Registration, error) {
+	dancer := models.Dancer{
+		Profile:   &profile,
 		FullName:  profile.FullName(),
 		Role:      role,
 		CreatedAt: nowFn(),
 	}
 	if err := s.validateDancer(dancer); err != nil {
-		return nil, fmt.Errorf("failed to validate dancer: %w", err)
+		return models.Registration{}, fmt.Errorf("failed to validate dancer: %w", err)
 	}
 
-	var reg *models.Registration
+	var reg models.Registration
 	err := s.update(ctx, eventID, func(h *EventHandler) error {
 		reg = h.SingleAdd(dancer)
 		return nil
@@ -329,15 +313,12 @@ func (s *EventService) SingleAdd(
 func (s *EventService) DancerRemove(
 	ctx context.Context,
 	eventID string,
-	profile *models.Profile,
-) (*models.Registration, error) {
-	if profile == nil {
-		return nil, fmt.Errorf("profile is nil")
-	}
-	var reg *models.Registration
+	profile models.Profile,
+) (models.Registration, error) {
+	var reg models.Registration
 	err := s.update(ctx, eventID, func(h *EventHandler) error {
-		reg = h.DancerRemove(&models.Dancer{
-			Profile:  profile,
+		reg = h.DancerRemove(models.Dancer{
+			Profile:  &profile,
 			FullName: profile.FullName(),
 		})
 		return nil
@@ -460,27 +441,21 @@ func (s *EventService) validateEvent(e *models.Event) error {
 		err = errutil.Append(err, fmt.Errorf("event text must be at most %d characters long, got %d",
 			s.cfg.EventTextMaxLen, utf8.RuneCountInString(e.Caption)))
 	}
-	err = errutil.Append(err, s.validateProfile(&e.Owner))
+	err = errutil.Append(err, s.validateProfile(e.Owner))
 	return err
 }
 
-func (s *EventService) validateDancer(d *models.Dancer) error {
-	if d == nil {
-		return fmt.Errorf("dancer is nil")
-	}
+func (s *EventService) validateDancer(d models.Dancer) error {
 	var err error
 	if d.Profile != nil {
-		err = errutil.Append(err, s.validateProfile(d.Profile))
+		err = errutil.Append(err, s.validateProfile(*d.Profile))
 	}
 	err = errutil.Append(err, s.validateFullname(d.FullName))
 	err = errutil.Append(err, s.validateRole(d.Role))
 	return err
 }
 
-func (s *EventService) validateProfile(p *models.Profile) error {
-	if p == nil {
-		return fmt.Errorf("profile is nil")
-	}
+func (s *EventService) validateProfile(p models.Profile) error {
 	var err error
 	if p.ID < 1 {
 		err = errutil.Append(err, fmt.Errorf("profile ID must be positive, got %d", p.ID))

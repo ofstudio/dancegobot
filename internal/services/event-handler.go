@@ -41,19 +41,19 @@ func (h *EventHandler) Notifications() []*models.Notification {
 
 // CanManage checks if the profile can manage the event.
 // Returns true if the profile is the owner of the event.
-func (h *EventHandler) CanManage(profile *models.Profile) bool {
-	return profile != nil && profile.ID == h.event.Owner.ID
+func (h *EventHandler) CanManage(profile models.Profile) bool {
+	return profile.ID == h.event.Owner.ID
 }
 
-// UpdateSettings updates the event settings.
-func (h *EventHandler) UpdateSettings(initiator *models.Profile, settings models.EventSettings) error {
+// SettingsUpdate updates the event settings.
+func (h *EventHandler) SettingsUpdate(initiator models.Profile, settings models.EventSettings) error {
 	if !h.CanManage(initiator) {
 		return fmt.Errorf("profile is not allowed to update the event settings")
 	}
 	h.event.Settings = settings
 	h.hist = append(h.hist, &models.HistoryItem{
 		Action:    models.HistoryEventSettingsUpdated,
-		Initiator: initiator,
+		Initiator: &initiator,
 		EventID:   &h.event.ID,
 		Details:   settings,
 		CreatedAt: nowFn(),
@@ -63,15 +63,15 @@ func (h *EventHandler) UpdateSettings(initiator *models.Profile, settings models
 
 // RegistrationGet returns registration for given dancer at the event.
 // If the dancer is not registered, returns a new registration.
-func (h *EventHandler) RegistrationGet(dancer *models.Dancer) *models.Registration {
-	if existingReg := h.findInCouples(dancer); existingReg != nil {
+func (h *EventHandler) RegistrationGet(dancer models.Dancer) models.Registration {
+	if existingReg, ok := h.findInCouples(dancer); ok {
 		return existingReg
 	}
-	if existingReg := h.findInSingles(dancer); existingReg != nil {
+	if existingReg, ok := h.findInSingles(dancer); ok {
 		return existingReg
 	}
 	dancer.CreatedAt = nowFn()
-	return &models.Registration{
+	return models.Registration{
 		Dancer: dancer,
 		Status: models.StatusNotRegistered,
 		Event:  h.event,
@@ -106,10 +106,11 @@ func (h *EventHandler) LimitChangeNotify(oldLimit int) {
 
 // CoupleAdd registers a couple for the event.
 // If the partner initially was registered as a single, the partner will be notified.
-func (h *EventHandler) CoupleAdd(d, p *models.Dancer) *models.Registration {
+func (h *EventHandler) CoupleAdd(d, p models.Dancer) models.Registration {
 	reg := h.RegistrationGet(d)
 	reg.Result = models.ResultNoResult
-	reg.Related = h.RegistrationGet(p)
+	related := h.RegistrationGet(p)
+	reg.Related = &related
 
 	// Check if event not removed
 	if h.event.Removed {
@@ -135,7 +136,7 @@ func (h *EventHandler) CoupleAdd(d, p *models.Dancer) *models.Registration {
 
 	// Check if the dancer is already registered in a couple
 	if reg.Status == models.StatusInCouple {
-		if h.isSame(reg.Partner, reg.Related.Dancer) {
+		if h.isSame(*reg.Partner, reg.Related.Dancer) {
 			reg.Result = models.ResultAlreadyInSameCouple
 		} else {
 			reg.Result = models.ResultAlreadyInCouple
@@ -168,7 +169,7 @@ func (h *EventHandler) CoupleAdd(d, p *models.Dancer) *models.Registration {
 // coupleAdd processes the couple registration.
 // The autoPair flag indicates if the couple was auto paired.
 // The createdAt time is used for keeping couples order when partner changes.
-func (h *EventHandler) coupleAdd(reg *models.Registration, autoPair bool, createdAt time.Time) *models.Registration {
+func (h *EventHandler) coupleAdd(reg models.Registration, autoPair bool, createdAt time.Time) models.Registration {
 	// Check if dancer is in singles and remove from singles
 	if reg.Status == models.StatusAsSingle {
 		h.removeFromSingles(reg.Dancer)
@@ -205,9 +206,9 @@ func (h *EventHandler) coupleAdd(reg *models.Registration, autoPair bool, create
 		CreatedAt: createdAt, // Use provided time to keep couples order
 	}
 	if reg.Role == models.RoleLeader {
-		couple.Dancers = []models.Dancer{*reg.Dancer, *reg.Related.Dancer}
+		couple.Dancers = []models.Dancer{reg.Dancer, reg.Related.Dancer}
 	} else {
-		couple.Dancers = []models.Dancer{*reg.Related.Dancer, *reg.Dancer}
+		couple.Dancers = []models.Dancer{reg.Related.Dancer, reg.Dancer}
 	}
 
 	// Add couple to the history
@@ -230,7 +231,8 @@ func (h *EventHandler) coupleAdd(reg *models.Registration, autoPair bool, create
 	// to get the actual wait list status of the couple.
 	reg = h.RegistrationGet(reg.Dancer)
 	reg.Result = models.ResultRegisteredInCouple
-	reg.Related = h.RegistrationGet(reg.Partner)
+	related := h.RegistrationGet(*reg.Partner)
+	reg.Related = &related
 	reg.Related.Result = models.ResultRegisteredInCouple
 
 	// Add notification for the partner if the partner was registered as a single
@@ -244,7 +246,7 @@ func (h *EventHandler) coupleAdd(reg *models.Registration, autoPair bool, create
 			Recipient: reg.Related.Profile,
 			Payload: models.NotificationPayload{
 				Event:    h.event,
-				Partner:  reg.Dancer,
+				Partner:  &reg.Dancer,
 				WaitList: reg.WaitList,
 			},
 		})
@@ -255,7 +257,7 @@ func (h *EventHandler) coupleAdd(reg *models.Registration, autoPair bool, create
 
 // SingleAdd registers a dancer as a single for the event.
 // If auto pairing is enabled, tries to auto pair the dancer.
-func (h *EventHandler) SingleAdd(d *models.Dancer) *models.Registration {
+func (h *EventHandler) SingleAdd(d models.Dancer) models.Registration {
 
 	reg := h.RegistrationGet(d)
 	reg.Result = models.ResultNoResult
@@ -292,13 +294,13 @@ func (h *EventHandler) SingleAdd(d *models.Dancer) *models.Registration {
 
 	// Try to auto pair the reg if possible
 	// This should be done before checking if singles are allowed
-	if autoPairReg := h.tryAutoPair(reg, nowFn()); autoPairReg != nil {
+	if autoPairReg, ok := h.tryAutoPair(reg, nowFn()); ok {
 		return autoPairReg
 	}
 
 	// Create a single and add to the event
 	reg.Dancer.AsSingle = true
-	h.event.Singles = append(h.event.Singles, *reg.Dancer)
+	h.event.Singles = append(h.event.Singles, reg.Dancer)
 	h.hist = append(h.hist, &models.HistoryItem{
 		Action:    models.HistorySingleAdded,
 		Initiator: reg.Profile,
@@ -324,7 +326,7 @@ func (h *EventHandler) SingleAdd(d *models.Dancer) *models.Registration {
 //
 // If the dancer is in a couple, and a couple was created by the partner,
 // the partner will be notified that the dancer has left the event.
-func (h *EventHandler) DancerRemove(d *models.Dancer) *models.Registration {
+func (h *EventHandler) DancerRemove(d models.Dancer) models.Registration {
 	reg := h.RegistrationGet(d)
 
 	// Check if event not removed
@@ -375,7 +377,7 @@ func (h *EventHandler) DancerRemove(d *models.Dancer) *models.Registration {
 	reg.Status = models.StatusNotRegistered
 	reg.Result = models.ResultRegistrationRemoved
 	reg.Related = &models.Registration{
-		Dancer: reg.Partner,
+		Dancer: *reg.Partner,
 		Status: models.StatusNotRegistered,
 		Result: models.ResultRegistrationRemoved,
 		Event:  h.event,
@@ -384,7 +386,8 @@ func (h *EventHandler) DancerRemove(d *models.Dancer) *models.Registration {
 
 	// If partner was signed up as a single, move back to singles (or auto pair if available)
 	if reg.Related.AsSingle {
-		reg.Related = h.singleRestore(reg.Related, reg.Dancer, exCouple.CreatedAt)
+		related := h.singleRestore(*reg.Related, reg.Dancer, exCouple.CreatedAt)
+		reg.Related = &related
 	} else if reg.Related.Profile != nil && exCouple.CreatedBy.ID == reg.Related.Profile.ID {
 		// Otherwise, if couple was created by the partner send notification to the partner
 		h.notif = append(h.notif, &models.Notification{
@@ -392,7 +395,7 @@ func (h *EventHandler) DancerRemove(d *models.Dancer) *models.Registration {
 			Recipient: reg.Related.Profile,
 			Payload: models.NotificationPayload{
 				Event:   h.event,
-				Partner: reg.Dancer,
+				Partner: &reg.Dancer,
 			},
 		})
 	}
@@ -413,17 +416,17 @@ func (h *EventHandler) DancerRemove(d *models.Dancer) *models.Registration {
 // If auto pairing is disabled for the event, returns nil.
 // In case of auto pairing after couple removal the createdAt time should be set
 // to the time of the previous couple creation.
-func (h *EventHandler) tryAutoPair(reg *models.Registration, createdAt time.Time) *models.Registration {
+func (h *EventHandler) tryAutoPair(reg models.Registration, createdAt time.Time) (models.Registration, bool) {
 	// skip if auto pairing is disabled for the event
 	if !h.event.Settings.AutoPairing {
-		return nil
+		return models.Registration{}, false
 	}
 	reg.Related = h.firstSingle(reg.Dancer.Role.Opposite())
 	if reg.Related == nil {
-		return nil
+		return models.Registration{}, false
 	}
 	reg.AsSingle = true
-	return h.coupleAdd(reg, true, createdAt)
+	return h.coupleAdd(reg, true, createdAt), true
 }
 
 // singleRestore restores the dancer to the singles list after a couple removal.
@@ -431,15 +434,19 @@ func (h *EventHandler) tryAutoPair(reg *models.Registration, createdAt time.Time
 // The exPartner parameter is used to send proper the notification to the dancer.
 // The exCoupleCreatedAt should be provided to keep the order of couples
 // in case of dancer will be auto paired with a new partner.
-func (h *EventHandler) singleRestore(reg *models.Registration, exPartner *models.Dancer, exCoupleCreatedAt time.Time) *models.Registration {
+func (h *EventHandler) singleRestore(
+	reg models.Registration,
+	exPartner models.Dancer,
+	exCoupleCreatedAt time.Time,
+) models.Registration {
 	// Try to auto pair the dancer
-	if autoPairReg := h.tryAutoPair(reg, exCoupleCreatedAt); autoPairReg != nil {
+	if autoPairReg, ok := h.tryAutoPair(reg, exCoupleCreatedAt); ok {
 		h.notif = append(h.notif, &models.Notification{
 			TmplCode:  models.TmplAutoPairPartnerChanged,
 			Recipient: autoPairReg.Profile,
 			Payload: models.NotificationPayload{
 				Event:      h.event,
-				Partner:    exPartner,
+				Partner:    &exPartner,
 				NewPartner: autoPairReg.Partner,
 				WaitList:   reg.WaitList,
 			},
@@ -450,7 +457,7 @@ func (h *EventHandler) singleRestore(reg *models.Registration, exPartner *models
 	// Otherwise, move back to singles
 	reg.Status = models.StatusAsSingle
 	reg.Result = models.ResultRegisteredAsSingle
-	h.event.Singles = append(h.event.Singles, *reg.Dancer)
+	h.event.Singles = append(h.event.Singles, reg.Dancer)
 
 	// Sort singles by creation time
 	sort.Sort(SinglesSorter(h.event.Singles))
@@ -461,7 +468,7 @@ func (h *EventHandler) singleRestore(reg *models.Registration, exPartner *models
 		Recipient: reg.Profile,
 		Payload: models.NotificationPayload{
 			Event:   h.event,
-			Partner: exPartner,
+			Partner: &exPartner,
 		},
 	})
 
@@ -479,8 +486,8 @@ func (h *EventHandler) singleRestore(reg *models.Registration, exPartner *models
 
 // findInCouples finds dancers registration in the couples.
 // Returns nil if not found.
-func (h *EventHandler) findInCouples(dancer *models.Dancer) *models.Registration {
-	reg := &models.Registration{
+func (h *EventHandler) findInCouples(dancer models.Dancer) (models.Registration, bool) {
+	reg := models.Registration{
 		Status: models.StatusInCouple,
 		Event:  h.event,
 	}
@@ -488,13 +495,13 @@ func (h *EventHandler) findInCouples(dancer *models.Dancer) *models.Registration
 	var found bool
 	for i, couple := range h.event.Couples {
 
-		if h.isSame(dancer, &couple.Dancers[0]) {
-			reg.Dancer = &couple.Dancers[0]
+		if h.isSame(dancer, couple.Dancers[0]) {
+			reg.Dancer = couple.Dancers[0]
 			reg.Partner = &couple.Dancers[1]
 			found = true
 		}
-		if h.isSame(dancer, &couple.Dancers[1]) {
-			reg.Dancer = &couple.Dancers[1]
+		if h.isSame(dancer, couple.Dancers[1]) {
+			reg.Dancer = couple.Dancers[1]
 			reg.Partner = &couple.Dancers[0]
 			found = true
 		}
@@ -502,26 +509,26 @@ func (h *EventHandler) findInCouples(dancer *models.Dancer) *models.Registration
 			if h.event.Settings.Limit > 0 && i >= h.event.Settings.Limit {
 				reg.WaitList = true
 			}
-			return reg
+			return reg, true
 		}
 	}
-	return nil
+	return models.Registration{}, false
 }
 
 // findInSingles finds dancer in the singles of the event.
 // Returns nil if not found.
-func (h *EventHandler) findInSingles(dancer *models.Dancer) *models.Registration {
-	reg := &models.Registration{
+func (h *EventHandler) findInSingles(dancer models.Dancer) (models.Registration, bool) {
+	reg := models.Registration{
 		Status: models.StatusAsSingle,
 		Event:  h.event,
 	}
 	for _, single := range h.event.Singles {
-		if h.isSame(dancer, &single) {
-			reg.Dancer = &single
-			return reg
+		if h.isSame(dancer, single) {
+			reg.Dancer = single
+			return reg, true
 		}
 	}
-	return nil
+	return models.Registration{}, false
 }
 
 // firstSingle returns registration of the first dancer with the given role in singles list.
@@ -533,7 +540,7 @@ func (h *EventHandler) firstSingle(role models.Role) *models.Registration {
 	}
 	for _, single := range h.event.Singles {
 		if single.Role == role {
-			reg.Dancer = &single
+			reg.Dancer = single
 			return reg
 		}
 	}
@@ -542,21 +549,21 @@ func (h *EventHandler) firstSingle(role models.Role) *models.Registration {
 
 // removeFromSingles removes the dancer from the singles list of the event.
 // If dancer found returns the dancer and true, otherwise nil and false.
-func (h *EventHandler) removeFromSingles(dancer *models.Dancer) (*models.Dancer, bool) {
+func (h *EventHandler) removeFromSingles(dancer models.Dancer) (models.Dancer, bool) {
 	for i, single := range h.event.Singles {
-		if h.isSame(dancer, &single) {
+		if h.isSame(dancer, single) {
 			h.event.Singles = append(h.event.Singles[:i], h.event.Singles[i+1:]...)
-			return &single, true
+			return single, true
 		}
 	}
-	return nil, false
+	return models.Dancer{}, false
 }
 
 // removeCouple removes the couple from the couples list of the event.
 // If dancer found returns removed couple, otherwise nil.
-func (h *EventHandler) removeCouple(dancer *models.Dancer) *models.Couple {
+func (h *EventHandler) removeCouple(dancer models.Dancer) *models.Couple {
 	for i, couple := range h.event.Couples {
-		if h.isSame(dancer, &couple.Dancers[0]) || h.isSame(dancer, &couple.Dancers[1]) {
+		if h.isSame(dancer, couple.Dancers[0]) || h.isSame(dancer, couple.Dancers[1]) {
 			h.event.Couples = append(h.event.Couples[:i], h.event.Couples[i+1:]...)
 			return &couple
 		}
@@ -565,7 +572,7 @@ func (h *EventHandler) removeCouple(dancer *models.Dancer) *models.Couple {
 }
 
 // isSame checks if dancer is the same as the other dancer on the event
-func (h *EventHandler) isSame(dancer, other *models.Dancer) bool {
+func (h *EventHandler) isSame(dancer, other models.Dancer) bool {
 	switch {
 	// Compare profile IDs if both profiles are present
 	case dancer.Profile != nil && other.Profile != nil:

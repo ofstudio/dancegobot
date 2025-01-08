@@ -1,6 +1,7 @@
 package models
 
 import (
+	"log/slog"
 	"time"
 )
 
@@ -16,4 +17,11 @@ type User struct {
 // UserSettings - is a user settings
 type UserSettings struct {
 	Event EventSettings `json:"event"` // Default settings for new events created by user
+}
+
+// LogValue returns a string representation of the UserSettings
+func (s UserSettings) LogValue() slog.Value {
+	return slog.GroupValue(
+		slog.Any("event", s.Event),
+	)
 }

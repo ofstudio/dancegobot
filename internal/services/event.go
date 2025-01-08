@@ -142,20 +142,18 @@ func (s *EventService) PostAdd(
 	ctx context.Context,
 	eventID string,
 	inlineMessageID string,
-) (*models.Event, *models.Post, error) {
+) (*models.Event, error) {
 	if inlineMessageID == "" {
-		return nil, nil, fmt.Errorf("inline message is empty")
+		return nil, fmt.Errorf("inline message is empty")
 	}
 
 	var event *models.Event
-	var post *models.Post
 	err := s.update(ctx, eventID, func(h *EventHandler) error {
 		if h.Event().Post == nil {
 			h.Event().Post = &models.Post{}
 		}
 		h.Event().Post.InlineMessageID = inlineMessageID
 		event = h.Event()
-		post = h.Event().Post
 		h.hist = append(h.hist, &models.HistoryItem{
 			Action:    models.HistoryPostAdded,
 			Initiator: &h.event.Owner,
@@ -164,7 +162,7 @@ func (s *EventService) PostAdd(
 		})
 		return nil
 	})
-	return event, post, err
+	return event, err
 }
 
 // PostChatAdd adds information about a chat where the event is published.
@@ -173,17 +171,16 @@ func (s *EventService) PostChatAdd(
 	eventID string,
 	chat *models.Chat,
 	chatMessageID int,
-) (*models.Event, *models.Post, error) {
+) (*models.Event, error) {
 	if chat == nil {
-		return nil, nil, fmt.Errorf("chat must be provided")
+		return nil, fmt.Errorf("chat must be provided")
 	}
 	if chatMessageID == 0 {
-		return nil, nil, fmt.Errorf("chat message ID must be provided")
+		return nil, fmt.Errorf("chat message ID must be provided")
 	}
 
 	// Update the event
 	var event *models.Event
-	var post *models.Post
 	err := s.update(ctx, eventID, func(h *EventHandler) error {
 		if h.Event().Post == nil {
 			h.Event().Post = &models.Post{}
@@ -191,7 +188,6 @@ func (s *EventService) PostChatAdd(
 		h.Event().Post.Chat = chat
 		h.Event().Post.ChatMessageID = chatMessageID
 		event = h.Event()
-		post = h.Event().Post
 		h.hist = append(h.hist, &models.HistoryItem{
 			Action:    models.HistoryPostChatAdded,
 			Initiator: &h.event.Owner,
@@ -200,7 +196,7 @@ func (s *EventService) PostChatAdd(
 		})
 		return nil
 	})
-	return event, post, err
+	return event, err
 }
 
 // LimitChangeAffected returns list of affected couples after the limit change.
@@ -234,7 +230,7 @@ func (s *EventService) CoupleAdd(
 	profile *models.Profile,
 	role models.Role,
 	other any,
-) (models.Registration, error) {
+) (*models.Registration, error) {
 	dancer := models.Dancer{
 		Profile:   profile,
 		FullName:  profile.FullName(),
@@ -242,7 +238,7 @@ func (s *EventService) CoupleAdd(
 		CreatedAt: nowFn(),
 	}
 	if err := s.validateDancer(dancer); err != nil {
-		return models.Registration{}, fmt.Errorf("failed to validate dancer: %w", err)
+		return nil, fmt.Errorf("failed to validate dancer: %w", err)
 	}
 
 	var partner models.Dancer
@@ -261,18 +257,20 @@ func (s *EventService) CoupleAdd(
 			CreatedAt: nowFn(),
 		}
 	default:
-		return models.Registration{}, fmt.Errorf("invalid type of other person: %T", other)
+		return nil, fmt.Errorf("invalid type of other person: %T", other)
 	}
 	if err := s.validateDancer(partner); err != nil {
-		return models.Registration{}, fmt.Errorf("failed to validate partner: %w", err)
+		return nil, fmt.Errorf("failed to validate partner: %w", err)
 	}
 
 	var reg models.Registration
-	err := s.update(ctx, eventID, func(h *EventHandler) error {
+	if err := s.update(ctx, eventID, func(h *EventHandler) error {
 		reg = h.CoupleAdd(dancer, partner)
 		return nil
-	})
-	return reg, err
+	}); err != nil {
+		return nil, fmt.Errorf("failed to add couple: %w", err)
+	}
+	return &reg, nil
 }
 
 // SingleAdd adds a single dancer to the event.
@@ -282,7 +280,7 @@ func (s *EventService) SingleAdd(
 	eventID string,
 	profile models.Profile,
 	role models.Role,
-) (models.Registration, error) {
+) (*models.Registration, error) {
 	dancer := models.Dancer{
 		Profile:   &profile,
 		FullName:  profile.FullName(),
@@ -290,15 +288,17 @@ func (s *EventService) SingleAdd(
 		CreatedAt: nowFn(),
 	}
 	if err := s.validateDancer(dancer); err != nil {
-		return models.Registration{}, fmt.Errorf("failed to validate dancer: %w", err)
+		return nil, fmt.Errorf("failed to validate dancer: %w", err)
 	}
 
 	var reg models.Registration
-	err := s.update(ctx, eventID, func(h *EventHandler) error {
+	if err := s.update(ctx, eventID, func(h *EventHandler) error {
 		reg = h.SingleAdd(dancer)
 		return nil
-	})
-	return reg, err
+	}); err != nil {
+		return nil, fmt.Errorf("failed to add single: %w", err)
+	}
+	return &reg, nil
 }
 
 // DancerRemove removes the dancer from the event.
@@ -314,16 +314,18 @@ func (s *EventService) DancerRemove(
 	ctx context.Context,
 	eventID string,
 	profile models.Profile,
-) (models.Registration, error) {
+) (*models.Registration, error) {
 	var reg models.Registration
-	err := s.update(ctx, eventID, func(h *EventHandler) error {
+	if err := s.update(ctx, eventID, func(h *EventHandler) error {
 		reg = h.DancerRemove(models.Dancer{
 			Profile:  &profile,
 			FullName: profile.FullName(),
 		})
 		return nil
-	})
-	return reg, err
+	}); err != nil {
+		return nil, fmt.Errorf("failed to remove dancer: %w", err)
+	}
+	return &reg, nil
 }
 
 // update is a wrapper for the event handler.

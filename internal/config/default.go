@@ -52,7 +52,7 @@ func Default() Config {
 				01 * time.Hour,
 			},
 			ReRenderOnStartup:     12 * time.Hour,
-			DraftCleanupOlderThan: 72 * time.Hour,
+			DraftCleanupOlderThan: 7 * 24 * time.Hour,
 			DraftCleanupEvery:     6 * time.Hour,
 		},
 	}

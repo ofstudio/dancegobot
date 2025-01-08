@@ -58,10 +58,11 @@ func onError(log *slog.Logger) func(err error, c tele.Context) {
 			return
 		}
 
+		msg := "[bot] " + err.Error()
 		if c == nil {
-			log.Error(err.Error())
+			log.Error(msg)
 		} else {
-			log.Error("[bot] "+err.Error(), telelog.Attr(c))
+			log.Error(msg, telelog.Attr(c))
 		}
 	}
 }

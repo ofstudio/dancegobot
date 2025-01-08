@@ -65,7 +65,7 @@ const (
 )
 
 // CanRegister returns true if the dancer can register for the event.
-// The dancer can sign up if they are not registered yet or signed up as single.
+// The dancer can register if they are not registered yet or registered as single.
 func (s RegistrationStatus) CanRegister() bool {
 	return s == StatusNotRegistered || s == StatusAsSingle
 }
@@ -150,7 +150,7 @@ func (r RegistrationResult) String() string {
 	case ResultSelfNotAllowed:
 		return "self_not_allowed"
 	case ResultWasNotRegistered:
-		return "not_registered"
+		return "was_not_registered"
 	case ResultDancerForbidden:
 		return "dancer_forbidden"
 	case ResultPartnerForbidden:

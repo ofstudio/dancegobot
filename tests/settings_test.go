@@ -225,3 +225,61 @@ func (suite *AppTestSuite) TestUserSettingsDefaultEventLimit() {
 		suite.Equal(0, user.Settings.Event.Limit)
 	})
 }
+
+func (suite *AppTestSuite) TestUserSettingsDefaultAutoPairing() {
+	suite.Run("auto pairing setting is applied to new events", func() {
+		gock.New(telegock.EditMessageText).
+			Reply(200).
+			Filter(func(res *http.Response) bool {
+				body := suite.Decode(res.Request.Body)
+				return body.Get("chat_id").Int() == userJohn.ID &&
+					strings.Contains(body.Get("text").String(), locale.EventSettingsAutoPair[true])
+			}).
+			JSON(telegock.Result(tele.Message{}))
+
+		gock.New(telegock.AnswerCallbackQuery).
+			Reply(200).
+			JSON(telegock.Result(true))
+
+		gock.New(telegock.GetUpdates).
+			Reply(200).
+			JSON(telegock.Updates().CallbackQuery(tele.Callback{
+				Sender:  userJohn,
+				Message: &tele.Message{ID: 100, Chat: privateChat(userJohn)},
+				Data:    "\fusr_set_auto_pair|rand",
+			}))
+
+		suite.NoPending()
+		suite.NoUnmatched()
+
+		user, err := suite.app.UserService.Get(context.Background(), models.NewProfile(*userJohn))
+		suite.Require().NoError(err)
+		suite.True(user.Settings.Event.AutoPairing)
+
+		var eventID string
+		gock.New(telegock.AnswerInlineQuery).
+			Reply(200).
+			Filter(func(res *http.Response) bool {
+				body := suite.Decode(res.Request.Body)
+				eventID = body.Get("results.0.id").String()
+				return body.Get("results.0.title").String() == "Auto pair default event"
+			}).
+			JSON(telegock.Result(true))
+
+		gock.New(telegock.GetUpdates).
+			Reply(200).
+			JSON(telegock.Updates().InlineQuery(tele.Query{
+				Sender:   userJohn,
+				Text:     "Auto pair default event",
+				ChatType: "supergroup",
+			}))
+
+		suite.NoPending()
+		suite.NoUnmatched()
+
+		event, err := suite.app.EventService.Get(context.Background(), eventID)
+		suite.Require().NoError(err)
+		suite.Require().NotNil(event)
+		suite.True(event.Settings.AutoPairing)
+	})
+}

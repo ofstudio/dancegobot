@@ -3,6 +3,7 @@ playground
 .run
 .env*
 *.bkp
+.DS_Store
 
 # Binaries for programs and plugins
 *.exe

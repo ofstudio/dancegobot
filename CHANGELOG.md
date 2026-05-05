@@ -10,7 +10,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 - `/my` command for event owners and dancers
-- Marking an event as removed due to repeated rendering failures
+- Event settings for event owners
+- Couple limit and waitlist for event registrations
+- Notifications when limit changes move couples into or out of the waitlist
+- Mark an event as removed due to repeated rendering failures
 
 ## [2.0.4] - 2024-12-22
 
@@ -53,7 +56,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - [#2](https://github.com/ofstudio/dancegobot/issues/2): event creation bug
 - [#6](https://github.com/ofstudio/dancegobot/issues/6): sequential event rendering
-
 
 ## [1.0.2-pre-v2-migration] - 2024-12-16
 

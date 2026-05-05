@@ -151,6 +151,86 @@ func Test_notifyText(t *testing.T) {
 	})
 }
 
+func Test_chatLink(t *testing.T) {
+	tests := []struct {
+		name  string
+		event *models.Event
+		want  string
+		ok    bool
+	}{
+		{
+			name: "supergroup post",
+			event: &models.Event{
+				Post: &models.Post{
+					Chat:          &models.Chat{ID: -1001234567890, Type: models.ChatSuper},
+					ChatMessageID: 42,
+				},
+			},
+			want: "https://t.me/c/1234567890/42",
+			ok:   true,
+		},
+		{
+			name: "channel post",
+			event: &models.Event{
+				Post: &models.Post{
+					Chat:          &models.Chat{ID: -1001234567890, Type: models.ChatChannel},
+					ChatMessageID: 42,
+				},
+			},
+			want: "https://t.me/c/1234567890/42",
+			ok:   true,
+		},
+		{
+			name:  "nil event",
+			event: nil,
+			ok:    false,
+		},
+		{
+			name:  "nil post",
+			event: &models.Event{},
+			ok:    false,
+		},
+		{
+			name: "removed event",
+			event: &models.Event{
+				Removed: true,
+				Post: &models.Post{
+					Chat:          &models.Chat{ID: -1001234567890, Type: models.ChatSuper},
+					ChatMessageID: 42,
+				},
+			},
+			ok: false,
+		},
+		{
+			name: "private chat",
+			event: &models.Event{
+				Post: &models.Post{
+					Chat:          &models.Chat{ID: 100, Type: models.ChatPrivate},
+					ChatMessageID: 42,
+				},
+			},
+			ok: false,
+		},
+		{
+			name: "missing message id",
+			event: &models.Event{
+				Post: &models.Post{
+					Chat: &models.Chat{ID: -1001234567890, Type: models.ChatSuper},
+				},
+			},
+			ok: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, ok := chatLink(tt.event)
+			require.Equal(t, tt.ok, ok)
+			require.Equal(t, tt.want, got)
+		})
+	}
+}
+
 var testPayload = models.NotificationPayload{
 	Event: &models.Event{
 		Caption: "Test Event",

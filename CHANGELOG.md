@@ -13,6 +13,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Event settings for event owners
 - Couple limit and waitlist for event registrations
 - Notifications when limit changes move couples into or out of the waitlist
+- Default couple limit for new events in organizer settings
 - Event owners can close and reopen registration
 - Mark events as removed after repeated rendering failures
 

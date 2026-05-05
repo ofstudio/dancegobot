@@ -946,7 +946,7 @@ func (suite *TestEventHandlerSuite) TestDancerRemove() {
 		suite.Require().Len(handler.hist, 2)
 		suite.Equal(models.HistoryCoupleRemoved, handler.hist[0].Action)
 		suite.Equal(got.Profile, handler.hist[0].Initiator)
-		suite.Equal(&couple, handler.hist[0].Details)
+		suite.Equal(couple, handler.hist[0].Details)
 		suite.Equal(models.HistorySingleAdded, handler.hist[1].Action)
 		suite.Equal(got.Profile, handler.hist[1].Initiator)
 		suite.Equal(*partner, handler.hist[1].Details)
@@ -982,7 +982,7 @@ func (suite *TestEventHandlerSuite) TestDancerRemove() {
 		suite.Require().Len(handler.hist, 1)
 		suite.Equal(models.HistoryCoupleRemoved, handler.hist[0].Action)
 		suite.Equal(got.Profile, handler.hist[0].Initiator)
-		suite.Equal(&couple, handler.hist[0].Details)
+		suite.Equal(couple, handler.hist[0].Details)
 		suite.Require().Len(handler.notif, 1)
 		suite.Equal(&got.Dancer, handler.notif[0].Payload.Partner)
 		suite.Equal(partner.Profile, handler.notif[0].Recipient)
@@ -1040,7 +1040,7 @@ func (suite *TestEventHandlerSuite) TestDancerRemove_autoPair() {
 		suite.Require().Len(handler.hist, 3)
 		suite.Equal(models.HistoryCoupleRemoved, handler.hist[0].Action)
 		suite.Equal(got.Profile, handler.hist[0].Initiator)
-		suite.Equal(&couple, handler.hist[0].Details)
+		suite.Equal(couple, handler.hist[0].Details)
 		suite.Equal(models.HistorySingleRemoved, handler.hist[1].Action)
 		suite.Equal(&botProfile, handler.hist[1].Initiator)
 		suite.Equal(newPartner, handler.hist[1].Details)
@@ -1090,7 +1090,7 @@ func (suite *TestEventHandlerSuite) TestDancerRemove_autoPair() {
 		suite.Require().Len(handler.hist, 2)
 		suite.Equal(models.HistoryCoupleRemoved, handler.hist[0].Action)
 		suite.Equal(got.Profile, handler.hist[0].Initiator)
-		suite.Equal(&couple, handler.hist[0].Details)
+		suite.Equal(couple, handler.hist[0].Details)
 		suite.Equal(models.HistorySingleAdded, handler.hist[1].Action)
 		suite.Equal(got.Profile, handler.hist[1].Initiator)
 		suite.Equal(partner, handler.hist[1].Details)
@@ -1161,6 +1161,21 @@ func (suite *TestEventHandlerSuite) TestDancerRemove_limit() {
 		suite.Equal(&expectedCouple.Dancers[0], handler.notif[1].Payload.Partner)
 	})
 
+	suite.Run("waitlist couple removed, no couple left waitlist", func() {
+		event := anotherSampleEvent()
+		event.Settings.Limit = 2
+		removedCouple := event.Couples[4]
+		handler := NewEventHandler(&event)
+
+		got := handler.DancerRemove(removedCouple.Dancers[0])
+
+		suite.Require().NotNil(got)
+		suite.Equal(models.ResultRegistrationRemoved, got.Result)
+		suite.Equal(models.StatusNotRegistered, got.Status)
+		suite.Require().Len(event.Couples, 4)
+		suite.Require().Len(handler.notif, 0)
+	})
+
 }
 
 func (suite *TestEventHandlerSuite) TestLimitChangeAffected() {
@@ -1169,45 +1184,45 @@ func (suite *TestEventHandlerSuite) TestLimitChangeAffected() {
 
 	suite.Run("limit is increased from 3 to no-limit", func() {
 		event.Settings.Limit = 0
-		got, increased, idx := handler.LimitChangeAffected(3)
+		got := handler.LimitChangeGetAffected(3)
 
-		suite.Require().Len(got, 2)
-		suite.Require().True(increased)
-		suite.Equal(3, idx)
-		suite.Equal("Grace Hopper", got[0].Dancers[0].FullName)
-		suite.Equal("Ivy League", got[1].Dancers[0].FullName)
+		suite.Require().Len(got.Couples, 2)
+		suite.Require().True(got.Increased)
+		suite.Equal(3, got.Position)
+		suite.Equal("Grace Hopper", got.Couples[0].Dancers[0].FullName)
+		suite.Equal("Ivy League", got.Couples[1].Dancers[0].FullName)
 	})
 
 	suite.Run("limit is increased from 3 to 4", func() {
 		event.Settings.Limit = 4
-		got, increased, idx := handler.LimitChangeAffected(3)
+		got := handler.LimitChangeGetAffected(3)
 
-		suite.Require().Len(got, 1)
-		suite.Require().True(increased)
-		suite.Equal(3, idx)
-		suite.Equal("Grace Hopper", got[0].Dancers[0].FullName)
+		suite.Require().Len(got.Couples, 1)
+		suite.Require().True(got.Increased)
+		suite.Equal(3, got.Position)
+		suite.Equal("Grace Hopper", got.Couples[0].Dancers[0].FullName)
 	})
 
 	suite.Run("limit is decreased from no-limit to 2", func() {
 		event.Settings.Limit = 2
-		got, increased, idx := handler.LimitChangeAffected(0)
+		got := handler.LimitChangeGetAffected(0)
 
-		suite.Require().Len(got, 3)
-		suite.Require().False(increased)
-		suite.Equal(2, idx)
-		suite.Equal("Eve Green", got[0].Dancers[0].FullName)
-		suite.Equal("Grace Hopper", got[1].Dancers[0].FullName)
-		suite.Equal("Ivy League", got[2].Dancers[0].FullName)
+		suite.Require().Len(got.Couples, 3)
+		suite.Require().False(got.Increased)
+		suite.Equal(2, got.Position)
+		suite.Equal("Eve Green", got.Couples[0].Dancers[0].FullName)
+		suite.Equal("Grace Hopper", got.Couples[1].Dancers[0].FullName)
+		suite.Equal("Ivy League", got.Couples[2].Dancers[0].FullName)
 	})
 
 	suite.Run("limit is decreased from 4 to 3", func() {
 		event.Settings.Limit = 3
-		got, increased, idx := handler.LimitChangeAffected(4)
+		got := handler.LimitChangeGetAffected(4)
 
-		suite.Require().Len(got, 1)
-		suite.Require().False(increased)
-		suite.Equal(3, idx)
-		suite.Equal("Grace Hopper", got[0].Dancers[0].FullName)
+		suite.Require().Len(got.Couples, 1)
+		suite.Require().False(got.Increased)
+		suite.Equal(3, got.Position)
+		suite.Equal("Grace Hopper", got.Couples[0].Dancers[0].FullName)
 	})
 }
 
@@ -1217,7 +1232,9 @@ func (suite *TestEventHandlerSuite) TestLimitChangeNotify() {
 		event := anotherSampleEvent()
 		event.Settings.Limit = 0
 		handler := NewEventHandler(&event)
-		handler.LimitChangeNotify(2)
+		affected := handler.LimitChangeGetAffected(2)
+
+		handler.LimitChangeNotifyAffected(affected)
 
 		suite.Require().Len(handler.notif, 4)
 		suite.Equal(models.TmplEventLimitIncreased, handler.notif[0].TmplCode)
@@ -1240,7 +1257,9 @@ func (suite *TestEventHandlerSuite) TestLimitChangeNotify() {
 		event := anotherSampleEvent()
 		event.Settings.Limit = 2
 		handler := NewEventHandler(&event)
-		handler.LimitChangeNotify(4)
+		affected := handler.LimitChangeGetAffected(4)
+
+		handler.LimitChangeNotifyAffected(affected)
 
 		suite.Require().Len(handler.notif, 3)
 		suite.Equal(models.TmplEventLimitDecreased, handler.notif[0].TmplCode)
@@ -1254,6 +1273,18 @@ func (suite *TestEventHandlerSuite) TestLimitChangeNotify() {
 
 		suite.Equal("Hank Hill", handler.notif[2].Recipient.FullName())
 		suite.Equal("Grace Hopper", handler.notif[2].Payload.Partner.FullName)
+	})
+
+	suite.Run("skip affected couple that is no longer in the event", func() {
+		event := anotherSampleEvent()
+		event.Settings.Limit = 2
+		handler := NewEventHandler(&event)
+		affected := handler.LimitChangeGetAffected(4)
+		event.Couples = event.Couples[:2]
+
+		handler.LimitChangeNotifyAffected(affected)
+
+		suite.Require().Len(handler.notif, 0)
 	})
 }
 

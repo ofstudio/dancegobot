@@ -87,6 +87,39 @@ func (suite *AppTestSuite) TestEventDraft() {
 		suite.Equal("Test text", event.Caption)
 	})
 
+	suite.Run("inline query with couple limit", func() {
+		// <- bot should call `answerInlineQuery`
+		var eventID string
+		gock.New(telegock.AnswerInlineQuery).
+			Reply(200).
+			Filter(func(res *http.Response) bool {
+				body := suite.Decode(res.Request.Body)
+				suite.Len(body.Get("results").Array(), 1)
+				result := body.Get("results").Array()[0]
+				suite.Equal("Limited event", result.Get("title").String())
+				suite.Equal("Лимит 2 пары", result.Get("description").String())
+				eventID = result.Get("id").String()
+				return true
+			}).JSON(telegock.Result(true))
+
+		// -> bot update `inline_query`
+		gock.New(telegock.GetUpdates).
+			Reply(200).
+			JSON(telegock.Updates().InlineQuery(tele.Query{
+				Sender:   userJohn,
+				Text:     "Limited event /2",
+				ChatType: "supergroup",
+			}))
+
+		suite.NoPending()
+		suite.NoUnmatched()
+		event, err := suite.app.EventService.Get(context.Background(), eventID)
+		suite.NoError(err)
+		suite.Require().NotNil(event)
+		suite.Equal("Limited event", event.Caption)
+		suite.Equal(2, event.Settings.Limit)
+	})
+
 	suite.Run("quite long inline query", func() {
 		// <- bot should call `answerInlineQuery`
 		gock.New(telegock.AnswerInlineQuery).

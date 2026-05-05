@@ -9,6 +9,7 @@ const (
 	DeleteWebhook       = base + "deleteWebhook"
 	SendMessage         = base + "sendMessage"
 	EditMessageText     = base + "editMessageText"
+	EditMessageMarkup   = base + "editMessageReplyMarkup"
 	AnswerInlineQuery   = base + "answerInlineQuery"
 	AnswerCallbackQuery = base + "answerCallbackQuery"
 )

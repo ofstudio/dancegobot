@@ -222,4 +222,19 @@ VALUES ('event_1', 100, '{"singles": [{"id": 1}], "post": {"inline_message_id": 
 		suite.Require().NoError(err)
 		suite.Empty(ids)
 	})
+
+	suite.Run("skip removed events", func() {
+		_, err := suite.store.db.Exec(`
+INSERT INTO events (id, owner_id, data)
+VALUES ('event_1', 1, '{"post": {"inline_message_id": "test"}}'),
+       ('event_2', 1, '{"removed": true, "post": {"inline_message_id": "test"}}'),
+       ('event_3', 100, '{"couples": [{"dancers": [{"id": 1}, {"id": 2}]}], "removed": true, "post": {"inline_message_id": "test"}}')
+`)
+		suite.Require().NoError(err)
+
+		ids, err := suite.store.EventGetMy(context.Background(), &models.Profile{ID: 1})
+		suite.Require().NoError(err)
+		suite.Require().Len(ids, 1)
+		suite.Equal("event_1", ids[0])
+	})
 }

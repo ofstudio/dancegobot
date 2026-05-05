@@ -2,11 +2,12 @@ package models
 
 // Session - is the current bot session of the user
 type Session struct {
-	Action   SessionAction   `json:"action,omitempty"`        // User action related to session
-	EventID  string          `json:"event_id,omitempty"`      // Current event id related to the session
-	Role     Role            `json:"event_role,omitempty"`    // Current role related to the session
-	Singles  []SessionSingle `json:"event_singles,omitempty"` // List of singles available for signup with the current user role
-	MyEvents []string        `json:"my_events,omitempty"`     // List of event IDs for /my scene
+	Action          SessionAction    `json:"action,omitempty"`           // User action related to session
+	EventID         string           `json:"event_id,omitempty"`         // Current event id related to the session
+	Role            Role             `json:"event_role,omitempty"`       // Current role related to the session
+	Singles         []SessionSingle  `json:"event_singles,omitempty"`    // List of singles available for signup with the current user role
+	MyEvents        []string         `json:"my_events,omitempty"`        // List of event IDs for /my scene
+	AffectedCouples *AffectedCouples `json:"affected_couples,omitempty"` // Affected couples after the event settings limit was changed
 }
 
 // SessionAction - is a user action related to the session

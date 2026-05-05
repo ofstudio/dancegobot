@@ -10,6 +10,7 @@ Inspired by [Tayrinn/CoopDance](https://github.com/Tayrinn/CoopDance).
 - ✅ Dancer can sign up in a couple with a partner or as single looking for a partner.
 - ✅ Automatic pairing of single dancers.
 - ✅ Notifications to the dancer when someone selects them as a partner.
+- ✅ `/my` command for viewing events created or joined by the user.
 
 ## Installation
 

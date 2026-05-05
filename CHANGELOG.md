@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- `/my` command for event owners and dancers
 - Marking an event as removed due to repeated rendering failures
 
 ## [2.0.4] - 2024-12-22

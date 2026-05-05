@@ -8,6 +8,19 @@ import (
 	"github.com/ofstudio/dancegobot/pkg/randtoken"
 )
 
+// UserSettingsScene renders the user settings scene.
+func UserSettingsScene(c tele.Context, settings models.UserSettings) error {
+	text := locale.UserSettingsCaption +
+		locale.EventSettingsAutoPair[settings.Event.AutoPairing]
+	rm := btnUserSettingsScene(settings)
+	return c.EditOrSend(text, rm, tele.ModeHTML, tele.NoPreview, tele.RemoveKeyboard)
+}
+
+// UserSettingsHelp renders the user settings help message.
+func UserSettingsHelp(c tele.Context) error {
+	return c.EditOrSend(locale.UserSettingsHelp, btnUserSettingsBack(), tele.ModeHTML, tele.NoPreview, tele.RemoveKeyboard)
+}
+
 var (
 	BtnUserSettingsAutoPair = tele.Btn{Unique: "usr_set_auto_pair"}
 	BtnUserSettingsHelp     = tele.Btn{Unique: "usr_set_help"}
@@ -15,7 +28,7 @@ var (
 )
 
 // btnUserSettingsScene creates buttons for the user settings scene.
-func btnUserSettingsScene(settings *models.UserSettings) *tele.ReplyMarkup {
+func btnUserSettingsScene(settings models.UserSettings) *tele.ReplyMarkup {
 	rm := &tele.ReplyMarkup{
 		RemoveKeyboard: true,
 	}
@@ -41,17 +54,4 @@ func btnUserSettingsBack() *tele.ReplyMarkup {
 		rm.Data(locale.BtnBack, BtnUserSettingsBack.Unique, randtoken.New(4)),
 	))
 	return rm
-}
-
-// UserSettingsScene returns a message with the user settings.
-func UserSettingsScene(settings *models.UserSettings) (string, *tele.ReplyMarkup) {
-	text := locale.UserSettingsCaption +
-		locale.EventSettingsAutoPair[settings.Event.AutoPairing]
-	rm := btnUserSettingsScene(settings)
-	return text, rm
-}
-
-// UserSettingsHelp returns a message with the user settings help.
-func UserSettingsHelp() (string, *tele.ReplyMarkup) {
-	return locale.UserSettingsHelp, btnUserSettingsBack()
 }

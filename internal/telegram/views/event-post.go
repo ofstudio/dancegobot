@@ -11,26 +11,8 @@ import (
 	"github.com/ofstudio/dancegobot/pkg/randtoken"
 )
 
-var BtnEventSignupCb = tele.Btn{Unique: models.SessionSignup.String()}
-
-// btnEventSignupCb creates signup buttons with callback data for the event post.
-func btnEventSignupCb(eventID string) *tele.ReplyMarkup {
-	rm := &tele.ReplyMarkup{}
-	rm.Inline(
-		rm.Row(
-			rm.Data(locale.RoleIcon[models.RoleLeader],
-				BtnEventSignupCb.Unique,
-				eventID, models.RoleLeader.String(), randtoken.New(4)),
-			rm.Data(locale.RoleIcon[models.RoleFollower],
-				BtnEventSignupCb.Unique,
-				eventID, models.RoleFollower.String(), randtoken.New(4)),
-		),
-	)
-	return rm
-}
-
-// EventCreateAnswerEmpty sends a response to the empty inline query.
-func EventCreateAnswerEmpty(c tele.Context, thumb string) error {
+// EventPostAnswerEmpty sends a response to the empty inline query.
+func EventPostAnswerEmpty(c tele.Context, thumb string) error {
 	return c.Answer(&tele.QueryResponse{
 		Results: tele.Results{
 			&tele.ArticleResult{
@@ -43,18 +25,23 @@ func EventCreateAnswerEmpty(c tele.Context, thumb string) error {
 	})
 }
 
-// EventCreateAnswer sends a response to the non-empty inline query.
-func EventCreateAnswer(c tele.Context, eventID, thumb string) error {
-	text := c.Query().Text
+// EventPostAnswer sends a response to the non-empty inline query.
+func EventPostAnswer(c tele.Context, event *models.Event, thumb string) error {
 	var desc string
 
 	// Show warning in description if the text is too long.
-	r := 255 - utf8.RuneCountInString(text)
+	r := 255 - utf8.RuneCountInString(event.Caption)
 	switch {
 	case r < 0:
 		desc = locale.QueryOverflow
 	case r < 40:
-		desc = fmt.Sprintf(locale.QueryRemaining, r, locale.NumSymbols.N(r))
+		desc = fmt.Sprintf(locale.QueryRemaining, r, locale.NumQueryRemainingSymbols.N(r))
+	case event.Settings.Limit > 0:
+		desc = fmt.Sprintf(
+			locale.QueryEventLimit,
+			event.Settings.Limit,
+			locale.NumLimitCouples.N(event.Settings.Limit),
+		)
 	default:
 		desc = locale.QueryDescription
 	}
@@ -63,19 +50,40 @@ func EventCreateAnswer(c tele.Context, eventID, thumb string) error {
 		Results: tele.Results{
 			&tele.ArticleResult{
 				ResultBase: tele.ResultBase{
-					ID: eventID,
+					ID: event.ID,
 					Content: &tele.InputTextMessageContent{
-						Text:           text,
+						Text:           event.Caption,
 						ParseMode:      tele.ModeHTML,
 						PreviewOptions: &tele.PreviewOptions{Disabled: true},
 					},
-					ReplyMarkup: btnEventSignupCb(eventID),
+					ReplyMarkup: btnEventSignupCb(event.ID),
 				},
-				Title:       text,
+				Title:       event.Caption,
 				Description: desc,
 				ThumbURL:    thumb,
-				HideURL:     true,
 			},
 		},
 	})
+}
+
+var BtnEventSignupCb = tele.Btn{Unique: models.SessionSignup.String()}
+
+// btnEventSignupCb creates signup buttons with callback data for the event post.
+func btnEventSignupCb(eventID string) *tele.ReplyMarkup {
+	rm := &tele.ReplyMarkup{}
+	rm.Inline(
+		rm.Row(
+			rm.Data(locale.RoleIcon[models.RoleLeader],
+				BtnEventSignupCb.Unique,
+				eventID, models.RoleLeader.String(),
+				randtoken.New(4),
+			),
+			rm.Data(locale.RoleIcon[models.RoleFollower],
+				BtnEventSignupCb.Unique,
+				eventID, models.RoleFollower.String(),
+				randtoken.New(4),
+			),
+		),
+	)
+	return rm
 }

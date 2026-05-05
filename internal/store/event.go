@@ -142,8 +142,8 @@ func (s *SQLiteStore) EventGetMy(ctx context.Context, profile *models.Profile) (
 	// language=SQLite
 	const query = `SELECT id
 FROM events
-WHERE data ->> 'post.inline_message_id' IS NOT NULL -- Skip draft events
-  AND ifnull(data ->> 'removed', FALSE) == FALSE -- Skip removed events
+WHERE json_extract(data, '$.post.inline_message_id') IS NOT NULL -- Skip draft events
+  AND ifnull(json_extract(data, '$.removed'), FALSE) == FALSE -- Skip removed events
   AND (
     -- Search by owner_id
     owner_id == ?1

@@ -12,30 +12,30 @@ import (
 	"github.com/ofstudio/dancegobot/pkg/telelog"
 )
 
-// CbEventSettings - handles event settings callback button.
-func (h *Handlers) CbEventSettings(c tele.Context) error {
-	h.log.Info("[handlers] event settings callback received", telelog.Attr(c))
+// EventSettingsScene handles event settings callback button.
+func (h *Handlers) EventSettingsScene(c tele.Context) error {
+	h.log.Info("[handlers] event settings scene received", telelog.Attr(c))
 	if len(c.Args()) < 3 {
-		h.log.Error("[handlers] event settings callback: not enough arguments",
+		h.log.Error("[handlers] event settings scene: not enough arguments",
 			"args", c.Args(),
-			telelog.Attr(c))
+			telelog.Trace(c))
 		return c.RespondAlert(locale.ErrSomethingWrong)
 	}
 
 	u := h.userGet(c)
 	eventID := c.Args()[0]
-	offset := c.Args()[1]
+	offset, _ := strconv.Atoi(c.Args()[1])
 
 	event, err := h.eventService.Get(h.ctx(c), eventID)
 	if err != nil {
-		h.log.Error("[handlers] event settings callback: failed to get event: "+err.Error(),
+		h.log.Error("[handlers] event settings scene: "+err.Error(),
 			"event_id", eventID,
 			telelog.Trace(c))
 		return h.respondErr(c, locale.ErrSomethingWrong)
 	}
 
-	if !h.eventService.CanManage(event, &h.userGet(c).Profile) {
-		h.log.Error("[handlers] event settings callback: user can't manage the event",
+	if !h.eventService.CanManage(event, u.Profile) {
+		h.log.Error("[handlers] event settings scene: user can't manage the event",
 			"event_id", eventID,
 			"profile", u.Profile.LogValue(),
 			telelog.Trace(c))
@@ -43,30 +43,21 @@ func (h *Handlers) CbEventSettings(c tele.Context) error {
 	}
 
 	_ = c.Respond()
-	return c.Edit(views.EventSettingsMsg(event), views.BtnEventSettingsScene(event, offset),
-		tele.ModeHTML, tele.NoPreview, tele.RemoveKeyboard)
+	return views.EventSettingsScene(c, event, offset)
 }
 
 // CbEventSettingsBack - handles event settings scene back callback button.
 func (h *Handlers) CbEventSettingsBack(c tele.Context) error {
-	h.log.Info("[handlers] event_settings_back callback received", telelog.Attr(c))
+	h.log.Info("[handlers] event settings back callback received", telelog.Attr(c))
 	if len(c.Args()) < 2 {
-		h.log.Error("[handlers] event_settings_back callback: not enough arguments",
+		h.log.Error("[handlers] event settings back callback: not enough arguments",
 			"args", c.Args(),
 			telelog.Trace(c))
 		return c.RespondAlert(locale.ErrSomethingWrong)
 	}
 	offset, _ := strconv.Atoi(c.Args()[0])
-
-	text, rm, err := h.myScene(c, offset)
-	if err != nil {
-		h.log.Error("[handlers] failed to get my scene: "+err.Error(), telelog.Trace(c))
-		return h.respondErr(c, locale.ErrSomethingWrong)
-	}
-
 	_ = c.Respond()
-
-	return c.Edit(text, rm, tele.ModeHTML, tele.RemoveKeyboard, tele.NoPreview)
+	return h.myScene(c, offset)
 }
 
 // CbEventSettingsToggles - handles event settings scene callback buttons toggles.
@@ -75,17 +66,17 @@ func (h *Handlers) CbEventSettingsToggles(c tele.Context) error {
 	if len(c.Args()) < 3 {
 		h.log.Error("[handlers] event settings toggle callback: not enough arguments",
 			"args", c.Args(),
-			telelog.Attr(c))
+			telelog.Trace(c))
 		return c.RespondAlert(locale.ErrSomethingWrong)
 	}
 
 	u := h.userGet(c)
 	eventID := c.Args()[0]
-	offset := c.Args()[1]
+	offset, _ := strconv.Atoi(c.Args()[1])
 
 	event, err := h.eventService.Get(h.ctx(c), eventID)
 	if err != nil {
-		h.log.Error("[handlers] event settings toggle callback: failed to get event: "+err.Error(),
+		h.log.Error("[handlers] event settings toggle callback: "+err.Error(),
 			"event_id", eventID,
 			telelog.Trace(c))
 		return h.respondErr(c, locale.ErrSomethingWrong)
@@ -108,8 +99,8 @@ func (h *Handlers) CbEventSettingsToggles(c tele.Context) error {
 		return h.respondErr(c, locale.ErrSomethingWrong)
 	}
 
-	if event, err = h.eventService.UpdateSettings(h.ctx(c), event.ID, &u.Profile, event.Settings); err != nil {
-		h.log.Error("[handlers] event settings toggle callback: failed to update event settings: "+err.Error(),
+	if event, err = h.eventService.SettingsUpdate(h.ctx(c), event.ID, u.Profile, event.Settings); err != nil {
+		h.log.Error("[handlers] event settings toggle callback: "+err.Error(),
 			"event_id", eventID,
 			telelog.Trace(c))
 		return h.respondErr(c, locale.ErrSomethingWrong)
@@ -121,8 +112,7 @@ func (h *Handlers) CbEventSettingsToggles(c tele.Context) error {
 		telelog.Trace(c))
 
 	_ = c.Respond()
-	return c.Edit(views.EventSettingsMsg(event), views.BtnEventSettingsScene(event, offset),
-		tele.ModeHTML, tele.NoPreview, tele.RemoveKeyboard)
+	return views.EventSettingsScene(c, event, offset)
 }
 
 // CbEventSettingsLimitScene handles event settings limit scene.
@@ -131,8 +121,8 @@ func (h *Handlers) CbEventSettingsLimitScene(c tele.Context) error {
 	if len(c.Args()) < 4 {
 		h.log.Error("[handlers] event settings limit scene callback: not enough arguments",
 			"args", c.Args(),
-			telelog.Attr(c))
-		return c.RespondAlert(locale.ErrSomethingWrong)
+			telelog.Trace(c))
+		return h.respondErr(c, locale.ErrSomethingWrong)
 	}
 
 	eventID := c.Args()[0]
@@ -141,15 +131,13 @@ func (h *Handlers) CbEventSettingsLimitScene(c tele.Context) error {
 
 	event, err := h.eventService.Get(h.ctx(c), eventID)
 	if err != nil {
-		h.log.Error("[handlers] event settings limit scene callback: failed to get event: "+err.Error(),
+		h.log.Error("[handlers] event settings limit scene callback: "+err.Error(),
 			"event_id", eventID,
 			telelog.Trace(c))
 		return h.respondErr(c, locale.ErrSomethingWrong)
 	}
 	_ = c.Respond()
-	msg := views.EventSettingsMsg(event)
-	rm := views.BtnEventSettingsLimitScene(eventID, page, offset)
-	return c.Edit(msg, rm, tele.ModeHTML, tele.NoPreview, tele.RemoveKeyboard)
+	return views.EventSettingsLimitScene(c, event.ID, page, offset)
 }
 
 // CbEventSettingsLimitNum handles event settings limit number callback buttons
@@ -159,17 +147,17 @@ func (h *Handlers) CbEventSettingsLimitNum(c tele.Context) error {
 	if len(c.Args()) < 3 {
 		h.log.Error("[handlers] event settings limit number callback: not enough arguments",
 			"args", c.Args(),
-			telelog.Attr(c))
-		return c.RespondAlert(locale.ErrSomethingWrong)
+			telelog.Trace(c))
+		return h.respondErr(c, locale.ErrSomethingWrong)
 	}
 
 	eventID := c.Args()[0]
 	limit, _ := strconv.Atoi(c.Args()[1])
-	offset := c.Args()[2]
+	offset, _ := strconv.Atoi(c.Args()[2])
 
 	event, err := h.eventService.Get(h.ctx(c), eventID)
 	if err != nil {
-		h.log.Error("[handlers] event settings limit number callback: failed to get event: "+err.Error(),
+		h.log.Error("[handlers] event settings limit number callback: "+err.Error(),
 			"event_id", eventID,
 			telelog.Trace(c))
 		return h.respondErr(c, locale.ErrSomethingWrong)
@@ -177,8 +165,8 @@ func (h *Handlers) CbEventSettingsLimitNum(c tele.Context) error {
 
 	oldLimit := event.Settings.Limit
 	event.Settings.Limit = limit
-	if event, err = h.eventService.UpdateSettings(h.ctx(c), event.ID, &h.userGet(c).Profile, event.Settings); err != nil {
-		h.log.Error("[handlers] event settings limit number callback: failed to update event settings: "+err.Error(),
+	if event, err = h.eventService.SettingsUpdate(h.ctx(c), event.ID, h.userGet(c).Profile, event.Settings); err != nil {
+		h.log.Error("[handlers] event settings limit number callback: "+err.Error(),
 			"event_id", eventID,
 			telelog.Trace(c))
 		return h.respondErr(c, locale.ErrSomethingWrong)
@@ -191,61 +179,105 @@ func (h *Handlers) CbEventSettingsLimitNum(c tele.Context) error {
 
 	_ = c.Respond()
 	return errutil.Append(
-		c.Edit(views.EventSettingsMsg(event), views.BtnEventSettingsScene(event, offset),
-			tele.ModeHTML, tele.NoPreview, tele.RemoveKeyboard),
-		h.limitChangedPrompt(c, event, oldLimit),
+		views.EventSettingsScene(c, event, offset),
+		h.limitChangedNotice(c, event, oldLimit),
 	)
 }
 
-// CbLimitChangedNotify handles the limit changed notification callback.
+// CbLimitChangedNotify handles the limit changed notify callback.
 func (h *Handlers) CbLimitChangedNotify(c tele.Context) error {
-	h.log.Info("[handlers] limit changed notification callback received", telelog.Attr(c))
-	if len(c.Args()) < 3 {
-		h.log.Error("[handlers] limit changed notification callback: not enough arguments",
+	h.log.Info("[handlers] limit changed notify callback received", telelog.Attr(c))
+
+	if len(c.Args()) < 2 {
+		h.log.Error("[handlers] limit changed notify callback: not enough arguments",
 			"args", c.Args(),
-			telelog.Attr(c))
-		return c.RespondAlert(locale.ErrSomethingWrong)
+			telelog.Trace(c))
+		return h.respondErr(c, locale.ErrSomethingWrong)
+	}
+	eventID := c.Args()[0]
+	if eventID == "" {
+		h.log.Error("[handlers] limit changed notify callback: empty event ID", telelog.Trace(c))
+		return h.respondErr(c, locale.ErrSomethingWrong)
 	}
 
-	eventID := c.Args()[0]
-	oldLimit, err := strconv.Atoi(c.Args()[1])
-	if err != nil {
-		h.log.Error("[handlers] limit changed notification callback: failed to parse old limit: "+err.Error(),
-			"old_limit", c.Args()[1],
+	// Remove inline keyboard
+	_ = c.Respond()
+	if err := views.RemoveInlineKeyboard(c); err != nil {
+		h.log.Error("[handlers] limit changed notify callback: "+err.Error(),
 			telelog.Trace(c))
 	}
-	_ = c.Respond()
 
-	err = c.Edit(&tele.ReplyMarkup{}, tele.ModeHTML, tele.NoPreview, tele.RemoveKeyboard)
-	h.eventService.LimitChangeNotify(h.ctx(c), eventID, oldLimit)
+	// Check for the event ID in the user session
+	u := h.userGet(c)
+	if u.Session.EventID != eventID {
+		h.log.Info("[handlers] limit changed notify callback: event ID mismatch",
+			"event_id", eventID,
+			"session_event_id", u.Session.EventID,
+			telelog.Trace(c))
+		return h.respondErr(c, locale.LimitChangedCantNotify)
+	}
 
-	return errutil.Append(
-		err,
-		c.Send(locale.LimitChangedNotified, tele.RemoveKeyboard, tele.NoPreview, tele.ModeHTML),
-	)
+	// Check for the affected couples in the user session
+	if u.Session.AffectedCouples == nil {
+		h.log.Info("[handlers] limit changed notify callback: no affected couples in the session",
+			"event_id", eventID,
+			telelog.Trace(c))
+		return h.respondErr(c, locale.LimitChangedCantNotify)
+	}
+
+	// Reset affected couples in the user session
+	affected := *u.Session.AffectedCouples
+	h.userSessionUpdateAffected(c, "", nil)
+
+	// Send notifications to the affected couples
+	if err := h.eventService.LimitChangeNotifyAffected(h.ctx(c), eventID, affected); err != nil {
+		h.log.Error("[handlers] limit changed notify callback: "+err.Error(),
+			"event_id", eventID,
+			telelog.Trace(c))
+		return h.respondErr(c, locale.ErrSomethingWrong)
+	}
+
+	h.log.Info("[handlers] limit changed notify callback: notifications sent",
+		"event_id", eventID, telelog.Trace(c))
+	return views.SendLimitChangedNotified(c)
 }
 
 // CbLimitChangedSkip handles the limit changed skip notification callback.
 func (h *Handlers) CbLimitChangedSkip(c tele.Context) error {
 	h.log.Info("[handlers] limit changed skip notification callback received", telelog.Attr(c))
 	_ = c.Respond()
-	return c.Edit(&tele.ReplyMarkup{}, tele.ModeHTML, tele.NoPreview, tele.RemoveKeyboard)
+
+	// Reset affected couples in the user session
+	h.userSessionUpdateAffected(c, "", nil)
+
+	return views.RemoveInlineKeyboard(c)
 }
 
-// limitChangedPrompt sends a prompt message about the limit change.
-func (h *Handlers) limitChangedPrompt(c tele.Context, event *models.Event, oldLimit int) error {
+// limitChangedNotice sends a notice about the limit change.
+func (h *Handlers) limitChangedNotice(c tele.Context, event *models.Event, oldLimit int) error {
 	// Skip if the limit hasn't changed
 	if event.Settings.Limit == oldLimit {
 		return nil
 	}
-	couples, increased, idx := h.eventService.LimitChangeAffected(event, oldLimit)
+
+	// Get affected couples
+	affected := h.eventService.LimitChangeGetAffected(event, oldLimit)
+
 	// Skip if no couples affected
-	if len(couples) == 0 {
+	if len(affected.Couples) == 0 {
 		return nil
 	}
 
-	// Send a prompt message about affected couples
-	msg := views.LimitChangedMsg(event, increased, couples, idx)
-	rm := views.BtnLimitChanged(event.ID, oldLimit)
-	return c.Send(msg, rm, tele.ModeHTML, tele.NoPreview, tele.RemoveKeyboard)
+	// Update user session with the affected couples
+	h.userSessionUpdateAffected(c, event.ID, &affected)
+
+	return views.SendLimitChanged(c, event, affected)
+}
+
+// userSessionUpdateAffected updates the user session with the affected couples.
+func (h *Handlers) userSessionUpdateAffected(c tele.Context, eventID string, affected *models.AffectedCouples) {
+	u := h.userGet(c)
+	u.Session.EventID = eventID
+	u.Session.AffectedCouples = affected
+	h.userSessionUpdate(c, u)
 }

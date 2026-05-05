@@ -12,6 +12,75 @@ import (
 	"github.com/ofstudio/dancegobot/internal/models"
 )
 
+var notifyT *template.Template
+
+// initialize notification templates
+func init() {
+	var err error
+
+	// Parse notification base template
+	notifyT, err = template.New("").Funcs(template.FuncMap{
+		"fmtDancer": func(dancer *models.Dancer) template.HTML {
+			if dancer.Profile == nil {
+				return template.HTML(dancer.FullName)
+			}
+			return template.HTML(fmt.Sprintf(
+				"<a href=\"%s\">%s</a>",
+				profileURL(dancer.Profile),
+				dancer.FullName,
+			))
+		},
+		"fmtProfile": func(p *models.Profile) template.HTML {
+			return template.HTML(fmt.Sprintf(
+				"<a href=\"%s\">%s</a>",
+				profileURL(p),
+				p.FullName(),
+			))
+		},
+	}).Parse(locale.NotificationsBase)
+	if err != nil {
+		panic(fmt.Sprintf("failed to parse notification base template: %v", err))
+	}
+
+	// Parse notification templates
+	for name, tmpl := range locale.Notifications {
+		_, err = notifyT.New(name.String()).Parse(tmpl)
+		if err != nil {
+			panic(fmt.Sprintf("failed to parse notification template '%s': %v", name, err))
+		}
+	}
+}
+
+// Notify returns services.NotifyFunc function for services.NotifierService
+// that sends notifications to the user.
+func Notify(api tele.API) func(n *models.Notification) error {
+	return func(n *models.Notification) error {
+		textSb, err := notifyTextBuilder(n)
+		if err != nil {
+			return err
+		}
+		rm := btnChatLink(n.Payload.Event)
+
+		// Send notification
+		user := &tele.User{ID: n.Recipient.ID}
+		_, err = api.Send(user, textSb.String(), rm, tele.ModeHTML, tele.NoPreview, tele.RemoveKeyboard)
+		if errors.Is(err, tele.ErrTrueResult) {
+			return nil
+		}
+		return err
+	}
+}
+
+// notifyTextBuilder returns strings.Builder with the text for the given notification
+func notifyTextBuilder(n *models.Notification) (*strings.Builder, error) {
+	sb := &strings.Builder{}
+	err := notifyT.ExecuteTemplate(sb, n.TmplCode.String(), n.Payload)
+	if err != nil {
+		return nil, fmt.Errorf("failed to execute notification template '%s': %w", n.TmplCode, err)
+	}
+	return sb, nil
+}
+
 // chatLink returns a link to the chat message.
 //
 // Known Telegram limitations:
@@ -55,73 +124,4 @@ func btnChatLink(event *models.Event) *tele.ReplyMarkup {
 	}
 	rm.Inline(rm.Row(rm.URL(locale.BtnChatLink, link)))
 	return rm
-}
-
-// Notify returns services.NotifyFunc function for services.NotifierService
-// that sends notifications to the user.
-func Notify(api tele.API) func(n *models.Notification) error {
-	return func(n *models.Notification) error {
-		textSb, err := notifyTextBuilder(n)
-		if err != nil {
-			return err
-		}
-		rm := btnChatLink(n.Payload.Event)
-
-		// Send notification
-		user := &tele.User{ID: n.Recipient.ID}
-		_, err = api.Send(user, textSb.String(), rm, tele.ModeHTML, tele.NoPreview, tele.RemoveKeyboard)
-		if errors.Is(err, tele.ErrTrueResult) {
-			return nil
-		}
-		return err
-	}
-}
-
-// notifyTextBuilder returns strings.Builder with the text for the given notification
-func notifyTextBuilder(n *models.Notification) (*strings.Builder, error) {
-	sb := &strings.Builder{}
-	err := notifyT.ExecuteTemplate(sb, n.TmplCode.String(), n.Payload)
-	if err != nil {
-		return nil, fmt.Errorf("failed to execute notification template '%s': %w", n.TmplCode, err)
-	}
-	return sb, nil
-}
-
-var notifyT *template.Template
-
-// initialize notification templates
-func init() {
-	var err error
-
-	// Parse notification base template
-	notifyT, err = template.New("").Funcs(template.FuncMap{
-		"fmtDancer": func(dancer *models.Dancer) template.HTML {
-			if dancer.Profile == nil {
-				return template.HTML(dancer.FullName)
-			}
-			return template.HTML(fmt.Sprintf(
-				"<a href=\"%s\">%s</a>",
-				profileURL(dancer.Profile),
-				dancer.FullName,
-			))
-		},
-		"fmtProfile": func(p *models.Profile) template.HTML {
-			return template.HTML(fmt.Sprintf(
-				"<a href=\"%s\">%s</a>",
-				profileURL(p),
-				p.FullName(),
-			))
-		},
-	}).Parse(locale.NotificationsBase)
-	if err != nil {
-		panic(fmt.Sprintf("failed to parse notification base template: %v", err))
-	}
-
-	// Parse notification templates
-	for name, tmpl := range locale.Notifications {
-		_, err = notifyT.New(name.String()).Parse(tmpl)
-		if err != nil {
-			panic(fmt.Sprintf("failed to parse notification template '%s': %v", name, err))
-		}
-	}
 }

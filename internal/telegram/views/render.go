@@ -13,38 +13,17 @@ import (
 	"github.com/ofstudio/dancegobot/pkg/randtoken"
 )
 
-// EventSignupURL returns a deeplink url for the event signup.
-func EventSignupURL(eventID string, role models.Role) string {
-	return telegram.Deeplink{Action: models.SessionSignup, EventID: eventID, Role: role}.String()
-}
-
-// btnEventSignupURL creates signup buttons with url for the event post.
-func btnEventSignupURL(eventID string) *tele.ReplyMarkup {
-	rm := &tele.ReplyMarkup{}
-	rm.Inline(rm.Row(
-		rm.URL(locale.RoleIcon[models.RoleLeader], EventSignupURL(eventID, models.RoleLeader)),
-		rm.URL(locale.RoleIcon[models.RoleFollower], EventSignupURL(eventID, models.RoleFollower)),
-	))
-	return rm
-}
-
-var BtnEventClosed = tele.Btn{Unique: "post_closed"}
-
-// btnEventClosed creates a button for the closed event post.
-func btnEventClosed() *tele.ReplyMarkup {
-	rm := &tele.ReplyMarkup{}
-	rm.Inline(rm.Row(
-		rm.Data(locale.IconPostClosed, BtnEventClosed.Unique, randtoken.New(4)),
-	))
-	return rm
-}
-
 // Render returns services.RenderFunc function for services.RenderService
 // that renders the event post with the given inline message ID.
 func Render(api tele.API) func(*models.Event, string) error {
 	return func(event *models.Event, inlineMessageID string) error {
 		return render(api, event, inlineMessageID)
 	}
+}
+
+// EventSignupURL returns a deeplink url for the event signup.
+func EventSignupURL(eventID string, role models.Role) string {
+	return telegram.Deeplink{Action: models.SessionSignup, EventID: eventID, Role: role}.String()
 }
 
 // render renders the event post with the given inline message ID.
@@ -81,7 +60,7 @@ func postTextBuilder(event *models.Event) *strings.Builder {
 
 	if len(event.Couples) > 0 {
 		sb.WriteString(locale.PostCouples)
-		postCouplesBuild(sb, event.Couples, event.Settings.Limit, 0)
+		postCouplesBuild(sb, event.Couples, event.Settings.Limit)
 		sb.WriteByte('\n')
 	}
 
@@ -99,21 +78,27 @@ func postTextBuilder(event *models.Event) *strings.Builder {
 }
 
 // postCouplesBuild appends the couples list to the strings.Builder.
-func postCouplesBuild(sb *strings.Builder, couples []models.Couple, limit, startIdx int) {
+// The limit parameter is used to separate the list into two parts: the second part is shown as a waitlist.
+// The optional start parameter is used to set the index of the first couple.
+func postCouplesBuild(sb *strings.Builder, couples []models.Couple, limit int, start ...int) {
+	var startIndex int
+	if len(start) > 0 {
+		startIndex = start[0]
+	}
 	for i, c := range couples {
 		if limit > 0 && i == limit {
 			sb.WriteString(locale.PostCouplesWait)
 		}
-		sb.WriteString(strconv.Itoa(startIdx + i + 1))
+		sb.WriteString(strconv.Itoa(startIndex + i + 1))
 		sb.WriteString(". ")
-		sb.WriteString(fmtDancer(&c.Dancers[0]))
+		sb.WriteString(fmtDancer(c.Dancers[0]))
 		sb.WriteString(" – ")
-		sb.WriteString(fmtDancer(&c.Dancers[1]))
+		sb.WriteString(fmtDancer(c.Dancers[1]))
 		sb.WriteByte('\n')
 	}
 }
 
-// postSinglesBuild appends the singles list to the strings.Builder.
+// postSinglesBuild appends the singles lists s1 and s2 to the strings.Builder.
 func postSinglesBuild(sb *strings.Builder, s1, s2 []models.Dancer) {
 	for i, s := range s1 {
 		singleBuild(sb, i+1, s)
@@ -130,7 +115,7 @@ func postSinglesBuild(sb *strings.Builder, s1, s2 []models.Dancer) {
 func singleBuild(sb *strings.Builder, i int, single models.Dancer) {
 	sb.WriteString(strconv.Itoa(i))
 	sb.WriteString(". ")
-	sb.WriteString(fmtDancer(&single))
+	sb.WriteString(fmtDancer(single))
 	sb.WriteByte('\n')
 }
 
@@ -147,8 +132,29 @@ func singlesByRole(singles []models.Dancer) ([]models.Dancer, []models.Dancer) {
 	return leaders, followers
 }
 
+var BtnEventClosed = tele.Btn{Unique: "post_closed"}
+
+// btnEventClosed creates a button for the closed event post.
+func btnEventClosed() *tele.ReplyMarkup {
+	rm := &tele.ReplyMarkup{}
+	rm.Inline(rm.Row(
+		rm.Data(locale.IconPostClosed, BtnEventClosed.Unique, randtoken.New(4)),
+	))
+	return rm
+}
+
+// btnEventSignupURL creates signup buttons with url for the event post.
+func btnEventSignupURL(eventID string) *tele.ReplyMarkup {
+	rm := &tele.ReplyMarkup{}
+	rm.Inline(rm.Row(
+		rm.URL(locale.RoleIcon[models.RoleLeader], EventSignupURL(eventID, models.RoleLeader)),
+		rm.URL(locale.RoleIcon[models.RoleFollower], EventSignupURL(eventID, models.RoleFollower)),
+	))
+	return rm
+}
+
 // fmtDancer formats the dancer with a link to the Telegram profile.
-func fmtDancer(d *models.Dancer) string {
+func fmtDancer(d models.Dancer) string {
 	if d.Profile == nil {
 		return d.FullName
 	}

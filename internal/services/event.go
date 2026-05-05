@@ -128,13 +128,26 @@ func (s *EventService) SettingsUpdate(
 // RegistrationGet returns registration for the given event by profile and role.
 // If the dancer is not registered, returns a new registration.
 // If event or profile is nil, returns nil.
-func (s *EventService) RegistrationGet(event *models.Event, profile models.Profile, role models.Role) models.Registration {
+func (s *EventService) RegistrationGet(
+	ctx context.Context,
+	eventID string,
+	profile models.Profile,
+	role models.Role,
+) (models.Registration, error) {
+	event, err := s.store.EventGet(ctx, eventID)
+	if err != nil {
+		return models.Registration{}, fmt.Errorf("failed to get event: %w", err)
+	}
+	if event == nil {
+		return models.Registration{}, fmt.Errorf("event not found")
+	}
+
 	return NewEventHandler(event).RegistrationGet(models.Dancer{
 		Profile:   &profile,
 		FullName:  profile.FullName(),
 		Role:      role,
 		CreatedAt: nowFn(),
-	})
+	}), nil
 }
 
 // PostAdd adds information about the post where the event is published.
@@ -199,26 +212,33 @@ func (s *EventService) PostChatAdd(
 	return event, err
 }
 
-// LimitChangeAffected returns list of affected couples after the limit change.
-// Returns true as second argument if the limit was increased, otherwise false.
-// Returns the start index of the affected couples as the third argument.
-func (s *EventService) LimitChangeAffected(event *models.Event, oldLimit int) ([]models.Couple, bool, int) {
-	if event == nil {
-		return nil, false, 0
-	}
-	return NewEventHandler(event).LimitChangeAffected(oldLimit)
+// LimitChangeGetAffected returns affected couples after the event settings limit was changed.
+func (s *EventService) LimitChangeGetAffected(event *models.Event, oldLimit int) models.AffectedCouples {
+	return NewEventHandler(event).LimitChangeGetAffected(oldLimit)
 }
 
-// LimitChangeNotify notifies the affected dancers about the event limit change.
-func (s *EventService) LimitChangeNotify(ctx context.Context, eventID string, oldLimit int) {
-	err := s.update(ctx, eventID, func(h *EventHandler) error {
-		h.LimitChangeNotify(oldLimit)
-		return nil
-	})
+// LimitChangeNotifyAffected notifies the affected dancers about the event limit change.
+func (s *EventService) LimitChangeNotifyAffected(
+	ctx context.Context,
+	eventID string,
+	affected models.AffectedCouples,
+) error {
+	// Get the event
+	event, err := s.store.EventGet(ctx, eventID)
 	if err != nil {
-		s.log.Error("[event service] failed to notify about event limit change: "+err.Error(),
-			"event_id", eventID, trace.Attr(ctx))
+		return fmt.Errorf("failed to get event: %w", err)
 	}
+	if event == nil {
+		return fmt.Errorf("event not found")
+	}
+
+	// Send notifications
+	notifications := NewEventHandler(event).
+		LimitChangeNotifyAffected(affected).
+		Notifications()
+	go s.notificationsSend(ctx, notifications...)
+
+	return nil
 }
 
 // CoupleAdd registers a couple for the event.
@@ -230,7 +250,7 @@ func (s *EventService) CoupleAdd(
 	profile *models.Profile,
 	role models.Role,
 	other any,
-) (*models.Registration, error) {
+) (models.Registration, error) {
 	dancer := models.Dancer{
 		Profile:   profile,
 		FullName:  profile.FullName(),
@@ -238,7 +258,7 @@ func (s *EventService) CoupleAdd(
 		CreatedAt: nowFn(),
 	}
 	if err := s.validateDancer(dancer); err != nil {
-		return nil, fmt.Errorf("failed to validate dancer: %w", err)
+		return models.Registration{}, fmt.Errorf("failed to validate dancer: %w", err)
 	}
 
 	var partner models.Dancer
@@ -257,10 +277,10 @@ func (s *EventService) CoupleAdd(
 			CreatedAt: nowFn(),
 		}
 	default:
-		return nil, fmt.Errorf("invalid type of other person: %T", other)
+		return models.Registration{}, fmt.Errorf("invalid type of other person: %T", other)
 	}
 	if err := s.validateDancer(partner); err != nil {
-		return nil, fmt.Errorf("failed to validate partner: %w", err)
+		return models.Registration{}, fmt.Errorf("failed to validate partner: %w", err)
 	}
 
 	var reg models.Registration
@@ -268,9 +288,9 @@ func (s *EventService) CoupleAdd(
 		reg = h.CoupleAdd(dancer, partner)
 		return nil
 	}); err != nil {
-		return nil, fmt.Errorf("failed to add couple: %w", err)
+		return models.Registration{}, fmt.Errorf("failed to add couple: %w", err)
 	}
-	return &reg, nil
+	return reg, nil
 }
 
 // SingleAdd adds a single dancer to the event.
@@ -280,7 +300,7 @@ func (s *EventService) SingleAdd(
 	eventID string,
 	profile models.Profile,
 	role models.Role,
-) (*models.Registration, error) {
+) (models.Registration, error) {
 	dancer := models.Dancer{
 		Profile:   &profile,
 		FullName:  profile.FullName(),
@@ -288,7 +308,7 @@ func (s *EventService) SingleAdd(
 		CreatedAt: nowFn(),
 	}
 	if err := s.validateDancer(dancer); err != nil {
-		return nil, fmt.Errorf("failed to validate dancer: %w", err)
+		return models.Registration{}, fmt.Errorf("failed to validate dancer: %w", err)
 	}
 
 	var reg models.Registration
@@ -296,9 +316,9 @@ func (s *EventService) SingleAdd(
 		reg = h.SingleAdd(dancer)
 		return nil
 	}); err != nil {
-		return nil, fmt.Errorf("failed to add single: %w", err)
+		return models.Registration{}, fmt.Errorf("failed to add single: %w", err)
 	}
-	return &reg, nil
+	return reg, nil
 }
 
 // DancerRemove removes the dancer from the event.
@@ -314,7 +334,7 @@ func (s *EventService) DancerRemove(
 	ctx context.Context,
 	eventID string,
 	profile models.Profile,
-) (*models.Registration, error) {
+) (models.Registration, error) {
 	var reg models.Registration
 	if err := s.update(ctx, eventID, func(h *EventHandler) error {
 		reg = h.DancerRemove(models.Dancer{
@@ -323,9 +343,9 @@ func (s *EventService) DancerRemove(
 		})
 		return nil
 	}); err != nil {
-		return nil, fmt.Errorf("failed to remove dancer: %w", err)
+		return models.Registration{}, fmt.Errorf("failed to remove dancer: %w", err)
 	}
-	return &reg, nil
+	return reg, nil
 }
 
 // update is a wrapper for the event handler.

@@ -114,8 +114,8 @@ const (
 )
 
 var (
-	NumLimitCome     = numerals.Ru("Приходит первая", "Приходят первые", "Приходят первые")
-	NameLimitCouples = numerals.Ru("пара", "пары", "пар")
+	NumLimitCome    = numerals.Ru("Приходит первая", "Приходят первые", "Приходят первые")
+	NumLimitCouples = numerals.Ru("пара", "пары", "пар")
 )
 
 const (
@@ -128,6 +128,7 @@ const (
 	BtnLimitChangedNotify     = "🔔 Уведомить участников"
 	BtnLimitChangedSkip       = "Не уведомлять"
 	LimitChangedNotified      = "Уведомления отправлены 👌"
+	LimitChangedCantNotify    = "Я уже не смогу отправить эти уведомления 🙄"
 )
 
 var (
@@ -150,9 +151,10 @@ const (
 	QueryDescription      = "Нажми для публикации анонса"
 	QueryRemaining        = "Осталось %d %s"
 	QueryOverflow         = "⚠️ Длина сообщения превышена!"
+	QueryEventLimit       = "Лимит %d %s"
 )
 
-var NumSymbols = numerals.Ru("символ", "символа", "символов")
+var NumQueryRemainingSymbols = numerals.Ru("символ", "символа", "символов")
 
 type roleMap map[models.Role]string
 

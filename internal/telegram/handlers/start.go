@@ -18,7 +18,7 @@ func (h *Handlers) Start(c tele.Context) error {
 
 	if c.Message().Payload != "" {
 		u.Session = models.Session{}
-		h.userUpdateSession(c, u)
+		h.userSessionUpdate(c, u)
 		dl, err := telegram.DeeplinkParsePayload(c.Message().Payload)
 		if err != nil {
 			h.log.Error("[handlers] /start: failed to parse deeplink payload: "+err.Error(), telelog.Trace(c))

@@ -70,51 +70,42 @@ func (h *Handlers) signupText(c tele.Context) error {
 
 func (h *Handlers) signupScene(c tele.Context, eventID string, role models.Role) error {
 	u := h.userGet(c)
-	event, err := h.eventService.Get(h.ctx(c), eventID)
+	reg, err := h.eventService.RegistrationGet(h.ctx(c), eventID, u.Profile, role)
+
 	if err != nil {
-		h.log.Error("[handlers] signup scene: failed to get event: "+err.Error(),
+		h.log.Error("[handlers] signup scene: failed to get registration: "+err.Error(),
 			"event_id", eventID,
 			telelog.Trace(c))
 		return h.sendErr(c, locale.ErrSomethingWrong)
 	}
 
-	reg := h.eventService.RegistrationGet(event, &u.Profile, role)
-	if reg == nil {
-		h.log.Error("[handlers] signup scene: failed to get registration",
-			"event_id", eventID,
-			"profile", u.Profile.LogValue(),
-			"role", role.String(),
+	if reg.Event.Settings.Closed {
+		h.log.Info("[handlers] signup scene: event is closed",
+			"event", reg.Event.LogValue(),
 			telelog.Trace(c))
-		return h.sendErr(c, locale.ErrSomethingWrong)
+		return views.SendEventClosed(c)
 	}
 
-	// if the dancer can register or already registered or the event is not closed for all
+	if reg.Event.Removed {
+		h.log.Info("[handlers] signup scene: event is marked as removed",
+			"event", reg.Event.LogValue(),
+			telelog.Trace(c))
+		return views.SendEventRemoved(c)
+	}
+
+	// if the event is not closed and the dancer can register or already registered
 	// update the session with the singles
 	var singles []models.SessionSingle
-	if reg.Status.CanRegister() || reg.Status.IsRegistered() || !event.Settings.Closed {
-		singles = h.fmtSingles(event.Singles, role.Opposite())
-		u.Session = models.Session{
-			Action:  models.SessionSignup,
-			EventID: eventID,
-			Role:    reg.Dancer.Role,
-			Singles: singles,
-		}
+	if !reg.Event.Settings.Closed && (reg.Status.CanRegister() || reg.Status.IsRegistered()) {
+		singles = h.fmtSingles(reg.Event.Singles, role.Opposite())
+		h.userSessionUpdateSignup(c, eventID, role, singles)
 	} else {
 		// otherwise, reset the session
-		u.Session = models.Session{}
-	}
-	h.userUpdateSession(c, u)
-
-	if event.Settings.Closed {
-		return c.Send(locale.ResultEventClosed, tele.RemoveKeyboard, tele.NoPreview, tele.ModeHTML)
+		h.userSessionResetSignup(c)
 	}
 
-	if event.Removed {
-		return c.Send(locale.ResultEventRemoved, tele.RemoveKeyboard, tele.NoPreview, tele.ModeHTML)
-	}
-
-	h.log.Info("[handlers] signup scene", "", reg, telelog.Trace(c))
-	return views.SendSignupScene(c, reg, singles)
+	h.log.Info("[handlers] signup scene", "", reg.LogValue(), telelog.Trace(c))
+	return views.SignupScene(c, reg, singles)
 }
 
 // coupleAdd handles the couple signup action
@@ -129,63 +120,50 @@ func (h *Handlers) coupleAdd(c tele.Context, eventID string, role models.Role, o
 			telelog.Trace(c))
 		return h.sendErr(c, locale.ErrSomethingWrong)
 	}
-	h.log.Info("[handlers] couple add", "", reg, telelog.Trace(c))
+	h.log.Info("[handlers] couple add", "", reg.LogValue(), telelog.Trace(c))
 
 	// if the result is retryable, update the session
 	var singles []models.SessionSingle
 	if reg.Result.IsRetryable() {
 		singles = h.fmtSingles(reg.Event.Singles, role.Opposite())
-		u.Session = models.Session{
-			Action:  models.SessionSignup,
-			EventID: eventID,
-			Role:    role,
-			Singles: singles,
-		}
+		h.userSessionUpdateSignup(c, eventID, role, singles)
 	} else {
 		// otherwise, reset the session
-		u.Session = models.Session{}
+		h.userSessionResetSignup(c)
 	}
-	h.userUpdateSession(c, u)
 	return views.SendResult(c, reg, singles)
 }
 
 // singleAdd handles the single signup action
 func (h *Handlers) singleAdd(c tele.Context, eventID string, role models.Role) error {
 	u := h.userGet(c)
-	profile := models.NewProfile(*c.Sender())
 
-	reg, err := h.eventService.SingleAdd(h.ctx(c), eventID, &profile, role)
+	reg, err := h.eventService.SingleAdd(h.ctx(c), eventID, u.Profile, role)
 	if err != nil {
 		h.log.Error("[handlers] failed to add single: "+err.Error(),
 			"event_id", eventID,
-			"profile", profile.LogValue(),
+			"profile", u.Profile.LogValue(),
 			telelog.Trace(c))
 		return h.sendErr(c, locale.ErrSomethingWrong)
 	}
-	h.log.Info("[handlers] single add", "", reg, telelog.Trace(c))
+	h.log.Info("[handlers] single add", "", reg.LogValue(), telelog.Trace(c))
 
 	// if the result is retryable, update the session
 	var singles []models.SessionSingle
 	if reg.Result.IsRetryable() {
 		singles = h.fmtSingles(reg.Event.Singles, role.Opposite())
-		u.Session = models.Session{
-			Action:  models.SessionSignup,
-			EventID: eventID,
-			Role:    role,
-			Singles: singles,
-		}
+		h.userSessionUpdateSignup(c, eventID, role, singles)
 	} else {
 		// otherwise, reset the session
-		u.Session = models.Session{}
+		h.userSessionResetSignup(c)
 	}
-	h.userUpdateSession(c, u)
 	return views.SendResult(c, reg, singles)
 }
 
 // dancerRemove handles the dancer remove action
 func (h *Handlers) dancerRemove(c tele.Context, eventID string) error {
 	u := h.userGet(c)
-	reg, err := h.eventService.DancerRemove(h.ctx(c), eventID, &u.Profile)
+	reg, err := h.eventService.DancerRemove(h.ctx(c), eventID, u.Profile)
 	if err != nil {
 		h.log.Error("[handlers] failed to remove dancer: "+err.Error(),
 			"event_id", eventID,
@@ -193,11 +171,35 @@ func (h *Handlers) dancerRemove(c tele.Context, eventID string) error {
 			telelog.Trace(c))
 		return h.sendErr(c, locale.ErrSomethingWrong)
 	}
-	h.log.Info("[handlers] dancer remove", "", reg, telelog.Trace(c))
+	h.log.Info("[handlers] dancer remove", "", reg.LogValue(), telelog.Trace(c))
 
-	u.Session = models.Session{}
-	h.userUpdateSession(c, u)
+	h.userSessionResetSignup(c)
 	return views.SendResult(c, reg, nil)
+}
+
+// userSessionUpdateSignup updates the user event signup session.
+func (h *Handlers) userSessionUpdateSignup(
+	c tele.Context,
+	eventID string,
+	role models.Role,
+	singles []models.SessionSingle,
+) {
+	u := h.userGet(c)
+	u.Session.Action = models.SessionSignup
+	u.Session.EventID = eventID
+	u.Session.Role = role
+	u.Session.Singles = singles
+	h.userSessionUpdate(c, u)
+}
+
+// userSessionResetSignup resets the user event signup session.
+func (h *Handlers) userSessionResetSignup(c tele.Context) {
+	u := h.userGet(c)
+	u.Session.Action = models.SessionNoAction
+	u.Session.EventID = ""
+	u.Session.Role = models.RoleUnknown
+	u.Session.Singles = nil
+	h.userSessionUpdate(c, u)
 }
 
 // fmtSingles formats the singles for the signup scene.

@@ -32,7 +32,7 @@ func (a *App) wire(ctx context.Context) {
 	// Bot commands
 	a.Bot.Handle("/start", h.Start)
 	a.Bot.Handle("/partner", h.SignupPartnerLegacy)
-	a.Bot.Handle("/settings", h.UserSettings)
+	a.Bot.Handle("/settings", h.UserSettingsScene)
 	a.Bot.Handle("/my", h.My)
 
 	// Handlers on generic events
@@ -55,7 +55,7 @@ func (a *App) wire(ctx context.Context) {
 	a.Bot.Handle(&views.BtnMyRefresh, h.CbMyRefresh)
 
 	// Event settings buttons
-	a.Bot.Handle(&views.BtnEventSettings, h.CbEventSettings)
+	a.Bot.Handle(&views.BtnEventSettings, h.EventSettingsScene)
 	a.Bot.Handle(&views.BtnEventSettingsBack, h.CbEventSettingsBack)
 	a.Bot.Handle(&views.BtnEventSettingsAutoPair, h.CbEventSettingsToggles)
 	a.Bot.Handle(&views.BtnEventSettingsClose, h.CbEventSettingsToggles)

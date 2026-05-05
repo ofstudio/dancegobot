@@ -162,6 +162,10 @@ func (s *RenderService) eventRenderFail(ctx context.Context, eventID string) {
 		s.log.Error("[render service] failed to get event: "+err.Error(), trace.Attr(ctx))
 		return
 	}
+	if event == nil {
+		s.log.Error("[render service] event not found", trace.Attr(ctx))
+		return
+	}
 
 	// Update rendering failure count.
 	event.RenderFails++

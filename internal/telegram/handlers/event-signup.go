@@ -79,18 +79,18 @@ func (h *Handlers) signupScene(c tele.Context, eventID string, role models.Role)
 		return h.sendErr(c, locale.ErrSomethingWrong)
 	}
 
-	if reg.Event.Settings.Closed {
-		h.log.Info("[handlers] signup scene: event is closed",
-			"event", reg.Event.LogValue(),
-			telelog.Trace(c))
-		return views.SendEventClosed(c)
-	}
-
 	if reg.Event.Removed {
 		h.log.Info("[handlers] signup scene: event is marked as removed",
 			"event", reg.Event.LogValue(),
 			telelog.Trace(c))
 		return views.SendEventRemoved(c)
+	}
+
+	if reg.Event.Settings.Closed {
+		h.log.Info("[handlers] signup scene: event is closed",
+			"event", reg.Event.LogValue(),
+			telelog.Trace(c))
+		return views.SendEventClosed(c)
 	}
 
 	// if the event is not closed and the dancer can register or already registered

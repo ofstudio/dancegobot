@@ -16,18 +16,41 @@ var (
 	BtnMyRefresh  = tele.Btn{Unique: "my_refresh"}
 )
 
-// BtnMyScene creates buttons for the /my scene.
-func BtnMyScene(reg *models.Registration, canManage bool, offset, next int) *tele.ReplyMarkup {
+// MyScene renders the /my scene.
+func MyScene(c tele.Context, reg models.Registration, canManage bool, offset, next int) error {
+	date := reg.Event.CreatedAt.Format("02.01.2006")
+	msg := fmt.Sprintf(locale.MyEventHeader, date) + postTextBuilder(reg.Event).String()
+	rm := btnMyScene(reg, canManage, offset, next)
+	return c.EditOrSend(msg, rm, tele.ModeHTML, tele.RemoveKeyboard, tele.NoPreview)
+}
+
+// MySceneNoEvents renders a message that there are no events for /my scene.
+func MySceneNoEvents(c tele.Context) error {
+	return c.EditOrSend(locale.MyNoEvents, btnTry(), tele.ModeHTML, tele.RemoveKeyboard, tele.NoPreview)
+}
+
+// btnMyScene creates buttons for the /my scene.
+func btnMyScene(reg models.Registration, canManage bool, offset, next int) *tele.ReplyMarkup {
 	rm := &tele.ReplyMarkup{}
 	var rows []tele.Row
 
 	// add pagination buttons
 	pagination := rm.Row()
 	if offset > 0 {
-		pagination = append(pagination, rm.Data(locale.BtnMyPrev, BtnMyTurnPage.Unique, strconv.Itoa(offset-1)))
+		pagination = append(pagination, rm.Data(
+			locale.BtnMyPrev,
+			BtnMyTurnPage.Unique,
+			strconv.Itoa(offset-1),
+			randtoken.New(2),
+		))
 	}
 	if next > 0 {
-		pagination = append(pagination, rm.Data(locale.BtnMyNext, BtnMyTurnPage.Unique, strconv.Itoa(next)))
+		pagination = append(pagination, rm.Data(
+			locale.BtnMyNext,
+			BtnMyTurnPage.Unique,
+			strconv.Itoa(next),
+			randtoken.New(2),
+		))
 	}
 	if len(pagination) > 0 {
 		rows = append(rows, pagination)
@@ -64,7 +87,7 @@ func BtnMyScene(reg *models.Registration, canManage bool, offset, next int) *tel
 }
 
 // btnMySceneModifySignup returns a button row to modify the registration.
-func btnMySceneModifySignup(rm *tele.ReplyMarkup, reg *models.Registration, offset int) tele.Row {
+func btnMySceneModifySignup(rm *tele.ReplyMarkup, reg models.Registration, offset int) tele.Row {
 	// If user can't register return nil
 	if reg.Event.Settings.Closed {
 		return nil
@@ -95,11 +118,4 @@ func btnMySceneModifySignup(rm *tele.ReplyMarkup, reg *models.Registration, offs
 	}
 
 	return nil
-}
-
-// MySceneMsg returns a message with the user event
-func MySceneMsg(event *models.Event) string {
-	sb := postTextBuilder(event)
-	date := event.CreatedAt.Format("02.01.2006")
-	return fmt.Sprintf(locale.MyEventHeader, date) + sb.String()
 }

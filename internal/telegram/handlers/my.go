@@ -1,31 +1,52 @@
 package handlers
 
 import (
-	"errors"
+	"fmt"
 	"strconv"
 
 	tele "gopkg.in/telebot.v4"
 
 	"github.com/ofstudio/dancegobot/internal/locale"
 	"github.com/ofstudio/dancegobot/internal/models"
+	"github.com/ofstudio/dancegobot/internal/services"
 	"github.com/ofstudio/dancegobot/internal/telegram/views"
 	"github.com/ofstudio/dancegobot/pkg/telelog"
 )
 
+// My - handles /my  command.
+func (h *Handlers) My(c tele.Context) error {
+	h.log.Info("[handlers] /my received", telelog.Attr(c))
+
+	// Force update my events
+	if _, err := h.userGetMyEvents(c, true); err != nil {
+		h.log.Error("[handlers] /my: "+err.Error(), telelog.Trace(c))
+		return h.sendErr(c, locale.ErrSomethingWrong)
+	}
+
+	// Send the /my scene
+	if err := h.myScene(c, 0); err != nil {
+		h.log.Error("[handlers] /my: "+err.Error(), telelog.Trace(c))
+		return h.sendErr(c, locale.ErrSomethingWrong)
+	}
+	return nil
+}
+
 // CbMyTurnPage - handles /my scene pagination.
 func (h *Handlers) CbMyTurnPage(c tele.Context) error {
 	h.log.Info("[handlers] my scene turn page callback received", telelog.Attr(c))
-	offset := 0
-	if len(c.Args()) > 0 {
-		offset, _ = strconv.Atoi(c.Args()[0])
+	if len(c.Args()) < 2 {
+		h.log.Error("[handlers] my scene turn page callback: not enough arguments",
+			"args", c.Args(),
+			telelog.Trace(c))
+		return c.RespondAlert(locale.ErrSomethingWrong)
 	}
-	text, rm, err := h.myScene(c, offset)
-	if err != nil {
-		h.log.Error("[handlers] my scene turn page callback: failed to get my scene: "+err.Error(), telelog.Trace(c))
+	offset, _ := strconv.Atoi(c.Args()[0])
+	if err := h.myScene(c, offset); err != nil {
+		h.log.Error("[handlers] my scene turn page callback: "+err.Error(), telelog.Trace(c))
 		return h.respondErr(c, locale.ErrSomethingWrong)
 	}
 	_ = c.Respond()
-	return c.Edit(text, rm, tele.ModeHTML, tele.RemoveKeyboard, tele.NoPreview)
+	return nil
 }
 
 // CbMyRefresh - handles signup refresh callback button in /my scene.
@@ -34,57 +55,44 @@ func (h *Handlers) CbMyRefresh(c tele.Context) error {
 	if len(c.Args()) < 2 {
 		h.log.Error("[handlers] my scene refresh callback: not enough arguments",
 			"args", c.Args(),
-			telelog.Attr(c))
+			telelog.Trace(c))
 		return c.RespondAlert(locale.ErrSomethingWrong)
 	}
 	offset, _ := strconv.Atoi(c.Args()[0])
-
-	msg, rm, err := h.myScene(c, offset)
-	if err != nil {
-		h.log.Error("[handlers] my scene refresh callback: failed to get my scene: "+err.Error(), telelog.Trace(c))
+	if _, err := h.userGetMyEvents(c, true); err != nil {
+		h.log.Error("[handlers] my scene refresh callback: "+err.Error(), telelog.Trace(c))
+		return h.respondErr(c, locale.ErrSomethingWrong)
+	}
+	if err := h.myScene(c, offset); err != nil {
+		h.log.Error("[handlers] my scene refresh callback: "+err.Error(), telelog.Trace(c))
 		return h.respondErr(c, locale.ErrSomethingWrong)
 	}
 	_ = c.Respond()
-
-	return c.Edit(msg, rm, tele.ModeHTML, tele.RemoveKeyboard, tele.NoPreview)
-}
-
-// My - handles /my  command.
-func (h *Handlers) My(c tele.Context) error {
-	h.log.Info("[handlers] /my received", telelog.Attr(c))
-
-	// Force update my events
-	_, err := h.userGetMyEvents(c, true)
-	if err != nil {
-		h.log.Error("[handlers] /my: failed to get my events: "+err.Error(), telelog.Trace(c))
-		return h.sendErr(c, locale.ErrSomethingWrong)
-	}
-
-	// Send the /my scene
-	text, rm, err := h.myScene(c, 0)
-	if err != nil {
-		h.log.Error("[handlers] /my: failed to get my scene: "+err.Error(), telelog.Trace(c))
-		return h.sendErr(c, locale.ErrSomethingWrong)
-	}
-	return c.Send(text, rm, tele.ModeHTML, tele.RemoveKeyboard, tele.NoPreview)
+	return nil
 }
 
 // myScene returns text and reply markup for the /my scene.
-func (h *Handlers) myScene(c tele.Context, offset int) (string, *tele.ReplyMarkup, error) {
+func (h *Handlers) myScene(c tele.Context, offset int) error {
 	u, err := h.userGetMyEvents(c)
 	if err != nil {
-		return "", nil, err
+		return fmt.Errorf("my scene failed: %w", err)
 	}
 
 	// If no events, return no events message
 	if len(u.Session.MyEvents) == 0 {
-		return locale.MyNoEvents, views.BtnTry(), nil
+		return views.MySceneNoEvents(c)
+	}
+
+	// If offset is negative set it to the first event
+	if offset < 0 {
+		offset = 0
 	}
 
 	// If offset is greater than the number of events set it to the last event
 	if offset >= len(u.Session.MyEvents) {
 		offset = len(u.Session.MyEvents) - 1
 	}
+	eventID := u.Session.MyEvents[offset]
 
 	next := offset + 1
 	// If no more events, set next to zero
@@ -92,24 +100,37 @@ func (h *Handlers) myScene(c tele.Context, offset int) (string, *tele.ReplyMarku
 		next = 0
 	}
 
-	// Get the event
-	event, err := h.eventService.Get(h.ctx(c), u.Session.MyEvents[offset])
+	// Get the event and drop stale session items.
+	event, err := h.eventService.Get(h.ctx(c), eventID)
 	if err != nil {
-		return "", nil, err
+		return fmt.Errorf("my scene failed: %w", err)
 	}
-	if event == nil {
-		return "", nil, errors.New("event not found")
-	}
-
-	// If event marked as removed, delete it from the session MyEvents list
-	if event.Removed {
+	if event == nil || event.Removed {
 		u.Session.MyEvents = append(u.Session.MyEvents[:offset], u.Session.MyEvents[offset+1:]...)
-		h.userUpdateSession(c, u)
+		h.userSessionUpdate(c, u)
 		return h.myScene(c, offset)
 	}
 
-	canManage := h.eventService.CanManage(event, &u.Profile)
-	reg := h.eventService.RegistrationGet(event, &u.Profile, models.RoleLeader) // role doesn't matter here
+	reg := services.NewEventHandler(event).RegistrationGet(models.Dancer{
+		Profile:  &u.Profile,
+		FullName: u.Profile.FullName(),
+		Role:     models.RoleUnknown,
+	})
+	canManage := h.eventService.CanManage(event, u.Profile)
+	return views.MyScene(c, reg, canManage, offset, next)
+}
 
-	return views.MySceneMsg(event), views.BtnMyScene(reg, canManage, offset, next), nil
+// userGetMyEvents returns user with MyEvents in Session.
+// If user has no events in the session, gets them from the database and saves to the session.
+func (h *Handlers) userGetMyEvents(c tele.Context, force ...bool) (*models.User, error) {
+	u := h.userGet(c)
+	if len(u.Session.MyEvents) == 0 || (len(force) > 0 && force[0]) {
+		ids, err := h.eventService.GetMy(h.ctx(c), &u.Profile)
+		if err != nil {
+			return nil, err
+		}
+		u.Session.MyEvents = ids
+		h.userSessionUpdate(c, u)
+	}
+	return u, nil
 }

@@ -29,6 +29,7 @@ func Default() Config {
 			CommandsPrivate: []tele.Command{
 				{Text: "start", Description: locale.CmdDescriptionStart},
 				{Text: "settings", Description: locale.CmdDescriptionSettings},
+				{Text: "my", Description: locale.CmdDescriptionMy},
 			},
 		},
 

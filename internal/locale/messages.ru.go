@@ -23,6 +23,7 @@ const (
 
 	CmdDescriptionStart    = "📖 Справка"
 	CmdDescriptionSettings = "🔧️ Настройки"
+	CmdDescriptionMy       = "🗓️ Мои мероприятия"
 
 	BtnTry           = "👉 Попробовать"
 	BtnClose         = "✖️Закрыть"

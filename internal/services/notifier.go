@@ -11,22 +11,23 @@ import (
 	"github.com/ofstudio/dancegobot/pkg/trace"
 )
 
+// NotifyFunc is an executor that sends Telegram notification.
 type NotifyFunc func(*models.Notification) error
 
 // NotifierService is a service that sends notifications to users.
 type NotifierService struct {
-	cfg   config.Settings
-	store store.Store
-	do    NotifyFunc
-	log   *slog.Logger
+	cfg        config.Settings
+	store      store.Store
+	notifyFunc NotifyFunc
+	log        *slog.Logger
 }
 
-func NewNotifierService(cfg config.Settings, store store.Store, f NotifyFunc) *NotifierService {
+func NewNotifierService(cfg config.Settings, store store.Store, notifyFunc NotifyFunc) *NotifierService {
 	return &NotifierService{
-		cfg:   cfg,
-		store: store,
-		do:    f,
-		log:   noplog.Logger(),
+		cfg:        cfg,
+		store:      store,
+		notifyFunc: notifyFunc,
+		log:        noplog.Logger(),
 	}
 }
 
@@ -37,7 +38,7 @@ func (s *NotifierService) WithLogger(l *slog.Logger) *NotifierService {
 
 // Notify sends a notification to the user.
 func (s *NotifierService) Notify(ctx context.Context, n *models.Notification) {
-	if err := s.do(n); err != nil {
+	if err := s.notifyFunc(n); err != nil {
 		s.log.Error("[notifier service] failed to send notification: "+err.Error(), trace.Attr(ctx))
 		n.Error = err.Error()
 	} else {

@@ -15,9 +15,9 @@ type Services struct {
 	Render   *RenderService
 }
 
-func NewServices(cfg config.Settings, store store.Store, rf RenderFunc, nf NotifyFunc) *Services {
-	render := NewRenderService(cfg, store, rf)
-	notifier := NewNotifierService(cfg, store, nf)
+func NewServices(cfg config.Settings, store store.Store, renderFunc RenderFunc, notifyFunc NotifyFunc) *Services {
+	render := NewRenderService(cfg, store, renderFunc)
+	notifier := NewNotifierService(cfg, store, notifyFunc)
 	return &Services{
 		Event:    NewEventService(cfg, store, render, notifier),
 		User:     NewUserService(cfg, store),

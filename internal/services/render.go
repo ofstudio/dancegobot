@@ -14,6 +14,7 @@ import (
 	"github.com/ofstudio/dancegobot/pkg/trace"
 )
 
+// RenderFunc is an executor that renders an event post in Telegram.
 type RenderFunc func(event *models.Event, inlineMessageID string) error
 
 // RenderService renders events posts.
@@ -63,6 +64,10 @@ func (s *RenderService) renderRepeat(ctx context.Context, eventID string) {
 	event, err := s.store.EventGet(ctx, eventID)
 	if err != nil {
 		s.log.Error("[render service] failed to get event: "+err.Error(), trace.Attr(ctx))
+		return
+	}
+	if event == nil {
+		s.log.Error("[render service] event not found", trace.Attr(ctx))
 		return
 	}
 	s.render(ctx, event)

@@ -104,6 +104,9 @@ func (s *EventService) GetMy(ctx context.Context, profile *models.Profile) ([]st
 
 // CanManage returns true if the profile can manage the event.
 func (s *EventService) CanManage(event *models.Event, profile models.Profile) bool {
+	if event == nil {
+		return false
+	}
 	return NewEventHandler(event).CanManage(profile)
 }
 
@@ -251,6 +254,9 @@ func (s *EventService) CoupleAdd(
 	role models.Role,
 	other any,
 ) (models.Registration, error) {
+	if profile == nil {
+		return models.Registration{}, fmt.Errorf("profile is nil")
+	}
 	dancer := models.Dancer{
 		Profile:   profile,
 		FullName:  profile.FullName(),
@@ -264,6 +270,9 @@ func (s *EventService) CoupleAdd(
 	var partner models.Dancer
 	switch v := other.(type) {
 	case *models.Profile:
+		if v == nil {
+			return models.Registration{}, fmt.Errorf("partner profile is nil")
+		}
 		partner = models.Dancer{
 			Profile:   v,
 			FullName:  v.FullName(),
@@ -366,6 +375,9 @@ func (s *EventService) update(
 	event, err := tx.EventGet(ctx, eventID)
 	if err != nil {
 		return fmt.Errorf("failed to get event: %w", err)
+	}
+	if event == nil {
+		return fmt.Errorf("event not found")
 	}
 
 	// Create event handler

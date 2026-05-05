@@ -24,22 +24,25 @@ func EventSettingsScene(c tele.Context, event *models.Event, offset int) error {
 	msg += locale.EventSettingsAutoPair[event.Settings.AutoPairing] + "\n"
 
 	// Limit setting
-	if event.Settings.Limit > 0 {
-		msg += fmt.Sprintf(
-			locale.EventSettingsLimit,
-			locale.NumLimitCome.N(event.Settings.Limit),
-			event.Settings.Limit,
-			locale.NumLimitCouples.N(event.Settings.Limit),
-		) + "\n"
-	} else {
-		msg += locale.EventSettingsLimitNone + "\n"
-	}
+	msg += eventSettingsLimitText(event.Settings.Limit) + "\n"
 
 	// Closed setting
 	msg += locale.EventSettingsClosed[event.Settings.Closed]
 
 	return c.EditOrSend(msg, btnEventSettingsScene(event, strconv.Itoa(offset)),
 		tele.ModeHTML, tele.NoPreview, tele.RemoveKeyboard)
+}
+
+func eventSettingsLimitText(limit int) string {
+	if limit <= 0 {
+		return locale.EventSettingsLimitNone
+	}
+	return fmt.Sprintf(
+		locale.EventSettingsLimit,
+		locale.NumLimitCome.N(limit),
+		limit,
+		locale.NumLimitCouples.N(limit),
+	)
 }
 
 // EventSettingsLimitScene renders the event settings limit scene.

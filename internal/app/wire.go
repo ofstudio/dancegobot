@@ -47,6 +47,8 @@ func (a *App) wire(ctx context.Context) {
 
 	// User settings buttons
 	a.Bot.Handle(&views.BtnUserSettingsAutoPair, h.CbUserSettingsAutoPair)
+	a.Bot.Handle(&views.BtnUserSettingsLimit, h.CbUserSettingsLimitScene)
+	a.Bot.Handle(&views.BtnUserSettingsLimitNum, h.CbUserSettingsLimitNum)
 	a.Bot.Handle(&views.BtnUserSettingsHelp, h.CbUserSettingsHelp)
 	a.Bot.Handle(&views.BtnUserSettingsBack, h.CbUserSettingsBack)
 

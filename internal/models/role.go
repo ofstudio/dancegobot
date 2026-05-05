@@ -4,6 +4,7 @@ package models
 type Role string
 
 const (
+	RoleUnknown  Role = ""
 	RoleLeader   Role = "leader"
 	RoleFollower Role = "follower"
 )
@@ -18,5 +19,3 @@ func (r Role) Opposite() Role {
 func (r Role) String() string {
 	return string(r)
 }
-
-var Roles = []Role{RoleLeader, RoleFollower}

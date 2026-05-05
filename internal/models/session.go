@@ -13,7 +13,8 @@ type Session struct {
 type SessionAction string
 
 const (
-	SessionSignup SessionAction = "signup"
+	SessionNoAction SessionAction = ""       // No action
+	SessionSignup   SessionAction = "signup" // Event signup action
 )
 
 func (a SessionAction) String() string {

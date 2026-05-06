@@ -2,6 +2,7 @@ package randtoken
 
 import (
 	"math/rand"
+	"sync"
 	"time"
 )
 
@@ -14,10 +15,16 @@ const (
 	letterIdxMax  = 63 / letterIdxBits   // Number of letter indices fitting in Int63() result
 )
 
-var randSrc = rand.NewSource(time.Now().UnixNano())
+var (
+	randSrc = rand.NewSource(time.Now().UnixNano())
+	randMu  sync.Mutex
+)
 
 // New generates a random token of length n with 'a-zA-Z0-9' alphabet
 func New(n int) string {
+	randMu.Lock()
+	defer randMu.Unlock()
+
 	b := make([]byte, n)
 	// A rand.Int63() generates 63 random bits, enough for letterIdxMax letters!
 	for i, cache, remain := n-1, randSrc.Int63(), letterIdxMax; i >= 0; {

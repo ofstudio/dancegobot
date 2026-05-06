@@ -45,6 +45,33 @@ func (suite *AppTestSuite) TestEventDraft() {
 		suite.NoUnmatched()
 	})
 
+	suite.Run("whitespace inline query", func() {
+		// <- bot should call `answerInlineQuery`
+		gock.New(telegock.AnswerInlineQuery).
+			Reply(200).
+			Filter(func(res *http.Response) bool {
+				body := suite.Decode(res.Request.Body)
+				suite.Len(body.Get("results").Array(), 1)
+				result := body.Get("results").Array()[0]
+				suite.Equal(locale.QueryTextEmpty, result.Get("title").String())
+				suite.Equal(locale.QueryDescriptionEmpty, result.Get("description").String())
+				return true
+			}).
+			JSON(telegock.Result(true))
+
+		// -> bot update `inline_query`
+		gock.New(telegock.GetUpdates).
+			Reply(200).
+			JSON(telegock.Updates().InlineQuery(tele.Query{
+				Sender:   userJohn,
+				Text:     "   ",
+				ChatType: "supergroup",
+			}))
+
+		suite.NoPending()
+		suite.NoUnmatched()
+	})
+
 	suite.Run("non-empty inline query", func() {
 		// <- bot should call `answerInlineQuery`
 		var eventID string
@@ -118,6 +145,66 @@ func (suite *AppTestSuite) TestEventDraft() {
 		suite.Require().NotNil(event)
 		suite.Equal("Limited event", event.Caption)
 		suite.Equal(2, event.Settings.Limit)
+	})
+
+	suite.Run("inline query with date does not set limit", func() {
+		var eventID string
+		gock.New(telegock.AnswerInlineQuery).
+			Reply(200).
+			Filter(func(res *http.Response) bool {
+				body := suite.Decode(res.Request.Body)
+				result := body.Get("results.0")
+				eventID = result.Get("id").String()
+				suite.Equal("Class 3/4/2026", result.Get("title").String())
+				suite.Equal(locale.QueryDescription, result.Get("description").String())
+				return true
+			}).JSON(telegock.Result(true))
+
+		gock.New(telegock.GetUpdates).
+			Reply(200).
+			JSON(telegock.Updates().InlineQuery(tele.Query{
+				Sender:   userJohn,
+				Text:     "Class 3/4/2026",
+				ChatType: "supergroup",
+			}))
+
+		suite.NoPending()
+		suite.NoUnmatched()
+		event, err := suite.app.EventService.Get(context.Background(), eventID)
+		suite.NoError(err)
+		suite.Require().NotNil(event)
+		suite.Equal("Class 3/4/2026", event.Caption)
+		suite.Equal(0, event.Settings.Limit)
+	})
+
+	suite.Run("unsupported limit shortcuts are ordinary text", func() {
+		var eventID string
+		gock.New(telegock.AnswerInlineQuery).
+			Reply(200).
+			Filter(func(res *http.Response) bool {
+				body := suite.Decode(res.Request.Body)
+				result := body.Get("results.0")
+				eventID = result.Get("id").String()
+				suite.Equal("Limited event /0 /100", result.Get("title").String())
+				suite.Equal(locale.QueryDescription, result.Get("description").String())
+				return true
+			}).JSON(telegock.Result(true))
+
+		gock.New(telegock.GetUpdates).
+			Reply(200).
+			JSON(telegock.Updates().InlineQuery(tele.Query{
+				Sender:   userJohn,
+				Text:     "Limited event /0 /100",
+				ChatType: "supergroup",
+			}))
+
+		suite.NoPending()
+		suite.NoUnmatched()
+		event, err := suite.app.EventService.Get(context.Background(), eventID)
+		suite.NoError(err)
+		suite.Require().NotNil(event)
+		suite.Equal("Limited event /0 /100", event.Caption)
+		suite.Equal(0, event.Settings.Limit)
 	})
 
 	suite.Run("quite long inline query", func() {

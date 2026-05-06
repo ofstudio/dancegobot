@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
+	"strings"
 	"time"
 	"unicode/utf8"
 
@@ -52,6 +53,7 @@ func (s *EventService) Create(
 	owner models.Profile,
 	settings models.EventSettings,
 ) (*models.Event, error) {
+	caption = strings.TrimSpace(caption)
 
 	event := &models.Event{
 		ID:        randtoken.New(s.cfg.EventIDLen),
@@ -281,7 +283,7 @@ func (s *EventService) CoupleAdd(
 		}
 	case string:
 		partner = models.Dancer{
-			FullName:  v,
+			FullName:  strings.TrimSpace(v),
 			Role:      role.Opposite(),
 			CreatedAt: nowFn(),
 		}
@@ -471,6 +473,9 @@ func (s *EventService) draftsCleanup(ctx context.Context) {
 // validateEvent validates the event.
 func (s *EventService) validateEvent(e *models.Event) error {
 	var err error
+	if strings.TrimSpace(e.Caption) == "" {
+		err = errutil.Append(err, fmt.Errorf("event text must be provided"))
+	}
 	if utf8.RuneCountInString(e.Caption) > s.cfg.EventTextMaxLen {
 		err = errutil.Append(err, fmt.Errorf("event text must be at most %d characters long, got %d",
 			s.cfg.EventTextMaxLen, utf8.RuneCountInString(e.Caption)))
@@ -508,7 +513,7 @@ func (s *EventService) validateRole(r models.Role) error {
 }
 
 func (s *EventService) validateFullname(name string) error {
-	n := utf8.RuneCountInString(name)
+	n := utf8.RuneCountInString(strings.TrimSpace(name))
 	if n < 1 || n > s.cfg.DancerNameMaxLen {
 		return fmt.Errorf("full name must be between 1 and %d characters long, got %d",
 			s.cfg.DancerNameMaxLen, n)

@@ -113,6 +113,25 @@ func TestEventServiceInputValidation(t *testing.T) {
 		require.Contains(t, err.Error(), "profile ID must be positive")
 		require.Contains(t, err.Error(), "profile first name must be provided")
 	})
+
+	t.Run("create trims and rejects empty caption", func(t *testing.T) {
+		_, err := service.Create(ctx, "   ", models.Profile{ID: 1, FirstName: "Owner"}, models.EventSettings{})
+		require.Error(t, err)
+		require.Contains(t, err.Error(), "event text must be provided")
+	})
+
+	t.Run("couple add rejects empty manual partner name", func(t *testing.T) {
+		event, err := service.Create(ctx, "abc", models.Profile{ID: 1, FirstName: "Owner"}, models.EventSettings{})
+		require.NoError(t, err)
+
+		_, err = service.CoupleAdd(ctx, event.ID,
+			&models.Profile{ID: 2, FirstName: "Dancer"},
+			models.RoleLeader,
+			"   ",
+		)
+		require.Error(t, err)
+		require.Contains(t, err.Error(), "full name must be between")
+	})
 }
 
 func newEventServiceTest(t *testing.T) (*EventService, *storepkg.SQLiteStore) {

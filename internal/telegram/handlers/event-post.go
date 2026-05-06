@@ -16,12 +16,13 @@ import (
 // EventQuery - handles inline query.
 // If query is not empty creates draft event.
 func (h *Handlers) EventQuery(c tele.Context) error {
-	if c.Query().Text == "" {
+	text := strings.TrimSpace(c.Query().Text)
+	if text == "" {
 		return views.EventPostAnswerEmpty(c, h.cfg.QueryThumbUrl)
 	}
 
 	u := h.userGet(c)
-	text, settings := h.eventQueryParse(c.Query().Text, u.Settings.Event)
+	text, settings := h.eventQueryParse(text, u.Settings.Event)
 
 	event, err := h.eventService.Create(h.ctx(c), text, u.Profile, settings)
 	if err != nil {
@@ -107,19 +108,20 @@ func (h *Handlers) eventQueryParse(text string, settings models.EventSettings) (
 }
 
 // reEventLimit is a regexp pattern for the event limit in the inline query text.
-// The limit is a number between slashes, e.g. "/5".
+// The limit is a standalone token from /1 to /99, e.g. " /5".
 // Regexp explanation:
 //
-//	(boundary)/99(boundary)
-var reEventLimit = regexp.MustCompile(`(?:^|\b|\s)/(\d{1,2})(?:\b|$)`)
+//	(whitespace)/(1..99)(whitespace or end)
+var reEventLimit = regexp.MustCompile(`\s/([1-9]\d?)(?:\s|$)`)
 
 // eventQueryParseLimit parses the inline query text for the event limit.
 func (h *Handlers) eventQueryParseLimit(text string, settings models.EventSettings) (string, models.EventSettings) {
-	matches := reEventLimit.FindStringSubmatch(text)
-	if len(matches) < 2 {
+	matches := reEventLimit.FindStringSubmatchIndex(text)
+	if len(matches) < 4 {
 		return text, settings
 	}
-	limit, _ := strconv.Atoi(matches[1])
+	limit, _ := strconv.Atoi(text[matches[2]:matches[3]])
 	settings.Limit = limit
-	return strings.TrimSpace(reEventLimit.ReplaceAllString(text, "")), settings
+	text = strings.TrimSpace(text[:matches[0]] + " " + text[matches[1]:])
+	return text, settings
 }

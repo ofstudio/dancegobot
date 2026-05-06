@@ -39,9 +39,8 @@ func (a *App) WithLogger(log *slog.Logger) *App {
 	return a
 }
 
-// Start starts the application.
-// Application stops when the context is done.
-func (a *App) Start(ctx context.Context) error {
+// Init initializes the application without starting the Telegram poller.
+func (a *App) Init(ctx context.Context) error {
 	var err error
 
 	// Create a new Telegram bot
@@ -59,7 +58,6 @@ func (a *App) Start(ctx context.Context) error {
 	}
 	a.log.Info("Database connected", "", a.cfg.DB)
 	a.Store = store.NewSQLiteStore(db)
-	defer a.Store.Close()
 
 	// Initialize services
 	a.RenderService = services.
@@ -82,6 +80,17 @@ func (a *App) Start(ctx context.Context) error {
 	// Wire middleware and handlers
 	a.wire(ctx)
 
+	return nil
+}
+
+// Start starts the application.
+// Application stops when the context is done.
+func (a *App) Start(ctx context.Context) error {
+	if err := a.Init(ctx); err != nil {
+		return err
+	}
+	defer a.Close()
+
 	// Start the bot
 	go a.Bot.Start()
 	a.log.Info("Bot started")
@@ -94,4 +103,12 @@ func (a *App) Start(ctx context.Context) error {
 	a.log.Info("Bot stopped")
 
 	return nil
+}
+
+// Close releases application resources.
+func (a *App) Close() {
+	if a.Store != nil {
+		a.Store.Close()
+		a.Store = nil
+	}
 }

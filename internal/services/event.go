@@ -402,9 +402,12 @@ func (s *EventService) update(
 	if err = tx.Commit(); err != nil {
 		return fmt.Errorf("failed to commit tx: %w", err)
 	}
-	go s.renderer.Render(ctx, event)
-	go s.historyItemsCreate(ctx, handler.History()...)
-	go s.notificationsSend(ctx, handler.Notifications()...)
+	renderEvent := cloneEvent(handler.Event())
+	history := cloneHistoryItems(handler.History())
+	notifications := cloneNotifications(handler.Notifications())
+	go s.renderer.Render(ctx, renderEvent)
+	go s.historyItemsCreate(ctx, history...)
+	go s.notificationsSend(ctx, notifications...)
 
 	return nil
 }

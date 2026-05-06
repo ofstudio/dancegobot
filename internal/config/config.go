@@ -45,6 +45,7 @@ type Bot struct {
 	Timeout          time.Duration  // Poller and http-client timeouts
 	AllowedUpdates   []string       // Allowed update types
 	CommandsPrivate  []tele.Command // Bot commands for private chats
+	Synchronous      bool           // Run update handlers synchronously
 }
 
 // Load loads configuration from [Default] and environment variables

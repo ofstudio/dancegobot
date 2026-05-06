@@ -19,11 +19,12 @@ var scopePrivate = tele.CommandScope{Type: tele.CommandScopeAllPrivateChats}
 // NewBot creates a new telegram bot.
 func NewBot(cfg config.Bot, log *slog.Logger) (*tele.Bot, error) {
 	bot, err := tele.NewBot(tele.Settings{
-		URL:     cfg.ApiURL,
-		Token:   cfg.Token,
-		Poller:  poller(cfg),
-		OnError: onError(log),
-		Client:  ratelimit.Client(cfg.RPS, cfg.Timeout),
+		URL:         cfg.ApiURL,
+		Token:       cfg.Token,
+		Poller:      poller(cfg),
+		Synchronous: cfg.Synchronous,
+		OnError:     onError(log),
+		Client:      ratelimit.Client(cfg.RPS, cfg.Timeout),
 	})
 	if err != nil {
 		return nil, err

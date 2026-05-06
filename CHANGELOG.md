@@ -23,6 +23,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Escape event announcements in Telegram HTML messages so special characters are shown as plain text
 - Make random token generation safe for concurrent bot updates
 - Clean up completed render repeat tasks so they do not accumulate in memory
+- Replace gock-based e2e tests with race-safe direct update processing and a fake Telegram API server
 
 ## [2.0.4] - 2024-12-22
 

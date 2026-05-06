@@ -114,6 +114,64 @@ func (suite *AppTestSuite) TestEventDraft() {
 		suite.Equal("Test text", event.Caption)
 	})
 
+	suite.Run("html special chars in inline query are plain text", func() {
+		text := "Танцы <tag> & friends"
+		escaped := "Танцы &lt;tag&gt; &amp; friends"
+		inlineMessageID := "test-inline-message-html-caption"
+
+		var eventID string
+		gock.New(telegock.AnswerInlineQuery).
+			Reply(200).
+			Filter(func(res *http.Response) bool {
+				body := suite.Decode(res.Request.Body)
+				result := body.Get("results.0")
+				eventID = result.Get("id").String()
+				suite.Equal(text, result.Get("title").String())
+				suite.Equal(escaped, result.Get("input_message_content.message_text").String())
+				suite.Equal("HTML", result.Get("input_message_content.parse_mode").String())
+				return true
+			}).JSON(telegock.Result(true))
+
+		gock.New(telegock.GetUpdates).
+			Reply(200).
+			JSON(telegock.Updates().InlineQuery(tele.Query{
+				Sender:   userJohn,
+				Text:     text,
+				ChatType: "supergroup",
+			}))
+
+		suite.NoPending()
+		suite.NoUnmatched()
+
+		gock.New(telegock.EditMessageText).
+			Reply(200).
+			Filter(func(res *http.Response) bool {
+				body := suite.Decode(res.Request.Body)
+				suite.Equal(inlineMessageID, body.Get("inline_message_id").String())
+				suite.Equal(escaped+"\n\n", body.Get("text").String())
+				suite.Equal("HTML", body.Get("parse_mode").String())
+				return true
+			}).
+			JSON(telegock.Result(true))
+
+		gock.New(telegock.GetUpdates).
+			Reply(200).
+			JSON(telegock.Updates().InlineResult(tele.InlineResult{
+				Sender:    userJohn,
+				ResultID:  eventID,
+				Query:     text,
+				MessageID: inlineMessageID,
+			}))
+
+		suite.NoPending()
+		suite.NoUnmatched()
+
+		event, err := suite.app.EventService.Get(context.Background(), eventID)
+		suite.NoError(err)
+		suite.Require().NotNil(event)
+		suite.Equal(text, event.Caption)
+	})
+
 	suite.Run("inline query with couple limit", func() {
 		// <- bot should call `answerInlineQuery`
 		var eventID string

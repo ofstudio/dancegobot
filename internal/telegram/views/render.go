@@ -56,7 +56,7 @@ func postTextBuilder(event *models.Event) *strings.Builder {
 	if event.Settings.Closed {
 		sb.WriteString(locale.IconPostClosed)
 	}
-	sb.WriteString(event.Caption)
+	sb.WriteString(fmtCaption(event.Caption))
 	sb.WriteString("\n\n")
 
 	if len(event.Couples) > 0 {
@@ -152,6 +152,11 @@ func btnEventSignupURL(eventID string) *tele.ReplyMarkup {
 		rm.URL(locale.RoleIcon[models.RoleFollower], EventSignupURL(eventID, models.RoleFollower)),
 	))
 	return rm
+}
+
+// fmtCaption formats user-provided event announcement for Telegram HTML.
+func fmtCaption(caption string) string {
+	return html.EscapeString(caption)
 }
 
 // fmtDancer formats the dancer with a link to the Telegram profile.

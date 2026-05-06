@@ -52,7 +52,7 @@ func EventPostAnswer(c tele.Context, event *models.Event, thumb string) error {
 				ResultBase: tele.ResultBase{
 					ID: event.ID,
 					Content: &tele.InputTextMessageContent{
-						Text:           event.Caption,
+						Text:           fmtCaption(event.Caption),
 						ParseMode:      tele.ModeHTML,
 						PreviewOptions: &tele.PreviewOptions{Disabled: true},
 					},

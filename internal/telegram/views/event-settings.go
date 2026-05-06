@@ -17,7 +17,7 @@ func EventSettingsScene(c tele.Context, event *models.Event, offset int) error {
 	date := event.CreatedAt.Format("02.01.2006")
 
 	msg := fmt.Sprintf(locale.MyEventHeader, date) +
-		event.Caption + "\n\n" +
+		fmtCaption(event.Caption) + "\n\n" +
 		locale.EventSettingsCaption
 
 	// Auto pairing setting

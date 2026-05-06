@@ -20,6 +20,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 
 - Escape participant names in Telegram HTML messages so special characters do not break event posts or notifications
+- Escape event announcements in Telegram HTML messages so special characters are shown as plain text
 
 ## [2.0.4] - 2024-12-22
 

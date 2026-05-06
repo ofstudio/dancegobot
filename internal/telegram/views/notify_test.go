@@ -153,6 +153,7 @@ func Test_notifyText(t *testing.T) {
 
 func Test_notifyTextEscapesDancerAndProfileNames(t *testing.T) {
 	payload := testPayload
+	payload.Event.Caption = "Event <Tag> & Co"
 	payload.Event.Owner = models.Profile{
 		ID:        100,
 		FirstName: "Организатор <Main>",
@@ -174,8 +175,10 @@ func Test_notifyTextEscapesDancerAndProfileNames(t *testing.T) {
 	require.NoError(t, err)
 	got := text.String()
 
+	assert.Contains(t, got, "Event &lt;Tag&gt; &amp; Co")
 	assert.Contains(t, got, `<a href="tg://user?id=100">Организатор &lt;Main&gt; &amp; Co</a>`)
 	assert.Contains(t, got, `<a href="tg://user?id=1">Партнер &lt;One&gt; &amp; Two</a>`)
+	assert.NotContains(t, got, "Event <Tag>")
 	assert.NotContains(t, got, "Организатор <Main>")
 	assert.NotContains(t, got, "Партнер <One>")
 }

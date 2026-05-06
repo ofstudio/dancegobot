@@ -73,6 +73,40 @@ func (suite *AppTestSuite) TestMyCommandOwnedEvent() {
 	})
 }
 
+func (suite *AppTestSuite) TestEventSettingsEscapesCaption() {
+	suite.Run("event caption is plain text in settings", func() {
+		event := testMyEvent("settings_escape_caption", "Settings <tag> & owner", userJohn)
+		suite.Require().NoError(suite.app.Store.EventUpsert(context.Background(), event))
+
+		gock.New(telegock.AnswerCallbackQuery).
+			Reply(200).
+			JSON(telegock.Result(true))
+
+		gock.New(telegock.EditMessageText).
+			Reply(200).
+			Filter(func(res *http.Response) bool {
+				body := suite.Decode(res.Request.Body)
+				text := body.Get("text").String()
+				suite.Equal(userJohn.ID, body.Get("chat_id").Int())
+				suite.Contains(text, "Settings &lt;tag&gt; &amp; owner")
+				suite.NotContains(text, "Settings <tag> & owner")
+				return true
+			}).
+			JSON(telegock.Result(tele.Message{}))
+
+		gock.New(telegock.GetUpdates).
+			Reply(200).
+			JSON(telegock.Updates().CallbackQuery(tele.Callback{
+				Sender:  userJohn,
+				Message: &tele.Message{ID: 100, Chat: privateChat(userJohn)},
+				Data:    "\fevt_set|" + event.ID + "|0|0|rand",
+			}))
+
+		suite.NoPending()
+		suite.NoUnmatched()
+	})
+}
+
 func (suite *AppTestSuite) TestMyCommandJoinedEvent() {
 	suite.Run("joined event", func() {
 		event := testMyEvent("my_joined_event", "Joined event", userJane)

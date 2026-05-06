@@ -64,3 +64,14 @@ func Test_postTextBuilderEscapesDancerNames(t *testing.T) {
 	assert.NotContains(t, text, "Иван <Lead>")
 	assert.NotContains(t, text, "Мария <Follower>")
 }
+
+func Test_postTextBuilderEscapesCaption(t *testing.T) {
+	event := &models.Event{
+		Caption: "Танцы <tag> & friends",
+	}
+
+	text := postTextBuilder(event).String()
+
+	assert.Contains(t, text, "Танцы &lt;tag&gt; &amp; friends")
+	assert.NotContains(t, text, "Танцы <tag> & friends")
+}

@@ -3,6 +3,8 @@ package handlers
 import (
 	"regexp"
 	"strconv"
+	"strings"
+	"unicode/utf8"
 
 	tele "gopkg.in/telebot.v4"
 
@@ -48,20 +50,23 @@ func (h *Handlers) SignupPartnerLegacy(c tele.Context) error {
 // signupText handles the text message for the signup scene.
 func (h *Handlers) signupText(c tele.Context) error {
 	u := h.userGet(c)
-	text := c.Text()
+	text := strings.TrimSpace(c.Text())
 	switch {
+	case text == "":
+		return h.sendErr(c, locale.ErrDancerNameEmpty)
 	case text == locale.BtnDancerRemove:
 		return h.dancerRemove(c, u.Session.EventID)
 	case text == locale.BtnAsSingle[u.Session.Role]:
 		return h.singleAdd(c, u.Session.EventID, u.Session.Role)
-	case h.isLikeSingleCaption(text):
-		for _, single := range u.Session.Singles {
-			if single.Caption == text {
-				return h.coupleAdd(c, u.Session.EventID, u.Session.Role, &single.Profile)
-			}
+	}
+	if singleIdx, ok := h.singleNumber(text); ok {
+		if singleIdx < 1 || singleIdx > len(u.Session.Singles) {
+			return h.sendErr(c, locale.ErrSingleNotFound)
 		}
-		return h.sendErr(c, locale.ErrSingleNotFound)
-	case len(text) > h.cfg.DancerNameMaxLen:
+		return h.coupleAdd(c, u.Session.EventID, u.Session.Role, &u.Session.Singles[singleIdx-1].Profile)
+	}
+	switch {
+	case utf8.RuneCountInString(text) > h.cfg.DancerNameMaxLen:
 		return h.sendErr(c, locale.ErrDancerNameTooLong)
 	default:
 		return h.coupleAdd(c, u.Session.EventID, u.Session.Role, text)
@@ -208,12 +213,12 @@ func (h *Handlers) userSessionResetSignup(c tele.Context) {
 // or just "1. Full Name" if no Telegram username.
 func (h *Handlers) fmtSingles(singles []models.Dancer, role models.Role) []models.SessionSingle {
 	var s []models.SessionSingle
-	for i, d := range singles {
+	for _, d := range singles {
 		if d.Profile == nil {
 			continue
 		}
 		if d.Role == role {
-			caption := strconv.Itoa(i+1) + ". " + d.FullName
+			caption := strconv.Itoa(len(s)+1) + ". " + d.FullName
 			if d.Profile.Username != "" {
 				caption += " (@" + d.Profile.Username + ")"
 			}
@@ -227,9 +232,14 @@ func (h *Handlers) fmtSingles(singles []models.Dancer, role models.Role) []model
 	return s
 }
 
-var reSingleCapt = regexp.MustCompile(`^\d+\. .+$`)
+var reSingleNumber = regexp.MustCompile(`^(\d+)(?:\.\s*.*)?$`)
 
-// isLikeSingleCaption checks if the text looks like a single button caption.
-func (h *Handlers) isLikeSingleCaption(text string) bool {
-	return reSingleCapt.MatchString(text)
+// singleNumber extracts a single list item number from text.
+func (h *Handlers) singleNumber(text string) (int, bool) {
+	matches := reSingleNumber.FindStringSubmatch(text)
+	if len(matches) < 2 {
+		return 0, false
+	}
+	n, err := strconv.Atoi(matches[1])
+	return n, err == nil
 }

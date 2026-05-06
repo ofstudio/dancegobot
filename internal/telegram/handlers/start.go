@@ -32,11 +32,9 @@ func (h *Handlers) Start(c tele.Context) error {
 		}
 	}
 
-	// Send start message only if user session is empty
-	// due to some Telegram clients (ie iOS, late 2024)
-	// can "double" /start messages on very first interaction with the bot
-	if u.Session.Action == "" {
-		return views.SendStart(c)
+	// Reset active signup scene before showing the start message.
+	if u.Session.Action != "" {
+		h.userSessionResetSignup(c)
 	}
-	return nil
+	return views.SendStart(c)
 }

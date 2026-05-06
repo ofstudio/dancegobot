@@ -13,6 +13,7 @@ import (
 // UserSettingsScene - handles /settings command.
 func (h *Handlers) UserSettingsScene(c tele.Context) error {
 	h.log.Info("[handlers] /settings received", telelog.Attr(c))
+	h.userSessionResetSignup(c)
 	u := h.userGet(c)
 	return views.UserSettingsScene(c, u.Settings)
 }

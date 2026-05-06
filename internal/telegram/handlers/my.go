@@ -16,6 +16,7 @@ import (
 // My - handles /my  command.
 func (h *Handlers) My(c tele.Context) error {
 	h.log.Info("[handlers] /my received", telelog.Attr(c))
+	h.userSessionResetSignup(c)
 
 	// Force update my events
 	if _, err := h.userGetMyEvents(c, true); err != nil {

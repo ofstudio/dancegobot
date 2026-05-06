@@ -35,6 +35,7 @@ const (
 
 	ErrSomethingWrong    = "Что-то пошло не так 👾"
 	ErrStartPayload      = "Некорректные параметры 👾"
+	ErrDancerNameEmpty   = "Имя партнера не может быть пустым 🤔"
 	ErrDancerNameTooLong = "Имя партнера слишком длинное 🤔"
 	ErrSingleNotFound    = "Такой танцор не найден 🤷‍♀️"
 

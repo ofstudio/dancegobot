@@ -3,6 +3,7 @@ package services
 import (
 	"fmt"
 	"sort"
+	"strings"
 	"time"
 
 	"github.com/ofstudio/dancegobot/internal/config"
@@ -587,16 +588,16 @@ func (h *EventHandler) isSame(dancer, other models.Dancer) bool {
 	// Compare dancer username (if present in profile ) and other username (if present in full name)
 	case dancer.Profile != nil && dancer.Profile.Username != "" && other.Profile == nil:
 		u, ok := getUsername(other.FullName)
-		return ok && (dancer.Profile.Username == u)
+		return ok && strings.EqualFold(dancer.Profile.Username, u)
 	// Compare dancer username (if present in full name) and other username (if present in profile)
 	case dancer.Profile == nil && other.Profile != nil && other.Profile.Username != "":
 		u, ok := getUsername(dancer.FullName)
-		return ok && (u == other.Profile.Username)
+		return ok && strings.EqualFold(u, other.Profile.Username)
 	// Compare usernames (if present in full names) if both profiles are missing
 	case dancer.Profile == nil && other.Profile == nil:
 		u1, ok1 := getUsername(dancer.FullName)
 		u2, ok2 := getUsername(other.FullName)
-		return (ok1 && ok2) && (u1 == u2)
+		return ok1 && ok2 && strings.EqualFold(u1, u2)
 	default:
 		return false
 	}

@@ -114,6 +114,42 @@ func (suite *AppTestSuite) TestMyCommandJoinedEvent() {
 	})
 }
 
+func (suite *AppTestSuite) TestMyCommandManualUsername() {
+	suite.Run("manual username participant", func() {
+		event := testMyEvent("my_manual_username", "Manual username event", userJohn)
+		event.Couples = []models.Couple{{
+			Dancers: []models.Dancer{
+				{FullName: "Manual Leader", Role: models.RoleLeader},
+				{FullName: "Manual @Jane_Doe", Role: models.RoleFollower},
+			},
+			CreatedBy: models.NewProfile(*userJohn),
+			CreatedAt: event.CreatedAt,
+		}}
+		suite.Require().NoError(suite.app.Store.EventUpsert(context.Background(), event))
+
+		gock.New(telegock.SendMessage).
+			Reply(200).
+			Filter(func(res *http.Response) bool {
+				body := suite.Decode(res.Request.Body)
+				suite.Contains(body.Get("text").String(), "Manual username event")
+				suite.Contains(body.Get("text").String(), "Manual @Jane_Doe")
+				return true
+			}).
+			JSON(telegock.Result(tele.Message{}))
+
+		gock.New(telegock.GetUpdates).
+			Reply(200).
+			JSON(telegock.Updates().Message(tele.Message{
+				Sender: userJane,
+				Chat:   privateChat(userJane),
+				Text:   "/my",
+			}))
+
+		suite.NoPending()
+		suite.NoUnmatched()
+	})
+}
+
 func (suite *AppTestSuite) TestMyCommandPagination() {
 	suite.Run("pagination", func() {
 		events := []*models.Event{

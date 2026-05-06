@@ -56,6 +56,20 @@ func (suite *TestEventHandlerSuite) TestDancerRegistrationGet() {
 		suite.False(got.WaitList)
 	})
 
+	suite.Run("dancer is registered in couple by username case insensitive", func() {
+		event := sampleEvent()
+		d := models.Dancer{
+			Profile: &models.Profile{ID: 20, FirstName: "Jill", LastName: "Smith", Username: "JillSmith"},
+			Role:    models.RoleLeader,
+		}
+		got := NewEventHandler(&event).RegistrationGet(d)
+
+		suite.Require().NotNil(got)
+		suite.Equal(models.StatusInCouple, got.Status)
+		suite.Require().NotNil(got.Partner)
+		suite.Equal("Jack Smith", got.Partner.FullName)
+	})
+
 	suite.Run("dancer is registered in couple by profile", func() {
 		event := sampleEvent()
 		d := models.Dancer{

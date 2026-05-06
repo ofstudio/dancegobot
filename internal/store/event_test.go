@@ -197,17 +197,21 @@ VALUES ('event_1', 100, '{"couples": [{"dancers": [{"id": 1}, {"id": 2}]}], "pos
 	suite.Run("user by username", func() {
 		_, err := suite.store.db.Exec(`
 INSERT INTO events (id, owner_id, data)
-VALUES ('event_1', 100, '{"singles": [{"username": "testuser"}], "post": {"inline_message_id": "test"}}'),
+VALUES ('event_1', 100, '{"singles": [{"username": "TestUser"}], "post": {"inline_message_id": "test"}}'),
        ('event_2', 200, '{"couples": [{"dancers": [{"username": "testuser"}]}], "post": {"inline_message_id": "test"}}'),
-       ('event_3', 300, '{"singles": [{"id": 2, "username": ""}], "post": {"inline_message_id": "test"}}')
+       ('event_3', 300, '{"singles": [{"id": 2, "username": ""}], "post": {"inline_message_id": "test"}}'),
+       ('event_4', 400, '{"singles": [{"full_name": "Manual @TESTUSER"}], "post": {"inline_message_id": "test"}}'),
+       ('event_5', 500, '{"couples": [{"dancers": [{"full_name": "Manual Partner @TestUser"}]}], "post": {"inline_message_id": "test"}}')
 `)
 		suite.Require().NoError(err)
 
 		ids, err := suite.store.EventGetMy(context.Background(), &models.Profile{ID: 1, Username: "testuser"})
 		suite.Require().NoError(err)
-		suite.Require().Len(ids, 2)
+		suite.Require().Len(ids, 4)
 		suite.Contains(ids, "event_1")
 		suite.Contains(ids, "event_2")
+		suite.Contains(ids, "event_4")
+		suite.Contains(ids, "event_5")
 	})
 
 	suite.Run("no events", func() {

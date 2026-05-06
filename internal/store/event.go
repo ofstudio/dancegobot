@@ -5,6 +5,8 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"regexp"
+	"strings"
 	"time"
 
 	"github.com/ofstudio/dancegobot/internal/models"
@@ -140,25 +142,10 @@ func (s *SQLiteStore) EventGetMy(ctx context.Context, profile *models.Profile) (
 		return nil, ErrNil
 	}
 	// language=SQLite
-	const query = `SELECT id
+	const query = `SELECT id, owner_id, data
 FROM events
 WHERE json_extract(data, '$.post.inline_message_id') IS NOT NULL -- Skip draft events
   AND ifnull(json_extract(data, '$.removed'), FALSE) == FALSE -- Skip removed events
-  AND (
-    -- Search by owner_id
-    owner_id == ?1
-        -- Search in couples
-        OR EXISTS (SELECT 1
-                   FROM json_each(data -> 'couples') AS couple,
-                        json_each(couple.value -> 'dancers') AS dancer
-                   WHERE dancer.value ->> 'id' = ?1
-                      OR (?2 != '' AND dancer.value ->> 'username' = ?2))
-        -- Search in singles
-        OR EXISTS (SELECT 1
-                   FROM json_each(data -> 'singles') AS single
-                   WHERE single.value ->> 'id' = ?1
-                      OR (?2 != '' AND single.value ->> 'username' = ?2))
-    )
 ORDER BY created_at DESC
 `
 	stmt, err := s.stmt(ctx, query)
@@ -166,19 +153,81 @@ ORDER BY created_at DESC
 		return nil, fmt.Errorf("%w: %w", ErrStmtPrepare, err)
 	}
 
-	rows, err := stmt.QueryxContext(ctx, profile.ID, profile.Username)
+	rows, err := stmt.QueryxContext(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("%w: %w", ErrStmtExec, err)
 	}
+	//goland:noinspection ALL
+	defer rows.Close()
 
 	var ids []string
 	for rows.Next() {
 		var id string
-		if err = rows.Scan(&id); err != nil {
+		var ownerID int64
+		var data []byte
+		if err = rows.Scan(&id, &ownerID, &data); err != nil {
 			return nil, fmt.Errorf("%w: %w", ErrScan, err)
 		}
-		ids = append(ids, id)
+
+		if ownerID == profile.ID {
+			ids = append(ids, id)
+			continue
+		}
+
+		event := &models.Event{}
+		if err = s.unmarshal("data", data, event); err != nil {
+			return nil, err
+		}
+		if eventHasProfile(event, profile) {
+			ids = append(ids, id)
+		}
+	}
+	if err = rows.Err(); err != nil {
+		return nil, fmt.Errorf("%w: %w", ErrScan, err)
 	}
 
 	return ids, nil
+}
+
+func eventHasProfile(event *models.Event, profile *models.Profile) bool {
+	if event == nil || profile == nil {
+		return false
+	}
+	for _, couple := range event.Couples {
+		for _, dancer := range couple.Dancers {
+			if dancerMatchesProfile(dancer, profile) {
+				return true
+			}
+		}
+	}
+	for _, single := range event.Singles {
+		if dancerMatchesProfile(single, profile) {
+			return true
+		}
+	}
+	return false
+}
+
+func dancerMatchesProfile(dancer models.Dancer, profile *models.Profile) bool {
+	if profile == nil {
+		return false
+	}
+	if dancer.Profile != nil {
+		if dancer.Profile.ID == profile.ID {
+			return true
+		}
+		return profile.Username != "" && strings.EqualFold(dancer.Profile.Username, profile.Username)
+	}
+	username, ok := usernameFromFullName(dancer.FullName)
+	return ok && profile.Username != "" && strings.EqualFold(username, profile.Username)
+}
+
+var reFullNameUsername = regexp.MustCompile(`(?:^|\b|\s)@([a-zA-Z][a-zA-Z0-9_]{3,30}[a-zA-Z0-9])(?:\b|$)`)
+
+func usernameFromFullName(s string) (string, bool) {
+	matches := reFullNameUsername.FindStringSubmatch(s)
+	if len(matches) > 1 {
+		return matches[1], true
+	}
+	return "", false
 }

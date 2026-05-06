@@ -372,6 +372,7 @@ func (h *EventHandler) DancerRemove(d models.Dancer) models.Registration {
 
 	// If dancer is in a couple remove the couple
 	couplesBefore := len(h.event.Couples)
+	waitlistedBefore := h.waitlistedCouples()
 	exCouple, exCoupleIdx, _ := h.removeCouple(reg.Dancer)
 	h.hist = append(h.hist, &models.HistoryItem{
 		Action:    models.HistoryCoupleRemoved,
@@ -394,7 +395,7 @@ func (h *EventHandler) DancerRemove(d models.Dancer) models.Registration {
 
 	// If partner was signed up as a single, move back to singles (or auto pair if available)
 	if reg.Related.AsSingle {
-		related := h.singleRestore(*reg.Related, reg.Dancer, exCouple.CreatedAt)
+		related := h.singleRestore(*reg.Related, reg.Dancer)
 		reg.Related = &related
 	} else if reg.Related.Profile != nil && exCouple.CreatedBy.ID == reg.Related.Profile.ID {
 		// Otherwise, if couple was created by the partner send notification to the partner
@@ -408,12 +409,10 @@ func (h *EventHandler) DancerRemove(d models.Dancer) models.Registration {
 		})
 	}
 
-	// If event limit is set, check if some couples can be moved from the wait list
-	if h.event.Settings.Limit > 0 &&
-		couplesBefore > len(h.event.Couples) &&
-		exCoupleIdx < h.event.Settings.Limit &&
-		len(h.event.Couples) >= h.event.Settings.Limit {
-		h.notifyCouple(h.event.Couples[h.event.Settings.Limit-1], models.TmplCoupleWaitListLeft)
+	// If an active couple was removed, notify couples that actually moved from
+	// the waitlist into the active participant list after all follow-up changes.
+	if couplesBefore > 0 && exCoupleIdx < h.event.Settings.Limit {
+		h.notifyCouplesLeftWaitlist(waitlistedBefore)
 	}
 
 	// Return the registration
@@ -423,8 +422,6 @@ func (h *EventHandler) DancerRemove(d models.Dancer) models.Registration {
 // tryAutoPair tries to auto pair the dancer with a partner from the singles list.
 // Returns the updated registration and true if the partner was found and paired successfully.
 // If auto pairing is disabled for the event, returns false.
-// In case of auto pairing after couple removal the createdAt time should be set
-// to the time of the previous couple creation.
 func (h *EventHandler) tryAutoPair(reg models.Registration, createdAt time.Time) (models.Registration, bool) {
 	// skip if auto pairing is disabled for the event
 	if !h.event.Settings.AutoPairing {
@@ -442,15 +439,12 @@ func (h *EventHandler) tryAutoPair(reg models.Registration, createdAt time.Time)
 // singleRestore restores the dancer to the singles list after a couple removal.
 // If auto pairing is enabled, tries to auto pair the dancer.
 // The exPartner parameter is used to send proper the notification to the dancer.
-// The exCoupleCreatedAt should be provided to keep the order of couples
-// in case of dancer will be auto paired with a new partner.
 func (h *EventHandler) singleRestore(
 	reg models.Registration,
 	exPartner models.Dancer,
-	exCoupleCreatedAt time.Time,
 ) models.Registration {
 	// Try to auto pair the dancer
-	if autoPairReg, ok := h.tryAutoPair(reg, exCoupleCreatedAt); ok {
+	if autoPairReg, ok := h.tryAutoPair(reg, nowFn()); ok {
 		h.notif = append(h.notif, &models.Notification{
 			TmplCode:  models.TmplAutoPairPartnerChanged,
 			Recipient: autoPairReg.Profile,
@@ -458,7 +452,7 @@ func (h *EventHandler) singleRestore(
 				Event:      h.event,
 				Partner:    &exPartner,
 				NewPartner: autoPairReg.Partner,
-				WaitList:   reg.WaitList,
+				WaitList:   autoPairReg.WaitList,
 			},
 		})
 		return autoPairReg
@@ -633,6 +627,33 @@ func (h *EventHandler) isSameDancer(dancer, other models.Dancer) bool {
 		dancer.FullName != "" &&
 		dancer.FullName == other.FullName &&
 		dancer.Role == other.Role
+}
+
+func (h *EventHandler) waitlistedCouples() []models.Couple {
+	if h.event.Settings.Limit <= 0 || len(h.event.Couples) <= h.event.Settings.Limit {
+		return nil
+	}
+	return append([]models.Couple(nil), h.event.Couples[h.event.Settings.Limit:]...)
+}
+
+func (h *EventHandler) notifyCouplesLeftWaitlist(waitlistedBefore []models.Couple) {
+	if h.event.Settings.Limit <= 0 {
+		return
+	}
+	for _, previous := range waitlistedBefore {
+		if len(previous.Dancers) != 2 {
+			continue
+		}
+		for i, current := range h.event.Couples {
+			if i >= h.event.Settings.Limit {
+				break
+			}
+			if h.isSameCouple(current, previous) {
+				h.notifyCouple(current, models.TmplCoupleWaitListLeft)
+				break
+			}
+		}
+	}
 }
 
 // notifyCouple adds a notification with the given template for the dancers in the couple.

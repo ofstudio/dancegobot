@@ -108,6 +108,65 @@ func TestEventLimitWaitlistLeftAfterRemoval(t *testing.T) {
 	require.False(t, reg.WaitList)
 }
 
+func TestEventLimitWaitlistLeftAfterAutoPairRemoval(t *testing.T) {
+	env := newEnv(t)
+	event := testLimitEvent("limit_waitlist_left_after_auto_pair", userJohn, 2,
+		testLimitCouple(userJohn, limitUserBob, userJohn, 0, true),
+		testLimitCouple(limitUserAlice, limitUserCarol, limitUserAlice, time.Second, false),
+		testLimitCouple(userJane, limitUserEve, userJane, 2*time.Second, false),
+	)
+	event.Settings.AutoPairing = true
+	dan := models.NewProfile(*limitUserDan)
+	event.Singles = []models.Dancer{{
+		Profile:   &dan,
+		FullName:  dan.FullName(),
+		Role:      models.RoleLeader,
+		AsSingle:  true,
+		CreatedAt: limitTestBaseTime.Add(3 * time.Second),
+	}}
+	require.NoError(t, env.app.Store.EventUpsert(context.Background(), event))
+
+	env.process(env.message(userJohn, "/start "+signupPayload(event.ID, models.RoleLeader)))
+	env.waitSendMessage(userJohn.ID, "Bob")
+
+	env.process(env.message(userJohn, locale.BtnDancerRemove))
+	env.tg.WaitFor("editMessageText", func(req teletest.Request) bool {
+		text := req.String("text")
+		return req.String("inline_message_id") == event.Post.InlineMessageID &&
+			strings.Contains(text, "Jane Doe") &&
+			strings.Contains(text, "Dan") &&
+			strings.Contains(text, locale.PostCouplesWait)
+	})
+	env.waitSendMessage(userJohn.ID, locale.ResultSuccessRemoved)
+	env.tg.WaitFor("sendMessage", func(req teletest.Request) bool {
+		return req.ChatIDInt() == limitUserDan.ID &&
+			strings.Contains(req.String("text"), "Я подобрал тебе в пару") &&
+			strings.Contains(req.String("text"), "Bob") &&
+			strings.Contains(req.String("text"), "списке ожидания")
+	})
+	env.tg.WaitFor("sendMessage", func(req teletest.Request) bool {
+		return req.ChatIDInt() == limitUserBob.ID &&
+			strings.Contains(req.String("text"), "Я записал тебя вместе") &&
+			strings.Contains(req.String("text"), "Dan") &&
+			strings.Contains(req.String("text"), "списке ожидания")
+	})
+	env.tg.WaitFor("sendMessage", func(req teletest.Request) bool {
+		return req.ChatIDInt() == userJane.ID &&
+			strings.Contains(req.String("text"), "Eve") &&
+			strings.Contains(req.String("text"), "вышли из списка ожидания")
+	})
+
+	moved, err := env.app.EventService.RegistrationGet(context.Background(), event.ID,
+		models.NewProfile(*userJane), models.RoleLeader)
+	require.NoError(t, err)
+	require.False(t, moved.WaitList)
+
+	autoPaired, err := env.app.EventService.RegistrationGet(context.Background(), event.ID,
+		models.NewProfile(*limitUserDan), models.RoleLeader)
+	require.NoError(t, err)
+	require.True(t, autoPaired.WaitList)
+}
+
 func TestEventLimitChangeNotification(t *testing.T) {
 	env := newEnv(t)
 	event := testLimitEvent("limit_change_notify", userJohn, 1,

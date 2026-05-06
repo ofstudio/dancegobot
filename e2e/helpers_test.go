@@ -237,4 +237,6 @@ var (
 	limitUserAlice    = &tele.User{ID: 201, FirstName: "Alice"}
 	limitUserBob      = &tele.User{ID: 202, FirstName: "Bob"}
 	limitUserCarol    = &tele.User{ID: 203, FirstName: "Carol"}
+	limitUserDan      = &tele.User{ID: 204, FirstName: "Dan"}
+	limitUserEve      = &tele.User{ID: 205, FirstName: "Eve"}
 )

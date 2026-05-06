@@ -1119,14 +1119,73 @@ func (suite *TestEventHandlerSuite) TestDancerRemove_autoPair() {
 
 func (suite *TestEventHandlerSuite) TestDancerRemove_limit() {
 
-	suite.Run("num of couples not changed, couple not in waitlist", func() {
+	suite.Run("auto-pair after active removal notifies couple left waitlist", func() {
 		config.SetBotProfile(botUser)
-		event := anotherSampleEvent()
-		event.Settings.AutoPairing = true
-		event.Settings.Limit = 3
-		coupleRemoved := event.Couples[2]
+		origNow := nowFn
+		base := time.Date(2026, 5, 6, 12, 0, 0, 0, time.UTC)
+		nowFn = func() time.Time { return base.Add(10 * time.Second) }
+		defer func() { nowFn = origNow }()
+
+		removedLeader := models.Profile{ID: 100, FirstName: "Removed", LastName: "Leader"}
+		restoredFollower := models.Profile{ID: 101, FirstName: "Restored", LastName: "Follower"}
+		activeLeader := models.Profile{ID: 102, FirstName: "Active", LastName: "Leader"}
+		activeFollower := models.Profile{ID: 103, FirstName: "Active", LastName: "Follower"}
+		waitLeader := models.Profile{ID: 104, FirstName: "Wait", LastName: "Leader"}
+		waitFollower := models.Profile{ID: 105, FirstName: "Wait", LastName: "Follower"}
+		newLeader := models.Profile{ID: 106, FirstName: "New", LastName: "Leader"}
+
+		dancer := func(profile models.Profile, role models.Role, asSingle bool, offset time.Duration) models.Dancer {
+			return models.Dancer{
+				Profile:   &profile,
+				FullName:  profile.FullName(),
+				Role:      role,
+				AsSingle:  asSingle,
+				CreatedAt: base.Add(offset),
+			}
+		}
+
+		event := models.Event{
+			ID: "test-waitlist-autopair",
+			Settings: models.EventSettings{
+				AutoPairing: true,
+				Limit:       2,
+			},
+			Couples: []models.Couple{
+				{
+					Dancers: []models.Dancer{
+						dancer(removedLeader, models.RoleLeader, false, time.Second),
+						dancer(restoredFollower, models.RoleFollower, true, time.Second),
+					},
+					CreatedBy: removedLeader,
+					CreatedAt: base.Add(time.Second),
+				},
+				{
+					Dancers: []models.Dancer{
+						dancer(activeLeader, models.RoleLeader, false, 2*time.Second),
+						dancer(activeFollower, models.RoleFollower, false, 2*time.Second),
+					},
+					CreatedBy: activeLeader,
+					CreatedAt: base.Add(2 * time.Second),
+				},
+				{
+					Dancers: []models.Dancer{
+						dancer(waitLeader, models.RoleLeader, false, 3*time.Second),
+						dancer(waitFollower, models.RoleFollower, false, 3*time.Second),
+					},
+					CreatedBy: waitLeader,
+					CreatedAt: base.Add(3 * time.Second),
+				},
+			},
+			Singles: []models.Dancer{
+				dancer(newLeader, models.RoleLeader, true, 4*time.Second),
+			},
+			Owner:     models.Profile{ID: 1001, FirstName: "Another", LastName: "Owner"},
+			CreatedAt: base,
+		}
+		coupleRemoved := event.Couples[0]
 		dancerRemoved := coupleRemoved.Dancers[0]
 		partner := coupleRemoved.Dancers[1]
+		expectedCouple := event.Couples[2]
 		newDancer := event.Singles[0]
 		handler := NewEventHandler(&event)
 
@@ -1134,20 +1193,26 @@ func (suite *TestEventHandlerSuite) TestDancerRemove_limit() {
 
 		suite.Require().NotNil(got)
 		suite.Equal(models.ResultRegistrationRemoved, got.Result)
-		suite.False(got.Related.WaitList)
+		suite.True(got.Related.WaitList)
 
-		suite.Require().Len(event.Couples, 5)
+		suite.Require().Len(event.Couples, 3)
+		suite.Equal(expectedCouple, event.Couples[1])
 		suite.Equal(newDancer, event.Couples[2].Dancers[0])
 		suite.Equal(partner, event.Couples[2].Dancers[1])
 
-		suite.Require().Len(handler.notif, 2)
+		suite.Require().Len(handler.notif, 3)
 		suite.Equal(models.TmplAutoPairPartnerFound, handler.notif[0].TmplCode)
 		suite.Equal(newDancer.Profile, handler.notif[0].Recipient)
 		suite.Equal(&partner, handler.notif[0].Payload.Partner)
+		suite.True(handler.notif[0].Payload.WaitList)
 		suite.Equal(models.TmplAutoPairPartnerChanged, handler.notif[1].TmplCode)
 		suite.Equal(partner.Profile, handler.notif[1].Recipient)
 		suite.Equal(&dancerRemoved, handler.notif[1].Payload.Partner)
 		suite.Equal(&newDancer, handler.notif[1].Payload.NewPartner)
+		suite.True(handler.notif[1].Payload.WaitList)
+		suite.Equal(models.TmplCoupleWaitListLeft, handler.notif[2].TmplCode)
+		suite.Equal(expectedCouple.Dancers[0].Profile, handler.notif[2].Recipient)
+		suite.Equal(&expectedCouple.Dancers[1], handler.notif[2].Payload.Partner)
 	})
 
 	suite.Run("num of couples changed, couple left waitlist", func() {

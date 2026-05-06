@@ -95,6 +95,24 @@ func TestRepeaterCleansUpEmptyIntervalTask(t *testing.T) {
 	require.False(t, called.Load())
 }
 
+func TestRepeaterCleansUpCanceledTask(t *testing.T) {
+	r := NewRepeater([]time.Duration{time.Hour})
+	ctx, cancel := context.WithCancel(context.Background())
+
+	var called atomic.Bool
+	r.AddTask(ctx, "task1", func(ctx context.Context, id string) {
+		called.Store(true)
+	})
+	require.Equal(t, 1, taskCount(r))
+
+	cancel()
+
+	require.Eventually(t, func() bool {
+		return taskCount(r) == 0
+	}, time.Second, 10*time.Millisecond)
+	require.False(t, called.Load())
+}
+
 func TestRepeaterCanceledTaskDoesNotDeleteReplacement(t *testing.T) {
 	r := NewRepeater([]time.Duration{150 * time.Millisecond})
 

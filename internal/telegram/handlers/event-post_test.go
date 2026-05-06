@@ -25,6 +25,18 @@ func TestEventQueryParseLimit(t *testing.T) {
 			wantLimit: 5,
 		},
 		{
+			name:      "minimum limit",
+			text:      "Limited event /1",
+			wantText:  "Limited event",
+			wantLimit: 1,
+		},
+		{
+			name:      "maximum limit",
+			text:      "Limited event /99",
+			wantText:  "Limited event",
+			wantLimit: 99,
+		},
+		{
 			name:      "valid limit in the middle",
 			text:      "Limited /5 event",
 			wantText:  "Limited event",
@@ -52,6 +64,12 @@ func TestEventQueryParseLimit(t *testing.T) {
 			name:      "slash without leading space is ordinary text",
 			text:      "Limited/5 event",
 			wantText:  "Limited/5 event",
+			wantLimit: 12,
+		},
+		{
+			name:      "shortcut without leading text is ordinary text",
+			text:      "/5 Limited event",
+			wantText:  "/5 Limited event",
 			wantLimit: 12,
 		},
 	}

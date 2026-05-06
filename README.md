@@ -6,15 +6,23 @@ Inspired by [Tayrinn/CoopDance](https://github.com/Tayrinn/CoopDance).
 
 ## Features
 
-- ✅ Event publishing via bot inline query: `@dancegobot <announcement text>`.
-- ✅ Dancer can sign up in a couple with a partner or as single looking for a partner.
-- ✅ Automatic pairing of single dancers.
-- ✅ Notifications to the dancer when someone selects them as a partner.
-- ✅ `/my` command for viewing events created or joined by the user.
-- ✅ Couple limits, waitlist, and notifications when limit changes affect dancers.
-- ✅ Default couple limit for new events in organizer settings.
-- ✅ Event owners can close and reopen registration.
-- ✅ Events are marked as removed after repeated Telegram render failures.
+📣 Event publishing via bot inline query: `@dancegobot <announcement text>`.
+
+👫 Dancer can sign up in a couple with a partner or as single looking for a partner.
+
+🧍‍♀️ Automatic pairing of single dancers.
+
+💬 Notifications to the dancer when someone selects them as a partner.
+
+🔖 `/my` command for viewing events created or joined by the user.
+
+⚙️ Couple limits, waitlist, and notifications when limit changes affect dancers.
+
+🎚️ Default couple limit for new events in organizer settings.
+
+🔒 Event owners can close and reopen registration.
+
+🧹 Events are marked as removed after repeated Telegram render failures.
 
 ## Installation
 

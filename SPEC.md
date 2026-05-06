@@ -463,15 +463,3 @@ The following constraints are accepted for the current product stage:
   and register again when registration is open.
 - Organizer settings UI supports limits up to 20 couples.
 - Inline limit shortcut supports limits up to 99 couples.
-
-## Known Product Follow-Up Candidates
-
-These are not all confirmed bugs. They are product/business topics that should
-be reviewed before related changes.
-
-- Avoid using "waitlist" wording for singles looking for a partner.
-- Make unsupported role switching clearer in the private registration scene.
-- Make limit-change notification prompts resilient to multiple consecutive
-  limit edits.
-- Provide an owner-facing explanation or recovery path when an event becomes
-  removed because the original post cannot be rendered.

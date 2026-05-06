@@ -7,23 +7,34 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.1.0] - 2026-05-06
+
 ### Added
 
-- `/my` command for event owners and dancers
+- [#18](https://github.com/ofstudio/dancegobot/issues/18) `/my` command for event owners and dancers
 - Event settings for event owners
 - Couple limit and waitlist for event registrations
 - Notifications when limit changes move couples into or out of the waitlist
 - Default couple limit for new events in organizer settings
 - Event owners can close and reopen registration
 - Mark events as removed after repeated rendering failures
+- [#20](https://github.com/ofstudio/dancegobot/issues/20) Ability to choose a partner from the waiting list by their number
+
+### Changed
+
+- Replace gock-based e2e tests with race-safe direct update processing and a fake Telegram API server
 
 ### Fixed
 
+- Notify couples that leave the waitlist after an active couple is removed and the restored partner is auto-paired
+- Match manual `@username` registrations in `/my` case-insensitively
+- Parse inline limit shortcuts only as separate `/1` through `/99` tokens without matching dates
+- Reset stale signup sessions on `/my`, `/settings`, and plain `/start`
+- Reject whitespace-only event announcements and partner names
 - Escape participant names in Telegram HTML messages so special characters do not break event posts or notifications
 - Escape event announcements in Telegram HTML messages so special characters are shown as plain text
 - Make random token generation safe for concurrent bot updates
 - Clean up completed render repeat tasks so they do not accumulate in memory
-- Replace gock-based e2e tests with race-safe direct update processing and a fake Telegram API server
 
 ## [2.0.4] - 2024-12-22
 

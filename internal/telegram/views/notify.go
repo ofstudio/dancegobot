@@ -21,21 +21,13 @@ func init() {
 	// Parse notification base template
 	notifyT, err = template.New("").Funcs(template.FuncMap{
 		"fmtDancer": func(dancer *models.Dancer) template.HTML {
-			if dancer.Profile == nil {
-				return template.HTML(dancer.FullName)
+			if dancer == nil {
+				return ""
 			}
-			return template.HTML(fmt.Sprintf(
-				"<a href=\"%s\">%s</a>",
-				profileURL(dancer.Profile),
-				dancer.FullName,
-			))
+			return template.HTML(fmtDancer(*dancer))
 		},
 		"fmtProfile": func(p *models.Profile) template.HTML {
-			return template.HTML(fmt.Sprintf(
-				"<a href=\"%s\">%s</a>",
-				profileURL(p),
-				p.FullName(),
-			))
+			return template.HTML(fmtProfile(p))
 		},
 	}).Parse(locale.NotificationsBase)
 	if err != nil {

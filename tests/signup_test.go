@@ -256,6 +256,77 @@ func (suite *AppTestSuite) TestEventManualSingleNumberSignup() {
 	})
 }
 
+func (suite *AppTestSuite) TestManualPartnerHTMLEscaped() {
+	suite.Run("manual partner name is escaped in Telegram HTML", func() {
+		event := testMyEvent("manual_partner_html_escape", "Manual partner HTML escape", userJohn)
+		suite.Require().NoError(suite.app.Store.EventUpsert(context.Background(), event))
+
+		gock.New(telegock.SendMessage).
+			Reply(200).
+			Filter(func(res *http.Response) bool {
+				body := suite.Decode(res.Request.Body)
+				return body.Get("chat_id").Int() == userJohn.ID &&
+					body.Get("text").String() == locale.SignupNotRegistered
+			}).
+			JSON(telegock.Result(tele.Message{}))
+
+		gock.New(telegock.GetUpdates).
+			Reply(200).
+			JSON(telegock.Updates().Message(tele.Message{
+				Sender: userJohn,
+				Chat:   privateChat(userJohn),
+				Text:   "/start rand-signup-" + event.ID + "-leader",
+			}))
+
+		suite.NoPending()
+		suite.NoUnmatched()
+
+		partnerName := "Мария <Follower> & Co"
+		escapedPartnerName := "Мария &lt;Follower&gt; &amp; Co"
+
+		gock.New(telegock.EditMessageText).
+			Reply(200).
+			Filter(func(res *http.Response) bool {
+				body := suite.Decode(res.Request.Body)
+				text := body.Get("text").String()
+				return body.Get("inline_message_id").String() == event.Post.InlineMessageID &&
+					body.Get("parse_mode").String() == "HTML" &&
+					strings.Contains(text, escapedPartnerName) &&
+					!strings.Contains(text, partnerName)
+			}).
+			JSON(telegock.Result(true))
+
+		gock.New(telegock.SendMessage).
+			Reply(200).
+			Filter(func(res *http.Response) bool {
+				body := suite.Decode(res.Request.Body)
+				text := body.Get("text").String()
+				return body.Get("chat_id").Int() == userJohn.ID &&
+					body.Get("parse_mode").String() == "HTML" &&
+					strings.Contains(text, "Вы зарегистрировались в паре") &&
+					strings.Contains(text, escapedPartnerName) &&
+					!strings.Contains(text, partnerName)
+			}).
+			JSON(telegock.Result(tele.Message{}))
+
+		gock.New(telegock.GetUpdates).
+			Reply(200).
+			JSON(telegock.Updates().Message(tele.Message{
+				Sender: userJohn,
+				Chat:   privateChat(userJohn),
+				Text:   partnerName,
+			}))
+
+		suite.NoPending()
+		suite.NoUnmatched()
+
+		updated, err := suite.app.EventService.Get(context.Background(), event.ID)
+		suite.Require().NoError(err)
+		suite.Require().Len(updated.Couples, 1)
+		suite.Equal(partnerName, updated.Couples[0].Dancers[1].FullName)
+	})
+}
+
 func (suite *AppTestSuite) TestSignupSessionResetBySettings() {
 	suite.Run("settings command resets active signup session", func() {
 		event := testMyEvent("signup_session_settings_reset", "Signup session reset", userJohn)

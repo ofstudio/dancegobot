@@ -17,6 +17,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Event owners can close and reopen registration
 - Mark events as removed after repeated rendering failures
 
+### Fixed
+
+- Escape participant names in Telegram HTML messages so special characters do not break event posts or notifications
+
 ## [2.0.4] - 2024-12-22
 
 ### Fixed

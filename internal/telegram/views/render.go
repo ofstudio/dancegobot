@@ -2,6 +2,7 @@ package views
 
 import (
 	"errors"
+	"html"
 	"strconv"
 	"strings"
 
@@ -155,10 +156,19 @@ func btnEventSignupURL(eventID string) *tele.ReplyMarkup {
 
 // fmtDancer formats the dancer with a link to the Telegram profile.
 func fmtDancer(d models.Dancer) string {
+	name := html.EscapeString(d.FullName)
 	if d.Profile == nil {
-		return d.FullName
+		return name
 	}
-	return "<a href='" + profileURL(d.Profile) + "'>" + d.FullName + "</a>"
+	return `<a href="` + html.EscapeString(profileURL(d.Profile)) + `">` + name + "</a>"
+}
+
+// fmtProfile formats the profile with a link to Telegram profile.
+func fmtProfile(p *models.Profile) string {
+	if p == nil {
+		return ""
+	}
+	return `<a href="` + html.EscapeString(profileURL(p)) + `">` + html.EscapeString(p.FullName()) + "</a>"
 }
 
 // profileURL formats the Telegram profile URL.

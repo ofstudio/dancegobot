@@ -151,6 +151,35 @@ func Test_notifyText(t *testing.T) {
 	})
 }
 
+func Test_notifyTextEscapesDancerAndProfileNames(t *testing.T) {
+	payload := testPayload
+	payload.Event.Owner = models.Profile{
+		ID:        100,
+		FirstName: "Организатор <Main>",
+		LastName:  "& Co",
+	}
+	payload.Partner = &models.Dancer{
+		Profile: &models.Profile{
+			ID:        1,
+			FirstName: "Партнер",
+		},
+		FullName: "Партнер <One> & Two",
+	}
+	n := &models.Notification{
+		TmplCode: models.TmplEventLimitDecreased,
+		Payload:  payload,
+	}
+
+	text, err := notifyTextBuilder(n)
+	require.NoError(t, err)
+	got := text.String()
+
+	assert.Contains(t, got, `<a href="tg://user?id=100">Организатор &lt;Main&gt; &amp; Co</a>`)
+	assert.Contains(t, got, `<a href="tg://user?id=1">Партнер &lt;One&gt; &amp; Two</a>`)
+	assert.NotContains(t, got, "Организатор <Main>")
+	assert.NotContains(t, got, "Партнер <One>")
+}
+
 func Test_chatLink(t *testing.T) {
 	tests := []struct {
 		name  string

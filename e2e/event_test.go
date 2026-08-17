@@ -206,7 +206,7 @@ func TestPostChatAdd(t *testing.T) {
 			Query:     queryB.Text,
 			MessageID: "test-inline-message",
 		}))
-		env.tg.Wait("editMessageText")
+		firstEdit := env.tg.Wait("editMessageText")
 
 		env.process(env.channelPost(tele.Message{
 			ID:     67890,
@@ -218,7 +218,9 @@ func TestPostChatAdd(t *testing.T) {
 				{Text: locale.RoleIcon[models.RoleLeader], URL: "https://t.me/" + botUser.Username + "?start=rand-signup-" + eventID + "-leader"},
 			}}},
 		}))
-		env.tg.Wait("editMessageText")
+		secondEdit := env.tg.Wait("editMessageText")
+		require.Equal(t, firstEdit.InlineKeyboardRaw(), secondEdit.InlineKeyboardRaw())
+		require.Contains(t, secondEdit.InlineKeyboardRaw(), "?start=v1-signup-"+eventID+"-leader")
 
 		event := env.eventGet(eventID)
 		require.Equal(t, int64(-1001234567890), event.Post.Chat.ID)

@@ -11,7 +11,6 @@ import (
 	"github.com/ofstudio/dancegobot/internal/locale"
 	"github.com/ofstudio/dancegobot/internal/models"
 	"github.com/ofstudio/dancegobot/internal/telegram"
-	"github.com/ofstudio/dancegobot/pkg/randtoken"
 )
 
 // Render returns services.RenderFunc function for services.RenderService
@@ -44,7 +43,10 @@ func render(api tele.API, event *models.Event, inlineMessageID string) error {
 	}
 
 	_, err := api.Edit(msg, postTextBuilder(event).String(), opts)
-	if errors.Is(err, tele.ErrTrueResult) {
+	// An unchanged Telegram message means the requested render is already applied.
+	if errors.Is(err, tele.ErrTrueResult) ||
+		errors.Is(err, tele.ErrMessageNotModified) ||
+		errors.Is(err, tele.ErrSameMessageContent) {
 		return nil
 	}
 	return err
@@ -135,11 +137,14 @@ func singlesByRole(singles []models.Dancer) ([]models.Dancer, []models.Dancer) {
 
 var BtnEventClosed = tele.Btn{Unique: "post_closed"}
 
+// Keep callback data stable so rendering an unchanged closed event does not edit the post.
+const eventClosedCallbackVersion = "v1"
+
 // btnEventClosed creates a button for the closed event post.
 func btnEventClosed() *tele.ReplyMarkup {
 	rm := &tele.ReplyMarkup{}
 	rm.Inline(rm.Row(
-		rm.Data(locale.IconPostClosed, BtnEventClosed.Unique, randtoken.New(4)),
+		rm.Data(locale.IconPostClosed, BtnEventClosed.Unique, eventClosedCallbackVersion),
 	))
 	return rm
 }

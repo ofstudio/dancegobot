@@ -6,20 +6,24 @@ import (
 
 	"github.com/ofstudio/dancegobot/internal/config"
 	"github.com/ofstudio/dancegobot/internal/models"
-	"github.com/ofstudio/dancegobot/pkg/randtoken"
 )
 
-const dlSeparator = "-"
+const (
+	dlSeparator = "-"
+	// deeplinkVersion replaces the old random nonce to keep repeated renders identical.
+	// Redundant edits may trigger https://bugs.telegram.org/c/14753 in mobile clients.
+	deeplinkVersion = "v1"
+)
 
 // Deeplink - deep link to the bot.
 //
 // Deeplinks format:
 //
-//	[4 random characters]-[models.SessionAction]-[Param 1]-[Param 2]-[Param...]
+//	[version]-[models.SessionAction]-[Param 1]-[Param 2]-[Param...]
 //
 // Example: sign up for the event with the ID "huw8HMZsOp3" as a leader
 //
-//	https://t.me/dancegobot?start=AD6s-signup-huw8HMZsOp3-leader
+//	https://t.me/dancegobot?start=v1-signup-huw8HMZsOp3-leader
 //
 // More info: https://core.telegram.org/api/links#bot-links
 type Deeplink struct {
@@ -69,7 +73,7 @@ func DeeplinkParsePayload(payload string) (*Deeplink, error) {
 
 // String returns the deep link URL string.
 func (d Deeplink) String() string {
-	url := "https://t.me/" + config.BotProfile().Username + "?start=" + randtoken.New(4) + dlSeparator
+	url := "https://t.me/" + config.BotProfile().Username + "?start=" + deeplinkVersion + dlSeparator
 
 	switch d.Action {
 	case models.SessionSignup:

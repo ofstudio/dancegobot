@@ -30,7 +30,7 @@ func TestEventClosedRegistration(t *testing.T) {
 			return req.String("inline_message_id") == event.Post.InlineMessageID
 		})
 		require.True(t, strings.HasPrefix(editPost.String("text"), locale.IconPostClosed))
-		require.Contains(t, editPost.InlineKeyboardRaw(), "post_closed")
+		require.Contains(t, editPost.InlineKeyboardRaw(), "post_closed|v1")
 		editSettings := env.tg.WaitFor("editMessageText", func(req teletest.Request) bool {
 			return req.ChatIDInt() == userJohn.ID
 		})
@@ -47,7 +47,7 @@ func TestEventClosedRegistration(t *testing.T) {
 		env.process(env.callback(tele.Callback{
 			Sender:    userJane,
 			MessageID: "inline_closed_registration",
-			Data:      "\fpost_closed|rand",
+			Data:      "\fpost_closed|v1",
 		}))
 		resp := env.tg.Wait("answerCallbackQuery")
 		require.Equal(t, locale.ResultEventClosed, resp.String("text"))

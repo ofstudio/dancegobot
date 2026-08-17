@@ -1,13 +1,59 @@
 package views
 
 import (
+	"errors"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	tele "gopkg.in/telebot.v4"
 
 	"github.com/ofstudio/dancegobot/internal/locale"
 	"github.com/ofstudio/dancegobot/internal/models"
 )
+
+type editAPI struct {
+	tele.API
+	err error
+}
+
+func (a editAPI) Edit(tele.Editable, interface{}, ...interface{}) (*tele.Message, error) {
+	return nil, a.err
+}
+
+func Test_renderEditResult(t *testing.T) {
+	failure := errors.New("edit failed")
+	tests := []struct {
+		name string
+		err  error
+		want error
+	}{
+		{name: "inline edit success", err: tele.ErrTrueResult},
+		{name: "message not modified", err: tele.ErrMessageNotModified},
+		{name: "same message content", err: tele.ErrSameMessageContent},
+		{name: "other error", err: failure, want: failure},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := render(editAPI{err: tt.err}, &models.Event{ID: "eventID"}, "inlineMessageID")
+
+			if tt.want == nil {
+				assert.NoError(t, err)
+			} else {
+				assert.ErrorIs(t, err, tt.want)
+			}
+		})
+	}
+}
+
+func Test_btnEventClosedStable(t *testing.T) {
+	first := btnEventClosed()
+	second := btnEventClosed()
+
+	assert.Equal(t, first, second)
+	assert.Equal(t, BtnEventClosed.Unique, first.InlineKeyboard[0][0].Unique)
+	assert.Equal(t, "v1", first.InlineKeyboard[0][0].Data)
+}
 
 func Test_fmtDancerEscapesHTML(t *testing.T) {
 	t.Run("manual name", func(t *testing.T) {

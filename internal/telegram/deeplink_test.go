@@ -12,12 +12,15 @@ import (
 
 func TestDeeplink_String(t *testing.T) {
 	config.SetBotProfile(&tele.User{Username: "my_bot"})
-	url := Deeplink{
+	deeplink := Deeplink{
 		Action:  models.SessionSignup,
 		EventID: "eventID",
 		Role:    models.RoleLeader,
-	}.String()
-	assert.Regexp(t, `^https://t.me/my_bot\?start=[a-zA-Z0-9]{4}-signup-eventID-leader$`, url)
+	}
+	want := "https://t.me/my_bot?start=v1-signup-eventID-leader"
+
+	assert.Equal(t, want, deeplink.String())
+	assert.Equal(t, want, deeplink.String())
 }
 
 func TestDeeplinkParsePayload(t *testing.T) {
@@ -28,7 +31,17 @@ func TestDeeplinkParsePayload(t *testing.T) {
 		err      bool
 	}{
 		{
-			name:    "valid signup",
+			name:    "current version signup",
+			payload: "v1-signup-huw8HMZsOp3-leader",
+			expected: &Deeplink{
+				Action:  models.SessionSignup,
+				EventID: "huw8HMZsOp3",
+				Role:    models.RoleLeader,
+			},
+			err: false,
+		},
+		{
+			name:    "legacy random nonce signup",
 			payload: "AD6s-signup-huw8HMZsOp3-leader",
 			expected: &Deeplink{
 				Action:  models.SessionSignup,

@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.1.1] - 2026-08-17
+
+### Changed
+
+- Update Telebot, GJSON, and related transitive dependencies.
+
+### Fixed
+
+- Stabilize event post deep links and closed-event callback data across repeated renders, and treat Telegram's "message is not modified" response as a successful render. This reduces redundant message edits that may cause event posts to disappear for individual users in mobile clients while remaining visible in Telegram Web, as described in [Telegram issue #14753](https://bugs.telegram.org/c/14753).
+
 ## [2.1.0] - 2026-05-06
 
 ### Added

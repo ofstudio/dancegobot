@@ -1,10 +1,25 @@
 package models
 
 import (
+	"log/slog"
 	"testing"
 
 	"github.com/stretchr/testify/require"
 )
+
+func TestEventLogValue(t *testing.T) {
+	event := Event{
+		ID:                  "event_id",
+		Owner:               Profile{ID: 42, FirstName: "John"},
+		SubscribersNotified: true,
+	}
+
+	require.Equal(t, []slog.Attr{
+		slog.String("id", "event_id"),
+		slog.Any("owner", event.Owner.LogValue()),
+		slog.Bool("subscribers_notified", true),
+	}, event.LogValue().Group())
+}
 
 func TestProfileFullName(t *testing.T) {
 	require.Equal(t, "John Doe", Profile{FirstName: "John", LastName: "Doe"}.FullName())

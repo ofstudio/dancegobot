@@ -66,4 +66,7 @@ const (
 	// TmplEventLimitDecreased - event limit has been decreased
 	// and the recipient's couple has been moved to the waiting list.
 	TmplEventLimitDecreased NotificationTmpl = "event_limit_decreased"
+
+	// TmplNewEvent - a new event was published in a chat the recipient is subscribed to
+	TmplNewEvent NotificationTmpl = "new_event"
 )

@@ -1,6 +1,6 @@
 # Dancegobot Business Logic
 
-Last reviewed: 2026-05-06.
+Last reviewed: 2026-08-17.
 
 This document describes product and business rules for Dancegobot. It is meant
 to be used as a shared reference when changing code, reviewing behavior, or
@@ -392,6 +392,63 @@ Participant lookup is based on:
   Telegram username.
 
 Manual plain-name entries do not appear in the real user's `/my`.
+
+## New Event Subscriptions
+
+Users can subscribe to new event posts published in a specific Telegram chat.
+Subscription controls use the UI form defined by each entry point:
+
+- The response sent after a user successfully creates a couple or registers as
+  single contains a text link labeled "Subscribe".
+- The private `/my` event view contains an inline button labeled "Subscribe" or
+  "Unsubscribe", depending on the current subscription state.
+- A new-event notification contains inline "View in chat" and "Unsubscribe"
+  buttons.
+- After unsubscription, the edited notification contains a text link labeled
+  "Subscribe again".
+
+The subscription link included in a registration response follows the existing
+event-interaction eligibility rule. It is shown only to the dancer who
+successfully created a couple through the bot or registered as single through
+the bot. It is not added to a notification sent to a partner who was only added
+or shared by another dancer, including a partner selected manually or through
+auto-pairing, solely because the bot knows their Telegram profile. This
+restriction prevents unsolicited subscription prompts. The `/my` view is an
+explicit user-initiated flow, so it may show subscription controls for any event
+available to the current user there, including an event owned by that user.
+
+Deep links and callback data are not authorization mechanisms. Every subscribe
+or resubscribe action must perform the same server-side chat and membership
+checks, regardless of where the action originated or whether its payload was
+constructed manually. Unsubscribe actions must only affect the subscription of
+the current Telegram user and remain idempotent.
+
+Subscription functionality is available for an event only when all of the
+following conditions are met:
+
+- `Event.Post` is present.
+- `Event.Post.Chat` is present.
+- `Event.Post.ChatMessageID` is non-zero.
+- The chat is a Telegram supergroup or channel. Basic groups are not supported.
+- The bot is an administrator of the supergroup or channel and Telegram allows
+  it to query the user's current status through `getChatMember`.
+
+If any condition is not met, subscription controls are not shown for that event
+and a manually constructed subscription request must be rejected.
+
+A chat with a public username is treated as public. A chat without a public
+username is treated as private. Membership rules are:
+
+- For a public supergroup or channel, the user may subscribe and receive
+  notifications unless `getChatMember` reports that the user is banned.
+- For a private supergroup or channel, the user may subscribe and receive
+  notifications only while `getChatMember` reports that the user is a current
+  member.
+
+Membership eligibility must be checked when the subscription action is handled
+and again before a new-event notification is delivered. If Telegram cannot
+confirm the required status, the operation fails closed: the bot must not create
+the subscription or send the notification.
 
 ## Notifications
 

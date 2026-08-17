@@ -47,5 +47,7 @@ const (
 	HistoryPostChatAdded        HistoryAction = "post_chat_added"
 	HistoryEventSettingsUpdated HistoryAction = "event_settings_updated"
 	HistoryUserSettingsUpdated  HistoryAction = "user_settings_updated"
+	HistoryUserSubscribed       HistoryAction = "user_subscribed"
+	HistoryUserUnsubscribed     HistoryAction = "user_unsubscribed"
 	HistoryEventRemoved         HistoryAction = "event_removed"
 )

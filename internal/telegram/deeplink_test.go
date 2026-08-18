@@ -23,6 +23,17 @@ func TestDeeplink_String(t *testing.T) {
 	assert.Equal(t, want, deeplink.String())
 }
 
+func TestDeeplink_Subscribe(t *testing.T) {
+	config.SetBotProfile(&tele.User{Username: "my_bot"})
+	deeplink := Deeplink{Action: models.SessionSubscribe, EventID: "eventID"}
+	want := "https://t.me/my_bot?start=v1-subscribe-eventID"
+
+	assert.Equal(t, want, deeplink.String())
+	parsed, err := DeeplinkParse(want)
+	assert.NoError(t, err)
+	assert.Equal(t, &deeplink, parsed)
+}
+
 func TestDeeplinkParsePayload(t *testing.T) {
 	tests := []struct {
 		name     string
@@ -47,6 +58,15 @@ func TestDeeplinkParsePayload(t *testing.T) {
 				Action:  models.SessionSignup,
 				EventID: "huw8HMZsOp3",
 				Role:    models.RoleLeader,
+			},
+			err: false,
+		},
+		{
+			name:    "subscribe",
+			payload: "v1-subscribe-huw8HMZsOp3",
+			expected: &Deeplink{
+				Action:  models.SessionSubscribe,
+				EventID: "huw8HMZsOp3",
 			},
 			err: false,
 		},

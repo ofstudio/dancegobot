@@ -118,7 +118,56 @@ func (h *Handlers) myScene(c tele.Context, offset int) error {
 		Role:     models.RoleUnknown,
 	})
 	canManage := h.eventService.CanManage(event, u.Profile)
-	return views.MyScene(c, reg, canManage, offset, next)
+	subscription, err := h.subscriptionService.Status(h.ctx(c), event, u.Profile)
+	if err != nil {
+		h.log.Error("[handlers] my scene: failed to get subscription status: "+err.Error(),
+			"event_id", event.ID,
+			telelog.Trace(c))
+	}
+	return views.MyScene(c, reg, canManage, subscription, offset, next)
+}
+
+// CbMySubscription handles the subscription toggle in the /my scene.
+func (h *Handlers) CbMySubscription(c tele.Context) error {
+	h.log.Info("[handlers] my scene subscription callback received", telelog.Attr(c))
+	if len(c.Args()) < 3 {
+		return c.RespondText(locale.ErrSomethingWrong)
+	}
+	action, eventID := c.Args()[0], c.Args()[1]
+	offset, err := strconv.Atoi(c.Args()[2])
+	if err != nil {
+		return c.RespondText(locale.ErrSomethingWrong)
+	}
+	event, err := h.eventService.Get(h.ctx(c), eventID)
+	if err != nil {
+		return c.RespondText(locale.SubscriptionUnavailable)
+	}
+	if event == nil || event.Post == nil || event.Post.Chat == nil {
+		return c.RespondText(locale.SubscriptionUnavailable)
+	}
+	profile := h.userGet(c).Profile
+	var message string
+	switch action {
+	case views.SubscriptionActionSubscribe:
+		_, _, subscribeErr := h.subscriptionService.Subscribe(h.ctx(c), eventID, profile)
+		if subscribeErr != nil {
+			return h.respondSubscriptionError(c, subscribeErr, "my scene subscribe")
+		}
+		message = views.SubscriptionSubscribedText(event.Post.Chat)
+	case views.SubscriptionActionUnsubscribe:
+		_, _, unsubscribeErr := h.subscriptionService.Unsubscribe(h.ctx(c), eventID, profile)
+		if unsubscribeErr != nil {
+			return h.respondSubscriptionError(c, unsubscribeErr, "my scene unsubscribe")
+		}
+		message = views.SubscriptionUnsubscribedText(event.Post.Chat)
+	default:
+		return c.RespondText(locale.ErrSomethingWrong)
+	}
+	if err = h.myScene(c, offset); err != nil {
+		h.log.Error("[handlers] my scene subscription callback: "+err.Error(), telelog.Trace(c))
+		return c.RespondText(locale.ErrSomethingWrong)
+	}
+	return c.RespondText(message)
 }
 
 // userGetMyEvents returns user with MyEvents in Session.

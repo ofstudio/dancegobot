@@ -6,10 +6,21 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/ofstudio/dancegobot/internal/locale"
 	"github.com/ofstudio/dancegobot/internal/models"
 )
 
 func Test_notifyText(t *testing.T) {
+	t.Run("TmplNewEvent", func(t *testing.T) {
+		n := &models.Notification{
+			TmplCode: models.TmplNewEvent,
+			Payload:  testPayload,
+		}
+		text, err := notifyTextBuilder(n)
+		require.NoError(t, err)
+		assert.Equal(t, "🔔 Новая запись в Test Chat.", text.String())
+	})
+
 	t.Run("TmplRegisteredWithSingle", func(t *testing.T) {
 		n := &models.Notification{
 			TmplCode: models.TmplRegisteredWithSingle,
@@ -151,6 +162,61 @@ func Test_notifyText(t *testing.T) {
 	})
 }
 
+func TestNotifyTextNewEventChatName(t *testing.T) {
+	tests := []struct {
+		name string
+		chat models.Chat
+		want string
+	}{
+		{
+			name: "title",
+			chat: models.Chat{Title: "Dance & Practice"},
+			want: "🔔 Новая запись в Dance &amp; Practice.",
+		},
+		{
+			name: "username",
+			chat: models.Chat{Username: "dance_practice"},
+			want: "🔔 Новая запись в @dance_practice.",
+		},
+		{
+			name: "unnamed chat",
+			chat: models.Chat{},
+			want: "🔔 Новая запись в чате.",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			n := &models.Notification{
+				TmplCode: models.TmplNewEvent,
+				Payload: models.NotificationPayload{Event: &models.Event{Post: &models.Post{
+					Chat: &tt.chat,
+				}}},
+			}
+			text, err := notifyTextBuilder(n)
+			require.NoError(t, err)
+			require.Equal(t, tt.want, text.String())
+		})
+	}
+}
+
+func Test_btnNewEventNotification(t *testing.T) {
+	event := &models.Event{
+		ID: "event_id",
+		Post: &models.Post{
+			Chat:          &models.Chat{ID: -1001234567890, Type: models.ChatSuper},
+			ChatMessageID: 42,
+		},
+	}
+	rm := btnNewEventNotification(event)
+	require.Len(t, rm.InlineKeyboard, 2)
+	require.Len(t, rm.InlineKeyboard[0], 1)
+	require.Equal(t, locale.BtnChatLink, rm.InlineKeyboard[0][0].Text)
+	require.Equal(t, "https://t.me/c/1234567890/42", rm.InlineKeyboard[0][0].URL)
+	require.Equal(t, locale.BtnUnsubscribe, rm.InlineKeyboard[1][0].Text)
+	require.Contains(t, rm.InlineKeyboard[1][0].Data, "event_id")
+}
+
 func Test_notifyTextEscapesDancerAndProfileNames(t *testing.T) {
 	payload := testPayload
 	payload.Event.Caption = "Event <Tag> & Co"
@@ -213,6 +279,19 @@ func Test_chatLink(t *testing.T) {
 			ok:   true,
 		},
 		{
+			name: "public channel post",
+			event: &models.Event{
+				Post: &models.Post{
+					Chat: &models.Chat{
+						ID: -1001234567890, Type: models.ChatChannel, Username: "dance_channel",
+					},
+					ChatMessageID: 42,
+				},
+			},
+			want: "https://t.me/dance_channel/42",
+			ok:   true,
+		},
+		{
 			name:  "nil event",
 			event: nil,
 			ok:    false,
@@ -267,6 +346,7 @@ var testPayload = models.NotificationPayload{
 	Event: &models.Event{
 		Caption: "Test Event",
 		Owner:   models.Profile{ID: 100, FirstName: "Test", LastName: "Owner"},
+		Post:    &models.Post{Chat: &models.Chat{Title: "Test Chat"}},
 	},
 	Partner: &models.Dancer{
 		Profile: &models.Profile{

@@ -8,20 +8,37 @@ import (
 
 	"github.com/ofstudio/dancegobot/internal/locale"
 	"github.com/ofstudio/dancegobot/internal/models"
+	"github.com/ofstudio/dancegobot/internal/services"
 	"github.com/ofstudio/dancegobot/pkg/randtoken"
 )
 
 var (
-	BtnMyTurnPage = tele.Btn{Unique: "my_turn_page"}
-	BtnMyRefresh  = tele.Btn{Unique: "my_refresh"}
+	BtnMyTurnPage     = tele.Btn{Unique: "my_turn_page"}
+	BtnMyRefresh      = tele.Btn{Unique: "my_refresh"}
+	BtnMySubscription = tele.Btn{Unique: "my_subscription"}
+)
+
+const (
+	SubscriptionActionSubscribe   = "subscribe"
+	SubscriptionActionUnsubscribe = "unsubscribe"
 )
 
 // MyScene renders the /my scene.
-func MyScene(c tele.Context, reg models.Registration, canManage bool, offset, next int) error {
+func MyScene(
+	c tele.Context,
+	reg models.Registration,
+	canManage bool,
+	subscription services.SubscriptionStatus,
+	offset, next int,
+) error {
 	date := reg.Event.CreatedAt.Format("02.01.2006")
 	msg := fmt.Sprintf(locale.MyEventHeader, date) + postTextBuilder(reg.Event).String()
-	rm := btnMyScene(reg, canManage, offset, next)
-	return c.EditOrSend(msg, rm, tele.ModeHTML, tele.RemoveKeyboard, tele.NoPreview)
+	rm := btnMyScene(reg, canManage, subscription, offset, next)
+	err := c.EditOrSend(msg, rm, tele.ModeHTML, tele.RemoveKeyboard, tele.NoPreview)
+	if editErrorIsSuccess(err) {
+		return nil
+	}
+	return err
 }
 
 // MySceneNoEvents renders a message that there are no events for /my scene.
@@ -30,7 +47,12 @@ func MySceneNoEvents(c tele.Context) error {
 }
 
 // btnMyScene creates buttons for the /my scene.
-func btnMyScene(reg models.Registration, canManage bool, offset, next int) *tele.ReplyMarkup {
+func btnMyScene(
+	reg models.Registration,
+	canManage bool,
+	subscription services.SubscriptionStatus,
+	offset, next int,
+) *tele.ReplyMarkup {
 	rm := &tele.ReplyMarkup{}
 	var rows []tele.Row
 
@@ -66,6 +88,22 @@ func btnMyScene(reg models.Registration, canManage bool, offset, next int) *tele
 	link, ok := chatLink(reg.Event)
 	if ok {
 		rows = append(rows, rm.Row(rm.URL(locale.BtnChatLink, link)))
+	}
+
+	if subscription.Available {
+		action := SubscriptionActionSubscribe
+		caption := locale.BtnSubscribe
+		if subscription.Subscribed {
+			action = SubscriptionActionUnsubscribe
+			caption = locale.BtnUnsubscribe
+		}
+		rows = append(rows, rm.Row(rm.Data(
+			caption,
+			BtnMySubscription.Unique,
+			action,
+			reg.Event.ID,
+			strconv.Itoa(offset),
+		)))
 	}
 
 	// add settings button

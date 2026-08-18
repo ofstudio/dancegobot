@@ -14,8 +14,9 @@ type Session struct {
 type SessionAction string
 
 const (
-	SessionNoAction SessionAction = ""       // No action
-	SessionSignup   SessionAction = "signup" // Event signup action
+	SessionNoAction  SessionAction = ""          // No action
+	SessionSignup    SessionAction = "signup"    // Event signup action
+	SessionSubscribe SessionAction = "subscribe" // New event subscription action
 )
 
 func (a SessionAction) String() string {

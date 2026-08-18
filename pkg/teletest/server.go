@@ -255,7 +255,7 @@ func (s *Server) handle(w http.ResponseWriter, r *http.Request) {
 	req.JSON = gjson.ParseBytes(body)
 	s.record(req)
 
-	resp := s.nextResponse(method)
+	resp := s.nextResponse(req)
 	writeAPIResponse(w, resp)
 }
 
@@ -318,19 +318,20 @@ func (s *Server) consumeLocked(method string, check func(Request) bool) (Request
 	return Request{}, false
 }
 
-func (s *Server) nextResponse(method string) Response {
+func (s *Server) nextResponse(req Request) Response {
 	s.mu.Lock()
 	defer s.mu.Unlock()
+	method := req.Method
 	if queued := s.responses[method]; len(queued) > 0 {
 		resp := queued[0]
 		s.responses[method] = queued[1:]
 		return resp
 	}
-	return s.defaultResponse(method)
+	return s.defaultResponse(req)
 }
 
-func (s *Server) defaultResponse(method string) Response {
-	switch method {
+func (s *Server) defaultResponse(req Request) Response {
+	switch req.Method {
 	case "getMe":
 		return Response{OK: true, Result: s.botUser}
 	case "sendMessage":
@@ -339,6 +340,16 @@ func (s *Server) defaultResponse(method string) Response {
 		return Response{OK: true, Result: tele.Message{ID: id}}
 	case "editMessageText", "editMessageReplyMarkup":
 		return Response{OK: true, Result: true}
+	case "getChatMember":
+		userID := req.JSON.Get("user_id").Int()
+		role := tele.Member
+		if userID == s.botUser.ID {
+			role = tele.Administrator
+		}
+		return Response{OK: true, Result: &tele.ChatMember{
+			User: &tele.User{ID: userID},
+			Role: role,
+		}}
 	case "answerInlineQuery", "answerCallbackQuery", "setMyCommands", "deleteWebhook":
 		return Response{OK: true, Result: true}
 	default:

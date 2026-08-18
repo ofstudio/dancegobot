@@ -18,7 +18,7 @@ func (a *App) wire(ctx context.Context) {
 		NewMiddleware(a.cfg.Settings, a.EventService, a.UserService).
 		WithLogger(a.log)
 	h := handlers.
-		NewHandlers(a.cfg.Settings, a.EventService, a.UserService).
+		NewHandlers(a.cfg.Settings, a.EventService, a.UserService, a.SubscriptionService).
 		WithLogger(a.log)
 
 	// Wire middleware to the bot
@@ -55,6 +55,12 @@ func (a *App) wire(ctx context.Context) {
 	// My scene buttons
 	a.Bot.Handle(&views.BtnMyTurnPage, h.CbMyTurnPage)
 	a.Bot.Handle(&views.BtnMyRefresh, h.CbMyRefresh)
+	a.Bot.Handle(&views.BtnMySubscription, h.CbMySubscription)
+
+	// Subscription buttons
+	a.Bot.Handle(&views.BtnSubscriptionSubscribe, h.CbSubscriptionSubscribe)
+	a.Bot.Handle(&views.BtnSubscriptionClose, h.CbSubscriptionClose)
+	a.Bot.Handle(&views.BtnNotificationUnsubscribe, h.CbNotificationUnsubscribe)
 
 	// Event settings buttons
 	a.Bot.Handle(&views.BtnEventSettings, h.EventSettingsScene)

@@ -136,7 +136,7 @@ func (h *Handlers) coupleAdd(c tele.Context, eventID string, role models.Role, o
 		// otherwise, reset the session
 		h.userSessionResetSignup(c)
 	}
-	return views.SendResult(c, reg, singles)
+	return views.SendResult(c, reg, singles, h.subscriptionURL(c, reg))
 }
 
 // singleAdd handles the single signup action
@@ -162,7 +162,7 @@ func (h *Handlers) singleAdd(c tele.Context, eventID string, role models.Role) e
 		// otherwise, reset the session
 		h.userSessionResetSignup(c)
 	}
-	return views.SendResult(c, reg, singles)
+	return views.SendResult(c, reg, singles, h.subscriptionURL(c, reg))
 }
 
 // dancerRemove handles the dancer remove action
@@ -179,7 +179,7 @@ func (h *Handlers) dancerRemove(c tele.Context, eventID string) error {
 	h.log.Info("[handlers] dancer remove", "", reg.LogValue(), telelog.Trace(c))
 
 	h.userSessionResetSignup(c)
-	return views.SendResult(c, reg, nil)
+	return views.SendResult(c, reg, nil, "")
 }
 
 // userSessionUpdateSignup updates the user event signup session.

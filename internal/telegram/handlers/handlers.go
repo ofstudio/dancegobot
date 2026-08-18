@@ -16,18 +16,25 @@ import (
 )
 
 type Handlers struct {
-	cfg          config.Settings
-	eventService *services.EventService
-	userService  *services.UserService
-	log          *slog.Logger
+	cfg                 config.Settings
+	eventService        *services.EventService
+	userService         *services.UserService
+	subscriptionService *services.SubscriptionService
+	log                 *slog.Logger
 }
 
-func NewHandlers(cfg config.Settings, eventService *services.EventService, userService *services.UserService) *Handlers {
+func NewHandlers(
+	cfg config.Settings,
+	eventService *services.EventService,
+	userService *services.UserService,
+	subscriptionService *services.SubscriptionService,
+) *Handlers {
 	return &Handlers{
-		cfg:          cfg,
-		eventService: eventService,
-		userService:  userService,
-		log:          noplog.Logger(),
+		cfg:                 cfg,
+		eventService:        eventService,
+		userService:         userService,
+		subscriptionService: subscriptionService,
+		log:                 noplog.Logger(),
 	}
 }
 

@@ -14,6 +14,8 @@ import (
 
 var notifyT *template.Template
 
+var BtnNotificationUnsubscribe = tele.Btn{Unique: "notification_unsubscribe"}
+
 // initialize notification templates
 func init() {
 	var err error
@@ -52,6 +54,9 @@ func Notify(api tele.API) func(n *models.Notification) error {
 			return err
 		}
 		rm := btnChatLink(n.Payload.Event)
+		if n.TmplCode == models.TmplNewEvent {
+			rm = btnNewEventNotification(n.Payload.Event)
+		}
 
 		// Send notification
 		user := &tele.User{ID: n.Recipient.ID}
@@ -80,7 +85,11 @@ func notifyTextBuilder(n *models.Notification) (*strings.Builder, error) {
 //   - Supergroup or channel can be either public or private
 //   - Bot should be a member of supergroup or an admin of the channel
 //
-// Link format:
+// Public link format:
+//
+//	https://t.me/{chat_username}/{message_id}
+//
+// Private link format:
 //
 //	https://t.me/c/{chat_link_id}/{message_id}
 //
@@ -102,6 +111,13 @@ func chatLink(event *models.Event) (string, bool) {
 		(event.Post.Chat.Type != models.ChatSuper && event.Post.Chat.Type != models.ChatChannel) {
 		return "", false
 	}
+	if event.Post.Chat.Username != "" {
+		return fmt.Sprintf(
+			"https://t.me/%s/%d",
+			event.Post.Chat.Username,
+			event.Post.ChatMessageID,
+		), true
+	}
 
 	chatLinkId := -event.Post.Chat.ID - 1000000000000
 	return fmt.Sprintf("https://t.me/c/%d/%d", chatLinkId, event.Post.ChatMessageID), true
@@ -115,5 +131,18 @@ func btnChatLink(event *models.Event) *tele.ReplyMarkup {
 		return rm
 	}
 	rm.Inline(rm.Row(rm.URL(locale.BtnChatLink, link)))
+	return rm
+}
+
+func btnNewEventNotification(event *models.Event) *tele.ReplyMarkup {
+	rm := &tele.ReplyMarkup{}
+	link, ok := chatLink(event)
+	if !ok {
+		return rm
+	}
+	rm.Inline(
+		rm.Row(rm.URL(locale.BtnChatLink, link)),
+		rm.Row(rm.Data(locale.BtnUnsubscribe, BtnNotificationUnsubscribe.Unique, event.ID)),
+	)
 	return rm
 }

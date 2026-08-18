@@ -66,6 +66,14 @@ func DeeplinkParsePayload(payload string) (*Deeplink, error) {
 			EventID: params[0],
 			Role:    models.Role(params[1]),
 		}, nil
+	case models.SessionSubscribe:
+		if len(params) < 1 {
+			return nil, errPayload(payload)
+		}
+		return &Deeplink{
+			Action:  action,
+			EventID: params[0],
+		}, nil
 	default:
 		return nil, errPayload(payload)
 	}
@@ -78,6 +86,8 @@ func (d Deeplink) String() string {
 	switch d.Action {
 	case models.SessionSignup:
 		url += string(d.Action) + dlSeparator + d.EventID + dlSeparator + string(d.Role)
+	case models.SessionSubscribe:
+		url += string(d.Action) + dlSeparator + d.EventID
 	default:
 	}
 	return url

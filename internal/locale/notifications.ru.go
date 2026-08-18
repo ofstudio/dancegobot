@@ -12,6 +12,9 @@ const NotificationsBase =
 
 var Notifications = map[models.NotificationTmpl]string{
 	// language=GoTemplate
+	models.TmplNewEvent: `🔔 Новая запись в {{if .Event.Post.Chat.Title}}{{.Event.Post.Chat.Title}}{{else if .Event.Post.Chat.Username}}@{{.Event.Post.Chat.Username}}{{else}}чате{{end}}.`,
+
+	// language=GoTemplate
 	models.TmplRegisteredWithSingle: `🔔 {{.Event.Caption}}
 
 {{fmtDancer .Partner}} зарегистрировался с тобой в паре! 🎉{{template "waitlist" .}}`,

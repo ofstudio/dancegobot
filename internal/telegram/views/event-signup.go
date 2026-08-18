@@ -2,6 +2,7 @@ package views
 
 import (
 	"fmt"
+	"html/template"
 	"math/rand"
 
 	tele "gopkg.in/telebot.v4"
@@ -34,7 +35,7 @@ func SignupScene(c tele.Context, reg models.Registration, singles []models.Sessi
 }
 
 // SendResult sends a message on user signup result.
-func SendResult(c tele.Context, reg models.Registration, singles []models.SessionSingle) error {
+func SendResult(c tele.Context, reg models.Registration, singles []models.SessionSingle, subscribeURL string) error {
 	opts := &tele.SendOptions{
 		DisableWebPagePreview: true,
 		ParseMode:             tele.ModeHTML,
@@ -47,12 +48,14 @@ func SendResult(c tele.Context, reg models.Registration, singles []models.Sessio
 
 	switch reg.Result {
 	case models.ResultRegisteredAsSingle:
-		return c.Send(fmt.Sprintf(locale.ResultSuccessSingle, locale.IconSingle[reg.Role]), opts)
+		msg := fmt.Sprintf(locale.ResultSuccessSingle, locale.IconSingle[reg.Role])
+		return c.Send(withSubscribeLink(msg, subscribeURL), opts)
 	case models.ResultRegisteredInCouple:
 		msg := fmt.Sprintf(locale.ResultSuccessCouple, fmtDancer(*reg.Partner))
 		if reg.WaitList {
 			msg += locale.ResultCoupleWaitlist
 		}
+		msg = withSubscribeLink(msg, subscribeURL)
 		return c.Send(msg, opts)
 	case models.ResultRegistrationRemoved:
 		return c.Send(locale.ResultSuccessRemoved, opts)
@@ -83,6 +86,13 @@ func SendResult(c tele.Context, reg models.Registration, singles []models.Sessio
 		_ = c.Send(locale.ErrSomethingWrong, tele.RemoveKeyboard)
 		return fmt.Errorf("unexpected registration result: '%s'", reg.Result.String())
 	}
+}
+
+func withSubscribeLink(msg, subscribeURL string) string {
+	if subscribeURL == "" {
+		return msg
+	}
+	return msg + "\n\n" + `<a href="` + template.HTMLEscapeString(subscribeURL) + `">` + locale.LinkSubscribe + `</a>`
 }
 
 // SendEventClosed sends a message that the event is closed for registrations and changes.

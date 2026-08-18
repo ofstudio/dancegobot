@@ -399,13 +399,24 @@ Users can subscribe to new event posts published in a specific Telegram chat.
 Subscription controls use the UI form defined by each entry point:
 
 - The response sent after a user successfully creates a couple or registers as
-  single contains a text link labeled "Subscribe".
+  single contains a text link labeled "Subscribe" when the user is not already
+  subscribed. The link opens a confirmation with inline "Subscribe" and "Close"
+  buttons; the subscription is created only after confirmation.
 - The private `/my` event view contains an inline button labeled "Subscribe" or
-  "Unsubscribe", depending on the current subscription state.
+  "Unsubscribe", depending on the current subscription state. A successful action
+  refreshes the button and is acknowledged with a non-modal notification.
 - A new-event notification contains inline "View in chat" and "Unsubscribe"
-  buttons.
-- After unsubscription, the edited notification contains a text link labeled
-  "Subscribe again".
+  buttons and identifies the chat where the event was published.
+- After unsubscription, the notification is edited without a separate popup. It
+  contains a text link labeled "Subscribe again" only if a fresh access check
+  confirms that the user may subscribe again; the link opens the same confirmation
+  flow.
+
+Successful subscribe and unsubscribe actions use the same result text whether or
+not the requested state was already present. The UI does not distinguish repeated
+actions with "already subscribed" or "already unsubscribed" messages. Chat names
+use the stored title, then the public `@username`, and finally a neutral "this
+chat" fallback.
 
 The subscription link included in a registration response follows the existing
 event-interaction eligibility rule. It is shown only to the dancer who
@@ -449,6 +460,25 @@ Membership eligibility must be checked when the subscription action is handled
 and again before a new-event notification is delivered. If Telegram cannot
 confirm the required status, the operation fails closed: the bot must not create
 the subscription or send the notification.
+
+The first complete `Post.Chat` and `Post.ChatMessageID` association identifies
+the original publication of an event. Repeated updates for the same chat and
+message are idempotent and may enrich chat metadata, but they must not replace
+the original publication with another chat or message.
+
+New-event notification fanout has at-most-once semantics per event. Before
+calling `NotifierService`, the subscription consumer atomically changes
+`Event.SubscribersNotified` from false to true; this flag is monotonic and cannot
+be cleared by later event updates. A repeated `PostChatAdd` therefore does not
+start another fanout, including when the first fanout had no eligible
+subscribers. A process failure after this claim may result in partial or missing
+delivery and is accepted by this contract.
+
+`SubscriptionService` decides which subscribed users receive `TmplNewEvent` and
+prevents duplicate business fanout. `NotifierService` retains responsibility for
+delivery, technical retries, delivery logging, and `HistoryNotificationSent`.
+Actual subscription changes are recorded as `HistoryUserSubscribed` and
+`HistoryUserUnsubscribed`; idempotent repeated actions do not add history items.
 
 ## Notifications
 

@@ -28,7 +28,7 @@ func newEnv(t *testing.T) *testEnv {
 	t.Helper()
 
 	tg := teletest.New(t, teletest.WithBotUser(botUser))
-	tg.Ignore("getMe", "setMyCommands", "deleteWebhook", "getUpdates")
+	tg.Ignore("getMe", "setMyCommands", "deleteWebhook", "getUpdates", "getChatMember")
 
 	ctx, cancel := context.WithCancel(context.Background())
 	cfg := config.Default()

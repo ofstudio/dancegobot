@@ -16,14 +16,15 @@ import (
 )
 
 type App struct {
-	cfg             config.Config
-	Bot             *tele.Bot
-	Store           store.Store
-	EventService    *services.EventService
-	UserService     *services.UserService
-	NotifierService *services.NotifierService
-	RenderService   *services.RenderService
-	log             *slog.Logger
+	cfg                 config.Config
+	Bot                 *tele.Bot
+	Store               store.Store
+	EventService        *services.EventService
+	UserService         *services.UserService
+	SubscriptionService *services.SubscriptionService
+	NotifierService     *services.NotifierService
+	RenderService       *services.RenderService
+	log                 *slog.Logger
 }
 
 // New creates a new application with the given configuration.
@@ -66,8 +67,12 @@ func (a *App) Init(ctx context.Context) error {
 	a.NotifierService = services.
 		NewNotifierService(a.cfg.Settings, a.Store, views.Notify(a.Bot)).
 		WithLogger(a.log)
+	a.SubscriptionService = services.
+		NewSubscriptionService(a.Store, a.NotifierService, telegram.Membership(a.Bot)).
+		WithLogger(a.log)
 	a.EventService = services.
 		NewEventService(a.cfg.Settings, a.Store, a.RenderService, a.NotifierService).
+		WithEventPublishedHandler(a.SubscriptionService).
 		WithLogger(a.log)
 	a.UserService = services.
 		NewUserService(a.cfg.Settings, a.Store).

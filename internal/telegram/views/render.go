@@ -44,12 +44,16 @@ func render(api tele.API, event *models.Event, inlineMessageID string) error {
 
 	_, err := api.Edit(msg, postTextBuilder(event).String(), opts)
 	// An unchanged Telegram message means the requested render is already applied.
-	if errors.Is(err, tele.ErrTrueResult) ||
-		errors.Is(err, tele.ErrMessageNotModified) ||
-		errors.Is(err, tele.ErrSameMessageContent) {
+	if editErrorIsSuccess(err) {
 		return nil
 	}
 	return err
+}
+
+func editErrorIsSuccess(err error) bool {
+	return errors.Is(err, tele.ErrTrueResult) ||
+		errors.Is(err, tele.ErrMessageNotModified) ||
+		errors.Is(err, tele.ErrSameMessageContent)
 }
 
 // postTextBuilder returns strings.Builder with the event post text.

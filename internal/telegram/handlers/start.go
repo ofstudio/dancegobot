@@ -27,6 +27,8 @@ func (h *Handlers) Start(c tele.Context) error {
 		switch dl.Action {
 		case models.SessionSignup:
 			return h.signupScene(c, dl.EventID, dl.Role)
+		case models.SessionSubscribe:
+			return h.subscribeFromLink(c, dl.EventID)
 		default:
 			return h.sendErr(c, locale.ErrStartPayload)
 		}

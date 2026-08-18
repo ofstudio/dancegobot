@@ -46,6 +46,19 @@ func Test_renderEditResult(t *testing.T) {
 	}
 }
 
+func TestEditErrorIsSuccess(t *testing.T) {
+	requirements := map[error]bool{
+		nil:                            false,
+		tele.ErrTrueResult:             true,
+		tele.ErrMessageNotModified:     true,
+		tele.ErrSameMessageContent:     true,
+		errors.New("telegram failure"): false,
+	}
+	for err, want := range requirements {
+		assert.Equal(t, want, editErrorIsSuccess(err))
+	}
+}
+
 func Test_btnEventClosedStable(t *testing.T) {
 	first := btnEventClosed()
 	second := btnEventClosed()

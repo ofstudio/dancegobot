@@ -84,7 +84,10 @@ func (m *Middleware) parseBtnEventSignupCb(btn tele.InlineButton) (string, bool)
 // If the button URL is not an event signup url, it returns an empty string and false.
 func (m *Middleware) parseBtnEventSignupURL(btn tele.InlineButton) (string, bool) {
 	dl, err := telegram.DeeplinkParse(btn.URL)
-	if err != nil || dl.Action != models.SessionSignup {
+	if err != nil {
+		return "", false
+	}
+	if dl.Action != models.SessionSignup {
 		return "", false
 	}
 	return dl.EventID, true

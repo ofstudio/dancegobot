@@ -35,7 +35,7 @@ func Default() Config {
 
 		// Database default configuration
 		DB: DB{
-			Version: 2,
+			Version: 3,
 		},
 
 		// Application default settings

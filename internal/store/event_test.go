@@ -80,6 +80,57 @@ func (suite *TestStoreSuite) TestEventUpsert() {
 	})
 }
 
+func (suite *TestStoreSuite) TestEventSubscribersNotifiedSet() {
+	suite.Run("set once", func() {
+		ctx := context.Background()
+		event := &models.Event{
+			ID:      "event_1",
+			Caption: "test",
+			Owner:   models.Profile{ID: 12, FirstName: "Test"},
+		}
+		suite.Require().NoError(suite.store.EventUpsert(ctx, event))
+
+		set, err := suite.store.EventSubscribersNotifiedSet(ctx, event.ID)
+		suite.Require().NoError(err)
+		suite.True(set)
+		set, err = suite.store.EventSubscribersNotifiedSet(ctx, event.ID)
+		suite.Require().NoError(err)
+		suite.False(set)
+		set, err = suite.store.EventSubscribersNotifiedSet(ctx, "missing")
+		suite.Require().NoError(err)
+		suite.False(set)
+
+		got, err := suite.store.EventGet(ctx, event.ID)
+		suite.Require().NoError(err)
+		suite.True(got.SubscribersNotified)
+	})
+}
+
+func (suite *TestStoreSuite) TestEventSubscribersNotifiedCannotBeOverwrittenByStaleEvent() {
+	suite.Run("stale update preserves claim", func() {
+		ctx := context.Background()
+		event := &models.Event{
+			ID:      "event_1",
+			Caption: "test",
+			Owner:   models.Profile{ID: 12, FirstName: "Test"},
+		}
+		suite.Require().NoError(suite.store.EventUpsert(ctx, event))
+
+		stale, err := suite.store.EventGet(ctx, event.ID)
+		suite.Require().NoError(err)
+		set, err := suite.store.EventSubscribersNotifiedSet(ctx, event.ID)
+		suite.Require().NoError(err)
+		suite.True(set)
+
+		stale.Caption = "updated from stale copy"
+		suite.Require().NoError(suite.store.EventUpsert(ctx, stale))
+		stored, err := suite.store.EventGet(ctx, event.ID)
+		suite.Require().NoError(err)
+		suite.Equal("updated from stale copy", stored.Caption)
+		suite.True(stored.SubscribersNotified)
+	})
+}
+
 func (suite *TestStoreSuite) TestEventGetUpdatedAfter() {
 	suite.Run("success", func() {
 		_, err := suite.store.db.Exec(`

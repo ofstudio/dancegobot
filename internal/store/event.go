@@ -43,7 +43,11 @@ func (s *SQLiteStore) EventUpsert(ctx context.Context, event *models.Event) erro
 	`INSERT INTO events (id, owner_id, data)
 VALUES (?1, ?2, ?3)
 ON CONFLICT (id) DO UPDATE SET owner_id   = excluded.owner_id,
-                               data       = excluded.data,
+                               data       = CASE
+                                                WHEN ifnull(json_extract(events.data, '$.subscribers_notified'), FALSE)
+                                                    THEN json_set(excluded.data, '$.subscribers_notified', json('true'))
+                                                ELSE excluded.data
+                                   END,
                                updated_at = CURRENT_TIMESTAMP;`
 	stmt, err := s.stmt(ctx, query)
 	if err != nil {
@@ -60,6 +64,31 @@ ON CONFLICT (id) DO UPDATE SET owner_id   = excluded.owner_id,
 	}
 
 	return nil
+}
+
+// EventSubscribersNotifiedSet atomically sets the event SubscribersNotified attribute.
+// Returns false if the attribute is already set or the event does not exist.
+func (s *SQLiteStore) EventSubscribersNotifiedSet(ctx context.Context, eventID string) (bool, error) {
+	const query =
+	// language=SQLite
+	`UPDATE events
+SET data = json_set(data, '$.subscribers_notified', json('true'))
+WHERE id = ?1
+  AND ifnull(json_extract(data, '$.subscribers_notified'), FALSE) = FALSE
+RETURNING id;`
+	stmt, err := s.stmt(ctx, query)
+	if err != nil {
+		return false, fmt.Errorf("%w: %w", ErrStmtPrepare, err)
+	}
+
+	var id string
+	if err = stmt.QueryRowxContext(ctx, eventID).Scan(&id); err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return false, nil
+		}
+		return false, fmt.Errorf("%w: %w", ErrStmtExec, err)
+	}
+	return true, nil
 }
 
 // EventGetUpdatedAfter returns all non-draft events updated after the specified time.

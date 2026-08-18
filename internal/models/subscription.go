@@ -45,3 +45,10 @@ func (k SubscriptionKey) LogValue() slog.Value {
 		slog.Int64("chat_id", k.ChatID),
 	)
 }
+
+// Membership contains Telegram chat membership facts used by subscription rules.
+type Membership struct {
+	Administrator bool
+	Member        bool
+	Banned        bool
+}

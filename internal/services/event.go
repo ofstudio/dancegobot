@@ -2,6 +2,7 @@ package services
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log/slog"
 	"strings"
@@ -19,11 +20,17 @@ import (
 
 // EventService is a service that manages dance events
 type EventService struct {
-	cfg      config.Settings
-	store    store.Store
-	notifier *NotifierService
-	renderer *RenderService
-	log      *slog.Logger
+	cfg                   config.Settings
+	store                 store.Store
+	notifier              *NotifierService
+	renderer              *RenderService
+	eventPublishedHandler EventPublishedHandler
+	log                   *slog.Logger
+}
+
+// EventPublishedHandler handles a newly published event post.
+type EventPublishedHandler interface {
+	HandleEventPublished(context.Context, *models.Event) error
 }
 
 func NewEventService(cfg config.Settings, store store.Store, r *RenderService, n *NotifierService) *EventService {
@@ -34,6 +41,11 @@ func NewEventService(cfg config.Settings, store store.Store, r *RenderService, n
 		notifier: n,
 		log:      noplog.Logger(),
 	}
+}
+
+func (s *EventService) WithEventPublishedHandler(h EventPublishedHandler) *EventService {
+	s.eventPublishedHandler = h
+	return s
 }
 
 func (s *EventService) WithLogger(l *slog.Logger) *EventService {
@@ -203,6 +215,14 @@ func (s *EventService) PostChatAdd(
 		if h.Event().Post == nil {
 			h.Event().Post = &models.Post{}
 		}
+		if h.Event().Post.Chat != nil && h.Event().Post.ChatMessageID != 0 {
+			if h.Event().Post.Chat.ID != chat.ID || h.Event().Post.ChatMessageID != chatMessageID {
+				return fmt.Errorf("event post chat is already set")
+			}
+			h.Event().Post.Chat = chat
+			event = h.Event()
+			return nil
+		}
 		h.Event().Post.Chat = chat
 		h.Event().Post.ChatMessageID = chatMessageID
 		event = h.Event()
@@ -214,7 +234,24 @@ func (s *EventService) PostChatAdd(
 		})
 		return nil
 	})
-	return event, err
+	if err != nil {
+		return event, err
+	}
+	if s.eventPublishedHandler == nil {
+		return event, nil
+	}
+	publishedEvent := cloneEvent(event)
+	handleErr := s.eventPublishedHandler.HandleEventPublished(ctx, publishedEvent)
+	if handleErr == nil {
+		return event, nil
+	}
+	if errors.Is(handleErr, ErrSubscriptionUnavailable) {
+		return event, nil
+	}
+	s.log.Error("[event service] failed to handle published event: "+handleErr.Error(),
+		"event", publishedEvent,
+		trace.Attr(ctx))
+	return event, nil
 }
 
 // LimitChangeGetAffected returns affected couples after the event settings limit was changed.

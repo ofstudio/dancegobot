@@ -134,6 +134,112 @@ func TestEventServiceInputValidation(t *testing.T) {
 	})
 }
 
+func TestEventServicePostChatAddIsIdempotentAndImmutable(t *testing.T) {
+	ctx := context.Background()
+	service, st := newEventServiceTest(t)
+	handler := &eventPublishedHandlerStub{events: make(chan *models.Event, 3)}
+	service.WithEventPublishedHandler(handler)
+	event := &models.Event{
+		ID:      "event_id",
+		Caption: "Event",
+		Owner:   models.Profile{ID: 1, FirstName: "Owner"},
+		Post:    &models.Post{InlineMessageID: "inline_id"},
+	}
+	require.NoError(t, st.EventUpsert(ctx, event))
+	chat := &models.Chat{ID: -1001, Type: models.ChatSuper, Title: "Original"}
+
+	_, err := service.PostChatAdd(ctx, event.ID, chat, 10)
+	require.NoError(t, err)
+	require.Equal(t, int64(-1001), (<-handler.events).Post.Chat.ID)
+
+	updatedChat := &models.Chat{ID: -1001, Type: models.ChatSuper, Title: "Updated title"}
+	_, err = service.PostChatAdd(ctx, event.ID, updatedChat, 10)
+	require.NoError(t, err)
+	require.Equal(t, "Updated title", (<-handler.events).Post.Chat.Title)
+
+	_, err = service.PostChatAdd(ctx, event.ID, &models.Chat{ID: -1002, Type: models.ChatSuper}, 20)
+	require.ErrorContains(t, err, "event post chat is already set")
+
+	stored, err := st.EventGet(ctx, event.ID)
+	require.NoError(t, err)
+	require.Equal(t, int64(-1001), stored.Post.Chat.ID)
+	require.Equal(t, 10, stored.Post.ChatMessageID)
+	require.Equal(t, "Updated title", stored.Post.Chat.Title)
+	require.Eventually(t, func() bool {
+		return historyActionCount(t, st, models.HistoryPostChatAdded) == 1
+	}, time.Second, 10*time.Millisecond)
+}
+
+func TestEventServicePostChatAddWaitsForPublishedHandler(t *testing.T) {
+	ctx := context.Background()
+	service, st := newEventServiceTest(t)
+	event := &models.Event{
+		ID:      "event_id",
+		Caption: "Event",
+		Owner:   models.Profile{ID: 1, FirstName: "Owner"},
+		Post:    &models.Post{InlineMessageID: "inline_id"},
+	}
+	require.NoError(t, st.EventUpsert(ctx, event))
+
+	membershipStarted := make(chan struct{})
+	membershipRelease := make(chan struct{})
+	notifications := make(chan *models.Notification, 1)
+	notifier := NewNotifierService(service.cfg, st, func(notification *models.Notification) error {
+		notifications <- notification
+		return nil
+	})
+	subscription := NewSubscriptionService(st, notifier, func(_ int64, _ int64) (models.Membership, error) {
+		close(membershipStarted)
+		<-membershipRelease
+		return models.Membership{Administrator: true, Member: true}, nil
+	})
+	service.WithEventPublishedHandler(subscription)
+
+	done := make(chan error, 1)
+	go func() {
+		_, err := service.PostChatAdd(
+			ctx,
+			event.ID,
+			&models.Chat{ID: -1001, Type: models.ChatSuper, Title: "Dance"},
+			10,
+		)
+		done <- err
+	}()
+
+	<-membershipStarted
+	select {
+	case err := <-done:
+		close(membershipRelease)
+		require.NoError(t, err)
+		t.Fatal("PostChatAdd returned before the subscriber snapshot was established")
+	case <-time.After(20 * time.Millisecond):
+	}
+	close(membershipRelease)
+	require.NoError(t, <-done)
+
+	created, err := st.SubscriptionCreate(ctx, &models.Subscription{
+		Subscriber: models.Profile{ID: 2, FirstName: "Subscriber"},
+		Chat:       models.Chat{ID: -1001, Type: models.ChatSuper, Title: "Dance"},
+	})
+	require.NoError(t, err)
+	require.True(t, created)
+
+	select {
+	case notification := <-notifications:
+		t.Fatalf("post-publication subscriber received current event: %v", notification)
+	case <-time.After(20 * time.Millisecond):
+	}
+}
+
+type eventPublishedHandlerStub struct {
+	events chan *models.Event
+}
+
+func (h *eventPublishedHandlerStub) HandleEventPublished(_ context.Context, event *models.Event) error {
+	h.events <- event
+	return nil
+}
+
 func newEventServiceTest(t *testing.T) (*EventService, *storepkg.SQLiteStore) {
 	t.Helper()
 

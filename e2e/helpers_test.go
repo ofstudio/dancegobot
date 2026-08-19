@@ -112,7 +112,7 @@ func (e *testEnv) eventDraftCreate(query tele.Query) string {
 
 func (e *testEnv) eventGet(id string) *models.Event {
 	e.t.Helper()
-	event, err := e.app.EventService.Get(context.Background(), id)
+	event, err := e.app.Services.Event.Get(context.Background(), id)
 	require.NoError(e.t, err)
 	require.NotNil(e.t, event)
 	return event

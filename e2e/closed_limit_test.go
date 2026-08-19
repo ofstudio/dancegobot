@@ -72,7 +72,7 @@ func TestEventLimitWaitlistSignup(t *testing.T) {
 	})
 	env.waitSendMessage(userJohn.ID, locale.ResultCoupleWaitlist)
 
-	reg, err := env.app.EventService.RegistrationGet(context.Background(), event.ID,
+	reg, err := env.app.Services.Event.RegistrationGet(context.Background(), event.ID,
 		models.NewProfile(*userJohn), models.RoleLeader)
 	require.NoError(t, err)
 	require.True(t, reg.WaitList)
@@ -102,7 +102,7 @@ func TestEventLimitWaitlistLeftAfterRemoval(t *testing.T) {
 			strings.Contains(req.String("text"), "списка ожидания")
 	})
 
-	reg, err := env.app.EventService.RegistrationGet(context.Background(), event.ID,
+	reg, err := env.app.Services.Event.RegistrationGet(context.Background(), event.ID,
 		models.NewProfile(*userJane), models.RoleLeader)
 	require.NoError(t, err)
 	require.False(t, reg.WaitList)
@@ -156,12 +156,12 @@ func TestEventLimitWaitlistLeftAfterAutoPairRemoval(t *testing.T) {
 			strings.Contains(req.String("text"), "вышли из списка ожидания")
 	})
 
-	moved, err := env.app.EventService.RegistrationGet(context.Background(), event.ID,
+	moved, err := env.app.Services.Event.RegistrationGet(context.Background(), event.ID,
 		models.NewProfile(*userJane), models.RoleLeader)
 	require.NoError(t, err)
 	require.False(t, moved.WaitList)
 
-	autoPaired, err := env.app.EventService.RegistrationGet(context.Background(), event.ID,
+	autoPaired, err := env.app.Services.Event.RegistrationGet(context.Background(), event.ID,
 		models.NewProfile(*limitUserDan), models.RoleLeader)
 	require.NoError(t, err)
 	require.True(t, autoPaired.WaitList)

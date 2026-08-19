@@ -26,7 +26,7 @@ func TestNewEventSubscriptionNotificationLifecycle(t *testing.T) {
 	require.Contains(t, prompt.InlineKeyboardRaw(), locale.BtnClose)
 	require.Contains(t, prompt.InlineKeyboardRaw(), first.ID)
 
-	status, err := env.app.SubscriptionService.Status(
+	status, err := env.app.Services.Subscription.Status(
 		context.Background(),
 		env.eventGet(first.ID),
 		models.NewProfile(*userJohn),
@@ -98,7 +98,7 @@ func TestNewEventSubscriptionNotificationLifecycle(t *testing.T) {
 	env.waitEditMessageText("Вы подписались на новые мероприятия в Test Super Group.")
 	env.tg.Wait("answerCallbackQuery")
 
-	status, err = env.app.SubscriptionService.Status(context.Background(), env.eventGet(second.ID), models.NewProfile(*userJohn))
+	status, err = env.app.Services.Subscription.Status(context.Background(), env.eventGet(second.ID), models.NewProfile(*userJohn))
 	require.NoError(t, err)
 	require.Equal(t, services.SubscriptionStatus{Available: true, Subscribed: true}, status)
 }

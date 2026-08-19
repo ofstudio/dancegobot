@@ -54,7 +54,7 @@ func TestEventAutoPairSignup(t *testing.T) {
 			strings.Contains(req.String("text"), "Jane Doe")
 	})
 
-	reg, err := env.app.EventService.RegistrationGet(context.Background(), event.ID,
+	reg, err := env.app.Services.Event.RegistrationGet(context.Background(), event.ID,
 		models.NewProfile(*userJohn), models.RoleLeader)
 	require.NoError(t, err)
 	require.Equal(t, models.StatusInCouple, reg.Status)

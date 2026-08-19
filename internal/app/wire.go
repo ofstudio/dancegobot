@@ -15,10 +15,10 @@ func (a *App) wire(ctx context.Context) {
 
 	// Initialize middleware and handlers
 	m := middleware.
-		NewMiddleware(a.cfg.Settings, a.EventService, a.UserService).
+		NewMiddleware(a.cfg.Settings, a.Services.Event, a.Services.User).
 		WithLogger(a.log)
 	h := handlers.
-		NewHandlers(a.cfg.Settings, a.EventService, a.UserService, a.SubscriptionService).
+		NewHandlers(a.cfg.Settings, a.Services.Event, a.Services.User, a.Services.Subscription).
 		WithLogger(a.log)
 
 	// Wire middleware to the bot

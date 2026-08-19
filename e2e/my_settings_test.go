@@ -73,10 +73,10 @@ func TestMyCommand(t *testing.T) {
 
 		john := models.NewProfile(*userJohn)
 		john.Username = "johnuser"
-		user, err := env.app.UserService.Get(context.Background(), john)
+		user, err := env.app.Services.User.Get(context.Background(), john)
 		require.NoError(t, err)
 		user.Profile.Username = "johnuser"
-		require.NoError(t, env.app.UserService.UpdateSession(context.Background(), user))
+		require.NoError(t, env.app.Services.User.UpdateSession(context.Background(), user))
 
 		env.process(env.message(&tele.User{ID: userJohn.ID, FirstName: "John", Username: "johnuser"}, "/my"))
 		req := env.waitSendMessage(userJohn.ID, "Manual username event")
@@ -157,17 +157,17 @@ func TestUserSettingsDefaultEventLimit(t *testing.T) {
 		edit := env.tg.Wait("editMessageText")
 		require.Contains(t, edit.String("text"), "Приходят первые 12 пар")
 
-		user, err := env.app.UserService.Get(context.Background(), models.NewProfile(*userJohn))
+		user, err := env.app.Services.User.Get(context.Background(), models.NewProfile(*userJohn))
 		require.NoError(t, err)
 		require.Equal(t, 12, user.Settings.Event.Limit)
 	})
 
 	t.Run("default limit is applied and can be overridden", func(t *testing.T) {
 		env := newEnv(t)
-		user, err := env.app.UserService.Get(context.Background(), models.NewProfile(*userJohn))
+		user, err := env.app.Services.User.Get(context.Background(), models.NewProfile(*userJohn))
 		require.NoError(t, err)
 		user.Settings.Event.Limit = 12
-		require.NoError(t, env.app.UserService.UpdateSettings(context.Background(), user))
+		require.NoError(t, env.app.Services.User.UpdateSettings(context.Background(), user))
 
 		env.process(env.inlineQuery(tele.Query{Sender: userJohn, Text: "Default limited event", ChatType: "supergroup"}))
 		req := env.tg.Wait("answerInlineQuery")
@@ -184,10 +184,10 @@ func TestUserSettingsDefaultEventLimit(t *testing.T) {
 
 	t.Run("owner can reset default event limit", func(t *testing.T) {
 		env := newEnv(t)
-		user, err := env.app.UserService.Get(context.Background(), models.NewProfile(*userJohn))
+		user, err := env.app.Services.User.Get(context.Background(), models.NewProfile(*userJohn))
 		require.NoError(t, err)
 		user.Settings.Event.Limit = 12
-		require.NoError(t, env.app.UserService.UpdateSettings(context.Background(), user))
+		require.NoError(t, env.app.Services.User.UpdateSettings(context.Background(), user))
 
 		env.process(env.callback(tele.Callback{
 			Sender:  userJohn,
@@ -198,7 +198,7 @@ func TestUserSettingsDefaultEventLimit(t *testing.T) {
 		edit := env.tg.Wait("editMessageText")
 		require.Contains(t, edit.String("text"), locale.EventSettingsLimitNone)
 
-		user, err = env.app.UserService.Get(context.Background(), models.NewProfile(*userJohn))
+		user, err = env.app.Services.User.Get(context.Background(), models.NewProfile(*userJohn))
 		require.NoError(t, err)
 		require.Equal(t, 0, user.Settings.Event.Limit)
 	})
@@ -216,7 +216,7 @@ func TestUserSettingsDefaultAutoPairing(t *testing.T) {
 	edit := env.tg.Wait("editMessageText")
 	require.Contains(t, edit.String("text"), locale.EventSettingsAutoPair[true])
 
-	user, err := env.app.UserService.Get(context.Background(), models.NewProfile(*userJohn))
+	user, err := env.app.Services.User.Get(context.Background(), models.NewProfile(*userJohn))
 	require.NoError(t, err)
 	require.True(t, user.Settings.Event.AutoPairing)
 

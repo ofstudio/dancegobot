@@ -1,6 +1,7 @@
 package services
 
 import (
+	"context"
 	"log/slog"
 
 	"github.com/ofstudio/dancegobot/internal/config"
@@ -42,4 +43,10 @@ func (s *Services) WithLogger(l *slog.Logger) *Services {
 	s.Notifier.WithLogger(l)
 	s.Render.WithLogger(l)
 	return s
+}
+
+// Start starts background service tasks.
+func (s *Services) Start(ctx context.Context) {
+	s.Event.Start(ctx)
+	s.Render.Start(ctx)
 }

@@ -1,6 +1,6 @@
 # Dancegobot Business Logic
 
-Last reviewed: 2026-08-17.
+Last reviewed: 2026-08-19.
 
 This document describes product and business rules for Dancegobot. It is meant
 to be used as a shared reference when changing code, reviewing behavior, or
@@ -429,10 +429,10 @@ explicit user-initiated flow, so it may show subscription controls for any event
 available to the current user there, including an event owned by that user.
 
 Deep links and callback data are not authorization mechanisms. Every subscribe
-or resubscribe action must perform the same server-side chat and membership
-checks, regardless of where the action originated or whether its payload was
-constructed manually. Unsubscribe actions must only affect the subscription of
-the current Telegram user and remain idempotent.
+or resubscribe action must perform the same server-side chat and applicable
+membership-policy checks, regardless of where the action originated or whether
+its payload was constructed manually. Unsubscribe actions must only affect the
+subscription of the current Telegram user and remain idempotent.
 
 Subscription functionality is available for an event only when all of the
 following conditions are met:
@@ -441,14 +441,26 @@ following conditions are met:
 - `Event.Post.Chat` is present.
 - `Event.Post.ChatMessageID` is non-zero.
 - The chat is a Telegram supergroup or channel. Basic groups are not supported.
-- The bot is an administrator of the supergroup or channel and Telegram allows
-  it to query the user's current status through `getChatMember`.
 
 If any condition is not met, subscription controls are not shown for that event
 and a manually constructed subscription request must be rejected.
 
-A chat with a public username is treated as public. A chat without a public
-username is treated as private. Membership rules are:
+A bot does not need to be a chat administrator for subscriptions to work.
+Telegram only guarantees that `getChatMember` works for other users when the
+bot is an administrator. Subscription access therefore has two modes determined
+from the bot's current membership status:
+
+- Strict mode is used when Telegram confirms that the bot is an administrator.
+- Relaxed mode is used when the bot is not an administrator or Telegram cannot
+  determine the bot's status. A missing membership adapter is an application
+  configuration error and must fail closed instead of enabling relaxed mode.
+
+The policy follows the current
+[Bot API `getChatMember` guarantee](https://core.telegram.org/bots/api#getchatmember)
+and must be reconsidered if Telegram changes that guarantee.
+
+In strict mode, a chat with a public username is treated as public and a chat
+without a public username is treated as private. Membership rules are:
 
 - For a public supergroup or channel, the user may subscribe and receive
   notifications unless `getChatMember` reports that the user is banned.
@@ -456,10 +468,20 @@ username is treated as private. Membership rules are:
   notifications only while `getChatMember` reports that the user is a current
   member.
 
-Membership eligibility must be checked when the subscription action is handled
-and again before a new-event notification is delivered. If Telegram cannot
-confirm the required status, the operation fails closed: the bot must not create
-the subscription or send the notification.
+Strict membership eligibility must be checked when the subscription action is
+handled and again before a new-event notification is delivered. If Telegram
+cannot confirm the user's required status in strict mode, the operation fails
+closed: the bot must not create the subscription or send the notification.
+
+In relaxed mode, the bot must not query the user's membership. It allows the
+subscription and sends notifications to all subscribers captured for the event.
+This intentionally accepts disclosure of the stored chat title, the numeric chat
+ID encoded in the message link, and the fact and time of a new event publication.
+The notification does not disclose the event announcement or participant data.
+For a private chat, the message link is not an authorization mechanism: Telegram
+continues to decide whether the current account may open the linked post. Chat
+titles remain visible in relaxed-mode subscription prompts and notifications so
+users can distinguish subscriptions to different chats.
 
 The first complete `Post.Chat` and `Post.ChatMessageID` association identifies
 the original publication of an event. Repeated updates for the same chat and
@@ -473,6 +495,11 @@ be cleared by later event updates. A repeated `PostChatAdd` therefore does not
 start another fanout, including when the first fanout had no eligible
 subscribers. A process failure after this claim may result in partial or missing
 delivery and is accepted by this contract.
+
+The fanout captures its subscriber snapshot and claims the event before
+performing Telegram membership calls. It determines strict or relaxed mode once
+per event. Strict mode checks every subscriber and skips users whose eligibility
+cannot be confirmed; relaxed mode sends to the complete captured snapshot.
 
 `SubscriptionService` decides which subscribed users receive `TmplNewEvent` and
 prevents duplicate business fanout. `NotifierService` retains responsibility for

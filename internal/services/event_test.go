@@ -170,7 +170,7 @@ func TestEventServicePostChatAddIsIdempotentAndImmutable(t *testing.T) {
 	}, time.Second, 10*time.Millisecond)
 }
 
-func TestEventServicePostChatAddWaitsForPublishedHandler(t *testing.T) {
+func TestEventServicePostChatAddEstablishesSubscriberSnapshotBeforeReturn(t *testing.T) {
 	ctx := context.Background()
 	service, st := newEventServiceTest(t)
 	event := &models.Event{
@@ -207,14 +207,6 @@ func TestEventServicePostChatAddWaitsForPublishedHandler(t *testing.T) {
 	}()
 
 	<-membershipStarted
-	select {
-	case err := <-done:
-		close(membershipRelease)
-		require.NoError(t, err)
-		t.Fatal("PostChatAdd returned before the subscriber snapshot was established")
-	case <-time.After(20 * time.Millisecond):
-	}
-	close(membershipRelease)
 	require.NoError(t, <-done)
 
 	created, err := st.SubscriptionCreate(ctx, &models.Subscription{
@@ -223,6 +215,7 @@ func TestEventServicePostChatAddWaitsForPublishedHandler(t *testing.T) {
 	})
 	require.NoError(t, err)
 	require.True(t, created)
+	close(membershipRelease)
 
 	select {
 	case notification := <-notifications:

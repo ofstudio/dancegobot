@@ -119,22 +119,112 @@ func TestSubscriptionSubscribeUnsubscribe(t *testing.T) {
 	require.Equal(t, 1, historyActionCount(t, st, models.HistoryUserUnsubscribed))
 }
 
-func TestSubscriptionRequiresBotAdministrator(t *testing.T) {
+func TestSubscriptionAllowsNonAdministratorBot(t *testing.T) {
 	config.SetBotProfile(&tele.User{ID: 999, FirstName: "Bot"})
 	ctx := context.Background()
+	var notifications []*models.Notification
+	var membershipMu sync.Mutex
+	var subscriberMembershipChecks int
 	service, st := newSubscriptionServiceTest(t, func(_ int64, userID int64) (models.Membership, error) {
 		if userID == 999 {
 			return models.Membership{Member: true}, nil
 		}
-		return models.Membership{Member: true}, nil
-	}, nil)
+		membershipMu.Lock()
+		subscriberMembershipChecks++
+		membershipMu.Unlock()
+		return models.Membership{}, errors.New("subscriber membership must not be queried")
+	}, func(notification *models.Notification) error {
+		membershipMu.Lock()
+		defer membershipMu.Unlock()
+		notifications = append(notifications, notification)
+		return nil
+	})
 	event := subscriptionTestEvent("event", models.Chat{ID: -1001, Type: models.ChatSuper})
 	require.NoError(t, st.EventUpsert(ctx, event))
+	profile := models.Profile{ID: 1, FirstName: "User"}
 
-	status, err := service.Status(ctx, event, models.Profile{ID: 1, FirstName: "User"})
+	status, err := service.Status(ctx, event, profile)
+	require.NoError(t, err)
+	require.Equal(t, SubscriptionStatus{Available: true}, status)
+	_, created, err := service.Subscribe(ctx, event.ID, profile)
+	require.NoError(t, err)
+	require.True(t, created)
+	require.NoError(t, service.HandleEventPublished(ctx, event))
+	require.Eventually(t, func() bool {
+		membershipMu.Lock()
+		defer membershipMu.Unlock()
+		return len(notifications) == 1
+	}, time.Second, 10*time.Millisecond)
+	membershipMu.Lock()
+	membershipChecks := subscriberMembershipChecks
+	notificationRecipientID := notifications[0].Recipient.ID
+	membershipMu.Unlock()
+	require.Zero(t, membershipChecks)
+	require.Equal(t, profile.ID, notificationRecipientID)
+	require.Eventually(t, func() bool {
+		return historyActionCount(t, st, models.HistoryNotificationSent) == 1
+	}, time.Second, 10*time.Millisecond)
+	stored, err := st.EventGet(ctx, event.ID)
+	require.NoError(t, err)
+	require.True(t, stored.SubscribersNotified)
+}
+
+func TestSubscriptionBotMembershipErrorUsesRelaxedPolicy(t *testing.T) {
+	config.SetBotProfile(&tele.User{ID: 999, FirstName: "Bot"})
+	ctx := context.Background()
+	var mu sync.Mutex
+	var subscriberMembershipChecks int
+	notifications := make(chan *models.Notification, 1)
+	service, st := newSubscriptionServiceTest(t, func(_ int64, userID int64) (models.Membership, error) {
+		if userID == 999 {
+			return models.Membership{}, errors.New("member list is inaccessible")
+		}
+		mu.Lock()
+		subscriberMembershipChecks++
+		mu.Unlock()
+		return models.Membership{}, errors.New("subscriber membership must not be queried")
+	}, func(notification *models.Notification) error {
+		notifications <- notification
+		return nil
+	})
+	event := subscriptionTestEvent("event", models.Chat{ID: -1001, Type: models.ChatSuper})
+	require.NoError(t, st.EventUpsert(ctx, event))
+	profile := models.Profile{ID: 1, FirstName: "User"}
+
+	status, err := service.Status(ctx, event, profile)
+	require.NoError(t, err)
+	require.Equal(t, SubscriptionStatus{Available: true}, status)
+	_, created, err := service.Subscribe(ctx, event.ID, profile)
+	require.NoError(t, err)
+	require.True(t, created)
+	require.NoError(t, service.HandleEventPublished(ctx, event))
+	select {
+	case notification := <-notifications:
+		require.Equal(t, int64(1), notification.Recipient.ID)
+	case <-time.After(time.Second):
+		t.Fatal("timed out waiting for relaxed notification")
+	}
+	require.Eventually(t, func() bool {
+		return historyActionCount(t, st, models.HistoryNotificationSent) == 1
+	}, time.Second, 10*time.Millisecond)
+	mu.Lock()
+	membershipChecks := subscriberMembershipChecks
+	mu.Unlock()
+	require.Zero(t, membershipChecks)
+}
+
+func TestSubscriptionMissingMembershipAdapterFailsClosed(t *testing.T) {
+	config.SetBotProfile(&tele.User{ID: 999, FirstName: "Bot"})
+	ctx := context.Background()
+	service, st := newSubscriptionServiceTest(t, nil, nil)
+	event := subscriptionTestEvent("event", models.Chat{ID: -1001, Type: models.ChatSuper})
+	require.NoError(t, st.EventUpsert(ctx, event))
+	profile := models.Profile{ID: 1, FirstName: "User"}
+
+	status, err := service.Status(ctx, event, profile)
 	require.NoError(t, err)
 	require.Equal(t, SubscriptionStatus{}, status)
-	_, _, err = service.Subscribe(ctx, event.ID, models.Profile{ID: 1, FirstName: "User"})
+	_, _, err = service.Subscribe(ctx, event.ID, profile)
 	require.ErrorIs(t, err, ErrSubscriptionUnavailable)
 	require.ErrorIs(t, service.HandleEventPublished(ctx, event), ErrSubscriptionUnavailable)
 	stored, err := st.EventGet(ctx, event.ID)

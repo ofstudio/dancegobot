@@ -70,7 +70,7 @@ func (s *SubscriptionService) Status(
 	if subscription != nil {
 		return SubscriptionStatus{Available: true, Subscribed: true}, nil
 	}
-	if err = s.validateAccess(event, profile); err != nil {
+	if err = s.validateAccess(ctx, event, profile); err != nil {
 		if errors.Is(err, ErrSubscriptionUnavailable) {
 			return SubscriptionStatus{}, nil
 		}
@@ -90,7 +90,7 @@ func (s *SubscriptionService) Subscribe(
 	if err != nil {
 		return nil, false, fmt.Errorf("failed to get event: %w", err)
 	}
-	if err = s.validateAccess(event, profile); err != nil {
+	if err = s.validateAccess(ctx, event, profile); err != nil {
 		return nil, false, err
 	}
 	chat := event.Post.Chat
@@ -191,11 +191,7 @@ func (s *SubscriptionService) HandleEventPublished(ctx context.Context, event *m
 	if event.SubscribersNotified {
 		return nil
 	}
-	botMembership, err := s.membershipGet(chat.ID, config.BotProfile().ID)
-	if err != nil {
-		return fmt.Errorf("failed to get bot membership: %w", err)
-	}
-	if !botMembership.Administrator {
+	if s.membership == nil {
 		return ErrSubscriptionUnavailable
 	}
 
@@ -222,16 +218,25 @@ func (s *SubscriptionService) notifyEventSubscribers(
 	subscriptions []*models.Subscription,
 ) {
 	chat := event.Post.Chat
+	strict, err := s.membershipCheckStrict(ctx, chat.ID)
+	if err != nil {
+		s.log.Error("[subscription service] failed to determine membership policy: "+err.Error(),
+			"chat", chat.LogValue(),
+			trace.Attr(ctx))
+		return
+	}
 	for _, subscription := range subscriptions {
-		membership, err := s.membershipGet(chat.ID, subscription.Subscriber.ID)
-		if err != nil {
-			s.log.Error("[subscription service] failed to get subscriber membership: "+err.Error(),
-				"subscription", subscription,
-				trace.Attr(ctx))
-			continue
-		}
-		if !subscriptionMemberAllowed(*chat, membership) {
-			continue
+		if strict {
+			membership, err := s.membershipGet(chat.ID, subscription.Subscriber.ID)
+			if err != nil {
+				s.log.Error("[subscription service] failed to get subscriber membership: "+err.Error(),
+					"subscription", subscription,
+					trace.Attr(ctx))
+				continue
+			}
+			if !subscriptionMemberAllowed(*chat, membership) {
+				continue
+			}
 		}
 		profile := subscription.Subscriber
 		s.notifier.Notify(ctx, &models.Notification{
@@ -244,17 +249,21 @@ func (s *SubscriptionService) notifyEventSubscribers(
 	}
 }
 
-func (s *SubscriptionService) validateAccess(event *models.Event, profile models.Profile) error {
+func (s *SubscriptionService) validateAccess(
+	ctx context.Context,
+	event *models.Event,
+	profile models.Profile,
+) error {
 	chat, err := subscriptionChat(event)
 	if err != nil {
 		return err
 	}
-	botMembership, err := s.membershipGet(chat.ID, config.BotProfile().ID)
+	strict, err := s.membershipCheckStrict(ctx, chat.ID)
 	if err != nil {
-		return ErrSubscriptionUnavailable
+		return err
 	}
-	if !botMembership.Administrator {
-		return ErrSubscriptionUnavailable
+	if !strict {
+		return nil
 	}
 	membership, err := s.membershipGet(chat.ID, profile.ID)
 	if err != nil {
@@ -264,6 +273,26 @@ func (s *SubscriptionService) validateAccess(event *models.Event, profile models
 		return ErrSubscriptionUnavailable
 	}
 	return nil
+}
+
+// membershipCheckStrict reports whether subscriber membership must be verified.
+// Telegram only guarantees getChatMember for other users when the bot is an administrator:
+// https://core.telegram.org/bots/api#getchatmember. We therefore use strict checks only
+// for administrator bots. Non-administrator status or a Telegram error enables relaxed
+// mode, accepting disclosure of the chat name, ID, and event publication fact. Revisit
+// this policy if Telegram changes the getChatMember guarantees.
+func (s *SubscriptionService) membershipCheckStrict(ctx context.Context, chatID int64) (bool, error) {
+	if s.membership == nil {
+		return false, ErrSubscriptionUnavailable
+	}
+	botMembership, err := s.membershipGet(chatID, config.BotProfile().ID)
+	if err != nil {
+		s.log.Warn("[subscription service] failed to get bot membership; using relaxed membership policy: "+err.Error(),
+			"chat_id", chatID,
+			trace.Attr(ctx))
+		return false, nil
+	}
+	return botMembership.Administrator, nil
 }
 
 func (s *SubscriptionService) membershipGet(chatID, userID int64) (models.Membership, error) {

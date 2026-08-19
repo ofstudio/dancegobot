@@ -82,3 +82,20 @@ func TestServerQueuedErrorResponse(t *testing.T) {
 	tg.Wait("sendMessage")
 	tg.AssertNoUnexpected()
 }
+
+func TestServerBotAdministratorOption(t *testing.T) {
+	tg := New(t, WithBotAdministrator(false))
+	tg.Ignore("getMe", "getChatMember")
+
+	bot, err := tele.NewBot(tele.Settings{
+		URL:         tg.URL(),
+		Token:       "123:ABC",
+		Synchronous: true,
+	})
+	require.NoError(t, err)
+
+	member, err := bot.ChatMemberOf(&tele.Chat{ID: -1001}, bot.Me)
+	require.NoError(t, err)
+	require.Equal(t, tele.Member, member.Role)
+	tg.AssertNoUnexpected()
+}

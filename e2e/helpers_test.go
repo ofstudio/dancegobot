@@ -24,10 +24,12 @@ type testEnv struct {
 	cancel context.CancelFunc
 }
 
-func newEnv(t *testing.T) *testEnv {
+func newEnv(t *testing.T, opts ...teletest.Option) *testEnv {
 	t.Helper()
 
-	tg := teletest.New(t, teletest.WithBotUser(botUser))
+	serverOpts := []teletest.Option{teletest.WithBotUser(botUser)}
+	serverOpts = append(serverOpts, opts...)
+	tg := teletest.New(t, serverOpts...)
 	tg.Ignore("getMe", "setMyCommands", "deleteWebhook", "getUpdates", "getChatMember")
 
 	ctx, cancel := context.WithCancel(context.Background())

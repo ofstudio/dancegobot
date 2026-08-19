@@ -103,6 +103,41 @@ func TestNewEventSubscriptionNotificationLifecycle(t *testing.T) {
 	require.Equal(t, services.SubscriptionStatus{Available: true, Subscribed: true}, status)
 }
 
+func TestNewEventSubscriptionNotificationLifecycleWithoutBotAdmin(t *testing.T) {
+	env := newEnv(t, teletest.WithBotAdministrator(false))
+	first := testEvent("subscription_non_admin_source", "First event", userJane)
+	require.NoError(t, env.app.Store.EventUpsert(context.Background(), first))
+	publishSubscriptionEvent(env, first)
+
+	env.process(env.message(userJohn, "/start v1-subscribe-"+first.ID))
+	env.waitSendMessage(userJohn.ID, "Подписаться на Test Super Group?")
+	env.process(env.callback(tele.Callback{
+		Sender:  userJohn,
+		Message: &tele.Message{ID: 790, Chat: privateChat(userJohn)},
+		Data:    "\fsubscription_subscribe|" + first.ID,
+	}))
+	env.waitEditMessageText("Вы подписались на новые мероприятия в Test Super Group.")
+	env.tg.Wait("answerCallbackQuery")
+
+	second := testEvent("subscription_non_admin_target", "Second event", userJane)
+	require.NoError(t, env.app.Store.EventUpsert(context.Background(), second))
+	publishSubscriptionEvent(env, second)
+	notification := env.waitSendMessage(userJohn.ID, "🔔 Новая запись в Test Super Group.")
+	require.Contains(t, notification.InlineKeyboardRaw(), locale.BtnChatLink)
+	require.Contains(t, notification.InlineKeyboardRaw(), locale.BtnUnsubscribe)
+
+	env.process(env.callback(tele.Callback{
+		Sender:  userJohn,
+		Message: &tele.Message{ID: 791, Chat: privateChat(userJohn)},
+		Data:    "\fnotification_unsubscribe|" + second.ID,
+	}))
+	edit := env.waitEditMessageText("Вы отписались от Test Super Group.")
+	require.Contains(t, edit.String("text"), locale.LinkResubscribe)
+	require.Empty(t, edit.InlineKeyboardRaw())
+	answer := env.tg.Wait("answerCallbackQuery")
+	require.Empty(t, answer.String("text"))
+}
+
 func TestSubscriptionControlsAfterSignupAndInMy(t *testing.T) {
 	env := newEnv(t)
 	event := testEvent("subscription_signup", "Subscription signup", userJane)
@@ -188,9 +223,16 @@ func TestSubscriptionConfirmationUnavailable(t *testing.T) {
 	event := testEvent("subscription_unavailable", "Unavailable subscription", userJane)
 	require.NoError(t, env.app.Store.EventUpsert(context.Background(), event))
 	publishSubscriptionEvent(env, event)
+	env.tg.WaitFor("getChatMember", func(req teletest.Request) bool {
+		return req.JSON.Get("user_id").Int() == botUser.ID
+	})
 
 	env.process(env.message(userJohn, "/start v1-subscribe-"+event.ID))
 	env.waitSendMessage(userJohn.ID, "Подписаться на Test Super Group?")
+	env.tg.Respond("getChatMember", &tele.ChatMember{
+		User: botUser,
+		Role: tele.Administrator,
+	})
 	env.tg.RespondError("getChatMember", 400, "Bad Request: member list is inaccessible")
 	env.process(env.callback(tele.Callback{
 		Sender:  userJohn,
@@ -199,6 +241,30 @@ func TestSubscriptionConfirmationUnavailable(t *testing.T) {
 	}))
 	edit := env.waitEditMessageText(locale.SubscriptionUnavailable)
 	require.Empty(t, edit.InlineKeyboardRaw())
+	answer := env.tg.Wait("answerCallbackQuery")
+	require.Empty(t, answer.String("text"))
+}
+
+func TestSubscriptionBotMembershipErrorUsesRelaxedPolicy(t *testing.T) {
+	env := newEnv(t)
+	event := testEvent("subscription_relaxed_error", "Relaxed subscription", userJane)
+	require.NoError(t, env.app.Store.EventUpsert(context.Background(), event))
+	publishSubscriptionEvent(env, event)
+	env.tg.WaitFor("getChatMember", func(req teletest.Request) bool {
+		return req.JSON.Get("user_id").Int() == botUser.ID
+	})
+
+	env.tg.RespondError("getChatMember", 400, "Bad Request: member list is inaccessible")
+	env.process(env.message(userJohn, "/start v1-subscribe-"+event.ID))
+	env.waitSendMessage(userJohn.ID, "Подписаться на Test Super Group?")
+
+	env.tg.RespondError("getChatMember", 400, "Bad Request: member list is inaccessible")
+	env.process(env.callback(tele.Callback{
+		Sender:  userJohn,
+		Message: &tele.Message{ID: 792, Chat: privateChat(userJohn)},
+		Data:    "\fsubscription_subscribe|" + event.ID,
+	}))
+	env.waitEditMessageText("Вы подписались на новые мероприятия в Test Super Group.")
 	answer := env.tg.Wait("answerCallbackQuery")
 	require.Empty(t, answer.String("text"))
 }
@@ -215,6 +281,10 @@ func TestNotificationUnsubscribeWithoutResubscribe(t *testing.T) {
 	publishSubscriptionEvent(env, second)
 	env.waitSendMessage(userJohn.ID, "🔔 Новая запись в Test Super Group.")
 
+	env.tg.Respond("getChatMember", &tele.ChatMember{
+		User: botUser,
+		Role: tele.Administrator,
+	})
 	env.tg.RespondError("getChatMember", 400, "Bad Request: member list is inaccessible")
 	env.process(env.callback(tele.Callback{
 		Sender:  userJohn,

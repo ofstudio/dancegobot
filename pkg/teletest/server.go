@@ -24,9 +24,10 @@ const defaultTimeout = 2 * time.Second
 type Server struct {
 	t testing.TB
 
-	srv     *httptest.Server
-	botUser *tele.User
-	timeout time.Duration
+	srv      *httptest.Server
+	botUser  *tele.User
+	botAdmin bool
+	timeout  time.Duration
 
 	mu        sync.Mutex
 	requests  []Request
@@ -55,6 +56,13 @@ func WithBotUser(user *tele.User) Option {
 	}
 }
 
+// WithBotAdministrator sets whether getChatMember reports the bot as an administrator.
+func WithBotAdministrator(administrator bool) Option {
+	return func(s *Server) {
+		s.botAdmin = administrator
+	}
+}
+
 // WithTimeout sets the default timeout used by Wait.
 func WithTimeout(timeout time.Duration) Option {
 	return func(s *Server) {
@@ -68,8 +76,9 @@ func WithTimeout(timeout time.Duration) Option {
 func New(t testing.TB, opts ...Option) *Server {
 	t.Helper()
 	s := &Server{
-		t:       t,
-		timeout: defaultTimeout,
+		t:        t,
+		timeout:  defaultTimeout,
+		botAdmin: true,
 		botUser: &tele.User{
 			ID:        1234567890,
 			IsBot:     true,
@@ -343,7 +352,7 @@ func (s *Server) defaultResponse(req Request) Response {
 	case "getChatMember":
 		userID := req.JSON.Get("user_id").Int()
 		role := tele.Member
-		if userID == s.botUser.ID {
+		if userID == s.botUser.ID && s.botAdmin {
 			role = tele.Administrator
 		}
 		return Response{OK: true, Result: &tele.ChatMember{

@@ -14,6 +14,8 @@ Inspired by [Tayrinn/CoopDance](https://github.com/Tayrinn/CoopDance).
 
 💬 Notifications to the dancer when someone selects them as a partner.
 
+🔔 Subscriptions to new event posts in a group or channel, with notifications linking to each new event.
+
 🔖 `/my` command for viewing events created or joined by the user.
 
 ⚙️ Couple limits, waitlist, and notifications when limit changes affect dancers.
@@ -38,7 +40,7 @@ docker run --name dancegobot \
 This will start the bot in [long polling mode](https://core.telegram.org/bots/api#getupdates) 
 with SQLite database stored in `/path/to/database/dancegobot.db`.
 
-To run specific version of the bot, replace `latest` with the desired version tag, for example `v2.0.0`.
+To run specific version of the bot, replace `latest` with the desired version tag, for example `v3.0.0`.
 Version tags can be found at [Packages page](https://github.com/ofstudio/dancegobot/pkgs/container/dancegobot).
 See `CHANGELOG.md` for the version history.
 

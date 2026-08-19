@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.0.0] - 2026-08-19
+
+### Added
+
+- Subscriptions to new event posts in Telegram supergroups and channels. Users can subscribe after registration or from `/my`, receive a notification with a link to each new event, and unsubscribe or resubscribe from the notification.
+
 ## [2.1.1] - 2026-08-17
 
 ### Changed

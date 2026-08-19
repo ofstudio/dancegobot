@@ -1,30 +1,36 @@
 # dancegobot
 
-Telegram bot for finding a partner for dance events.
+Telegram bot for running dance event sign-ups directly in a group or channel. It helps dancers register with a partner
+or find one, while organizers get a live participant list instead of maintaining one by hand.
 
 Inspired by [Tayrinn/CoopDance](https://github.com/Tayrinn/CoopDance).
 
-## Features
+## Why dancegobot
 
-📣 Event publishing via bot inline query: `@dancegobot <announcement text>`.
+- **Find a partner without chasing chat messages.** Sign up with a partner, join the list of dancers looking for one,
+  choose someone from that list, or let the bot form pairs automatically.
 
-👫 Dancer can sign up in a couple with a partner or as single looking for a partner.
+- **Know where you stand.** The event post keeps the lists of couples, singles, and the waitlist up to date. The bot
+  notifies you when someone chooses you, your pairing changes, or a place becomes available.
 
-🧍‍♀️ Automatic pairing of single dancers.
+- **Don't miss popular events.** Subscribe to new event posts in a group or channel and receive a notification with a
+  direct link whenever a new registration opens.
 
-💬 Notifications to the dancer when someone selects them as a partner.
+- **Run recurring events with less manual work.** Publish one sign-up post, set a couple limit, manage the waitlist,
+  choose how partners are matched, and close or reopen registration when needed.
 
-🔔 Subscriptions to new event posts in a group or channel, with notifications linking to each new event.
+## Quick start
 
-🔖 `/my` command for viewing events created or joined by the user.
+### For organizers
 
-⚙️ Couple limits, waitlist, and notifications when limit changes affect dancers.
+1. In your group or channel, type `@dancegobot <announcement text>` and publish the inline result.
+2. Open `/my` in a private chat with the bot to find the event and adjust its registration settings.
 
-🎚️ Default couple limit for new events in organizer settings.
+### For dancers
 
-🔒 Event owners can close and reopen registration.
-
-🧹 Events are marked as removed after repeated Telegram render failures.
+1. Tap your role under the event post to continue in a private chat with the bot.
+2. Register with a partner or join the list of dancers looking for one.
+3. Use `/my` to return to your events, and subscribe to the chat to be notified about the next sign-up.
 
 ## Installation
 

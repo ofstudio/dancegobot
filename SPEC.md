@@ -548,6 +548,12 @@ cases:
 - Affected dancers are notified after a limit change, if the owner chooses to
   send notifications.
 
+When the owner confirms delayed limit-change notifications, each saved couple
+is checked against the current event. Only the same registration (matching
+partners and couple creation time) that is currently in the expected list is
+notified: waitlisted after a decrease, active after an increase. Later limit
+changes do not invalidate the whole batch; new couples are not added to it.
+
 Notification delivery requires the bot to be able to message the recipient.
 Notification delivery also requires the recipient to be eligible under the
 event-interaction rule above.

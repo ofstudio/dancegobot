@@ -124,8 +124,20 @@ func (h *EventHandler) LimitChangeNotifyAffected(affected models.AffectedCouples
 
 	// Add notifications for the affected couples
 	for _, couple := range affected.Couples {
-		currentCouple, ok := h.findCouple(couple)
+		currentCouple, index, ok := h.findCouple(couple)
 		if !ok {
+			continue
+		}
+		// Confirmation may be delayed; skip new registrations and couples whose status has changed.
+		if !currentCouple.CreatedAt.Equal(couple.CreatedAt) {
+			continue
+		}
+		waitlisted := h.event.Settings.Limit > 0 && index >= h.event.Settings.Limit
+		if affected.Increased {
+			if waitlisted {
+				continue
+			}
+		} else if !waitlisted {
 			continue
 		}
 
@@ -621,20 +633,20 @@ func (h *EventHandler) isSame(dancer, other models.Dancer) bool {
 	}
 }
 
-// findCouple returns the current event couple matching the provided couple snapshot.
-func (h *EventHandler) findCouple(match models.Couple) (models.Couple, bool) {
+// findCouple returns the current event couple and its index matching the provided couple snapshot.
+func (h *EventHandler) findCouple(match models.Couple) (models.Couple, int, bool) {
 	if len(match.Dancers) != 2 {
-		return models.Couple{}, false
+		return models.Couple{}, 0, false
 	}
-	for _, couple := range h.event.Couples {
+	for i, couple := range h.event.Couples {
 		if len(couple.Dancers) != 2 {
 			continue
 		}
 		if h.isSameCouple(couple, match) {
-			return couple, true
+			return couple, i, true
 		}
 	}
-	return models.Couple{}, false
+	return models.Couple{}, 0, false
 }
 
 func (h *EventHandler) isSameCouple(couple, other models.Couple) bool {

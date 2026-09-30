@@ -42,6 +42,9 @@ func TestEventDraft(t *testing.T) {
 
 		req := env.tg.Wait("answerInlineQuery")
 		eventID := req.JSON.Get("results.0.id").String()
+		require.True(t, req.JSON.Get("is_personal").Bool())
+		require.True(t, req.JSON.Get("cache_time").Exists())
+		require.Equal(t, int64(1), req.JSON.Get("cache_time").Int())
 		require.Equal(t, "Test text", req.JSON.Get("results.0.title").String())
 		require.Equal(t, locale.QueryDescription, req.JSON.Get("results.0.description").String())
 		require.Equal(t, "Test text", req.JSON.Get("results.0.input_message_content.message_text").String())
@@ -115,6 +118,81 @@ func TestEventDraft(t *testing.T) {
 		env.process(env.inlineQuery(tele.Query{Sender: userJohn, Text: strings.Repeat("A", 300), ChatType: "supergroup"}))
 		require.Equal(t, locale.QueryOverflow, env.tg.Wait("answerInlineQuery").JSON.Get("results.0.description").String())
 	})
+}
+
+func TestEventQueryPersonalResults(t *testing.T) {
+	env := newEnv(t)
+	text := "Weekly dance class"
+	cases := []struct {
+		user            *tele.User
+		settings        models.EventSettings
+		inlineMessageID string
+	}{
+		{userJohn, models.EventSettings{Limit: 2}, "inline-personal-john"},
+		{userJane, models.EventSettings{Limit: 5, AutoPairing: true}, "inline-personal-jane"},
+	}
+	var eventIDs []string
+
+	for _, tc := range cases {
+		profile := models.NewProfile(*tc.user)
+		user, err := env.app.Services.User.Get(env.ctx, profile)
+		require.NoError(t, err)
+		user.Settings.Event = tc.settings
+		require.NoError(t, env.app.Services.User.UpdateSettings(env.ctx, user))
+
+		env.process(env.inlineQuery(tele.Query{Sender: tc.user, Text: text, ChatType: "supergroup"}))
+		req := env.tg.Wait("answerInlineQuery")
+		require.True(t, req.JSON.Get("is_personal").Bool())
+		require.True(t, req.JSON.Get("cache_time").Exists())
+		require.Equal(t, int64(1), req.JSON.Get("cache_time").Int())
+		eventID := req.JSON.Get("results.0.id").String()
+		require.NotEmpty(t, eventID)
+		require.NotContains(t, eventIDs, eventID)
+		eventIDs = append(eventIDs, eventID)
+
+		event := env.eventGet(eventID)
+		require.Equal(t, text, event.Caption)
+		require.Equal(t, profile, event.Owner)
+		require.Equal(t, tc.settings, event.Settings)
+		require.Nil(t, event.Post)
+		keyboard := req.JSON.Get("results.0.reply_markup.inline_keyboard").Raw
+		require.Contains(t, keyboard, "signup|"+eventID+"|leader")
+		require.Contains(t, keyboard, "signup|"+eventID+"|follower")
+
+		env.process(env.inlineResult(tele.InlineResult{
+			Sender:    tc.user,
+			ResultID:  eventID,
+			Query:     text,
+			MessageID: tc.inlineMessageID,
+		}))
+		edit := env.tg.Wait("editMessageText")
+		require.Equal(t, tc.inlineMessageID, edit.String("inline_message_id"))
+		require.Contains(t, edit.InlineKeyboardRaw(), "signup-"+eventID+"-leader")
+		require.Contains(t, edit.InlineKeyboardRaw(), "signup-"+eventID+"-follower")
+	}
+
+	for i, tc := range cases {
+		event := env.eventGet(eventIDs[i])
+		require.Equal(t, tc.inlineMessageID, event.Post.InlineMessageID)
+		require.Equal(t, tc.settings, event.Settings)
+		require.True(t, env.app.Services.Event.CanManage(event, models.NewProfile(*tc.user)))
+		require.False(t, env.app.Services.Event.CanManage(event, models.NewProfile(*cases[1-i].user)))
+	}
+}
+
+func TestEventQueryRepeatedTextCreatesSeparateDrafts(t *testing.T) {
+	env := newEnv(t)
+	query := tele.Query{Sender: userJohn, Text: "Weekly dance class", ChatType: "supergroup"}
+	firstID := env.eventDraftCreate(query)
+	secondID := env.eventDraftCreate(query)
+
+	require.NotEqual(t, firstID, secondID)
+	for _, id := range []string{firstID, secondID} {
+		event := env.eventGet(id)
+		require.Equal(t, query.Text, event.Caption)
+		require.Equal(t, models.NewProfile(*userJohn), event.Owner)
+		require.Nil(t, event.Post)
+	}
 }
 
 func TestEventPostAdd(t *testing.T) {

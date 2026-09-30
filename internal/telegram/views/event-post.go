@@ -46,7 +46,11 @@ func EventPostAnswer(c tele.Context, event *models.Event, thumb string) error {
 		desc = locale.QueryDescription
 	}
 
+	// Each result contains an organizer's draft; keep the cache personal and short-lived.
+	// CacheTime must be non-zero because Telebot omits zero and Telegram defaults to 300 seconds.
 	return c.Answer(&tele.QueryResponse{
+		IsPersonal: true,
+		CacheTime:  1,
 		Results: tele.Results{
 			&tele.ArticleResult{
 				ResultBase: tele.ResultBase{

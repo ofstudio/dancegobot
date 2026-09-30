@@ -114,6 +114,11 @@ An empty inline query does not create an event. It only returns a hint.
 A non-empty inline query creates an event draft and returns one inline article
 result that can be published into a Telegram chat or channel.
 
+Each processed non-empty query creates a separate draft with the querying user's
+ownership and settings. Event results use a personal one-second Telegram cache,
+so they cannot be shared between organizers. The same user may receive the
+previous result within that second without a new query reaching the bot.
+
 ### Event Drafts
 
 An event starts as a draft. It becomes a published event once Telegram provides

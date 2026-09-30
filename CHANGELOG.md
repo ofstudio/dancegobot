@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- Prevent inline event results from being shared between organizers by using a one-second personal cache.
+
 ## [3.1.0] - 2026-08-19
 
 ### Changed

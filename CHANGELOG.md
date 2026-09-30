@@ -10,6 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 
 - Prevent inline event results from being shared between organizers by using a one-second personal cache.
+- Prevent crashes when event settings callbacks reference missing events.
 
 ## [3.1.0] - 2026-08-19
 

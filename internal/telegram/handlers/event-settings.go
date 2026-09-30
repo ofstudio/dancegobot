@@ -81,6 +81,12 @@ func (h *Handlers) CbEventSettingsToggles(c tele.Context) error {
 			telelog.Trace(c))
 		return h.respondErr(c, locale.ErrSomethingWrong)
 	}
+	if event == nil {
+		h.log.Error("[handlers] event settings toggle callback: event not found",
+			"event_id", eventID,
+			telelog.Trace(c))
+		return h.respondErr(c, locale.ErrSomethingWrong)
+	}
 
 	var unique string
 	if c.Callback() != nil {
@@ -136,6 +142,12 @@ func (h *Handlers) CbEventSettingsLimitScene(c tele.Context) error {
 			telelog.Trace(c))
 		return h.respondErr(c, locale.ErrSomethingWrong)
 	}
+	if event == nil {
+		h.log.Error("[handlers] event settings limit scene callback: event not found",
+			"event_id", eventID,
+			telelog.Trace(c))
+		return h.respondErr(c, locale.ErrSomethingWrong)
+	}
 	_ = c.Respond()
 	return views.EventSettingsLimitScene(c, event.ID, page, offset)
 }
@@ -158,6 +170,12 @@ func (h *Handlers) CbEventSettingsLimitNum(c tele.Context) error {
 	event, err := h.eventService.Get(h.ctx(c), eventID)
 	if err != nil {
 		h.log.Error("[handlers] event settings limit number callback: "+err.Error(),
+			"event_id", eventID,
+			telelog.Trace(c))
+		return h.respondErr(c, locale.ErrSomethingWrong)
+	}
+	if event == nil {
+		h.log.Error("[handlers] event settings limit number callback: event not found",
 			"event_id", eventID,
 			telelog.Trace(c))
 		return h.respondErr(c, locale.ErrSomethingWrong)

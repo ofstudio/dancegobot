@@ -2,6 +2,7 @@ package e2e
 
 import (
 	"context"
+	"fmt"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -9,6 +10,8 @@ import (
 
 	"github.com/ofstudio/dancegobot/internal/locale"
 	"github.com/ofstudio/dancegobot/internal/models"
+	"github.com/ofstudio/dancegobot/internal/telegram/views"
+	"github.com/ofstudio/dancegobot/pkg/teletest"
 )
 
 func TestStart(t *testing.T) {
@@ -102,6 +105,84 @@ func TestMyCommand(t *testing.T) {
 		require.Contains(t, edit.InlineKeyboardRaw(), "my_turn_page|0")
 		env.tg.Wait("answerCallbackQuery")
 	})
+}
+
+func TestEventSettingsMissingEvent(t *testing.T) {
+	cases := []struct {
+		name       string
+		unique     string
+		args       string
+		settings   models.EventSettings
+		markupOnly bool
+	}{
+		{"settings scene", views.BtnEventSettings.Unique, "%s|0|rand",
+			models.EventSettings{Limit: 1}, false},
+		{"auto pairing", views.BtnEventSettingsAutoPair.Unique, "%s|0|rand",
+			models.EventSettings{Limit: 1, AutoPairing: true}, false},
+		{"close registration", views.BtnEventSettingsClose.Unique, "%s|0|rand",
+			models.EventSettings{Limit: 1, Closed: true}, false},
+		{"limit scene", views.BtnEventSettingsLimit.Unique, "%s|0|0|rand",
+			models.EventSettings{Limit: 1}, true},
+		{"limit number", views.BtnEventSettingsLimitNum.Unique, "%s|2|0",
+			models.EventSettings{Limit: 2}, false},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			env := newEnv(t)
+			event := testLimitEvent("settings_existing", userJohn, 1)
+			require.NoError(t, env.app.Store.EventUpsert(env.ctx, event))
+			before := env.eventGet(event.ID)
+			profile := models.NewProfile(*userJohn)
+			user, err := env.app.Services.User.Get(env.ctx, profile)
+			require.NoError(t, err)
+			user.Session = models.Session{
+				Action:  models.SessionSignup,
+				EventID: event.ID,
+				Role:    models.RoleLeader,
+			}
+			require.NoError(t, env.app.Services.User.UpdateSession(env.ctx, user))
+
+			callback := tele.Callback{
+				Sender:  userJohn,
+				Message: &tele.Message{ID: 100, Chat: privateChat(userJohn)},
+				Data:    "\f" + tc.unique + "|" + fmt.Sprintf(tc.args, "missing_event"),
+			}
+			require.NotPanics(t, func() {
+				env.process(env.callback(callback))
+			})
+			answer := env.tg.Wait("answerCallbackQuery")
+			require.Equal(t, locale.ErrSomethingWrong, answer.String("text"))
+			require.True(t, answer.Bool("show_alert"))
+			user, err = env.app.Services.User.Get(env.ctx, profile)
+			require.NoError(t, err)
+			require.Equal(t, models.Session{}, user.Session)
+			missing, err := env.app.Services.Event.Get(env.ctx, "missing_event")
+			require.NoError(t, err)
+			require.Nil(t, missing)
+			require.Equal(t, before, env.eventGet(event.ID))
+			env.tg.AssertNoUnexpected()
+
+			callback.Data = "\f" + tc.unique + "|" + fmt.Sprintf(tc.args, event.ID)
+			env.process(env.callback(callback))
+			answer = env.tg.Wait("answerCallbackQuery")
+			require.Empty(t, answer.String("text"))
+			if tc.markupOnly {
+				markup := env.tg.Wait("editMessageReplyMarkup")
+				require.Contains(t, markup.InlineKeyboardRaw(), "evt_set_lim_num|"+event.ID+"|2|0")
+			} else {
+				edit := env.tg.WaitFor("editMessageText", func(req teletest.Request) bool {
+					return req.ChatIDInt() == userJohn.ID
+				})
+				require.Contains(t, edit.String("text"), locale.EventSettingsCaption)
+				if tc.unique != views.BtnEventSettings.Unique {
+					env.tg.WaitFor("editMessageText", func(req teletest.Request) bool {
+						return req.String("inline_message_id") == event.Post.InlineMessageID
+					})
+				}
+			}
+			require.Equal(t, tc.settings, env.eventGet(event.ID).Settings)
+		})
+	}
 }
 
 func TestEventSettingsEscapesCaption(t *testing.T) {

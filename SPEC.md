@@ -191,6 +191,10 @@ The owner can change settings for a specific event after it is created:
 - Couple limit.
 - Registration open or closed.
 
+Each event-specific setting is changed using the current event state inside a
+transaction, preserving changes to other settings. The previous couple limit
+used to determine affected couples is read in the same transaction as its update.
+
 ## Registration Entry Flow
 
 Dancers start registration from the event post by choosing one of the role

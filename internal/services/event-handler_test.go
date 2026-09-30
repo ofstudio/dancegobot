@@ -24,13 +24,13 @@ func (suite *TestEventHandlerSuite) TestSettingsUpdateValidation() {
 		event := models.Event{
 			ID:       "event",
 			Owner:    models.Profile{ID: 1, FirstName: "Owner"},
-			Settings: models.EventSettings{Limit: 2},
+			Settings: models.EventSettings{Limit: 2, AutoPairing: true, Closed: true},
 		}
 		before := event
 		handler := NewEventHandler(&event)
 		settings := models.EventSettings{Limit: limit, AutoPairing: true, Closed: true}
 
-		err := handler.SettingsUpdate(event.Owner, settings)
+		err := handler.SettingsLimitSet(event.Owner, limit)
 		if limit < 0 {
 			suite.Require().ErrorContains(err, "event limit must not be negative")
 			suite.Equal(before, event)
@@ -42,6 +42,7 @@ func (suite *TestEventHandlerSuite) TestSettingsUpdateValidation() {
 		suite.Equal(settings, event.Settings)
 		suite.Require().Len(handler.History(), 1)
 		suite.Equal(models.HistoryEventSettingsUpdated, handler.History()[0].Action)
+		suite.Equal(settings, handler.History()[0].Details)
 	}
 
 	event := models.Event{
@@ -51,11 +52,46 @@ func (suite *TestEventHandlerSuite) TestSettingsUpdateValidation() {
 	}
 	before := event
 	handler := NewEventHandler(&event)
-	err := handler.SettingsUpdate(models.Profile{ID: 2}, models.EventSettings{Limit: 1})
+	err := handler.SettingsLimitSet(models.Profile{ID: 2}, 1)
 	suite.Require().ErrorContains(err, "profile is not allowed")
 	suite.Equal(before, event)
 	suite.Empty(handler.History())
 	suite.Empty(handler.Notifications())
+}
+
+func (suite *TestEventHandlerSuite) TestSettingsToggles() {
+	for _, tc := range []struct {
+		name string
+		run  func(*EventHandler, models.Profile) error
+		want models.EventSettings
+	}{
+		{"auto pairing", (*EventHandler).SettingsAutoPairingToggle, models.EventSettings{Limit: 7, Closed: true}},
+		{"registration closure", (*EventHandler).SettingsClosedToggle, models.EventSettings{Limit: 7, AutoPairing: true}},
+	} {
+		suite.Run(tc.name, func() {
+			initial := models.EventSettings{Limit: 7, AutoPairing: true, Closed: true}
+			event := models.Event{ID: "event", Owner: models.Profile{ID: 1}, Settings: initial}
+			handler := NewEventHandler(&event)
+			suite.Require().ErrorContains(tc.run(handler, models.Profile{ID: 2}), "profile is not allowed")
+			suite.Equal(initial, event.Settings)
+			suite.Empty(handler.History())
+			suite.Empty(handler.Notifications())
+
+			suite.Require().NoError(tc.run(handler, event.Owner))
+			suite.Equal(tc.want, event.Settings)
+			suite.Require().Len(handler.History(), 1)
+			suite.Equal(models.HistoryEventSettingsUpdated, handler.History()[0].Action)
+			suite.Equal(tc.want, handler.History()[0].Details)
+			suite.Equal(event.Owner, *handler.History()[0].Initiator)
+			suite.Equal(event.ID, *handler.History()[0].EventID)
+			suite.Empty(handler.Notifications())
+
+			suite.Require().NoError(tc.run(handler, event.Owner))
+			suite.Equal(initial, event.Settings)
+			suite.Require().Len(handler.History(), 2)
+			suite.Equal(initial, handler.History()[1].Details)
+		})
+	}
 }
 
 func (suite *TestEventHandlerSuite) TestDancerRegistrationGet() {

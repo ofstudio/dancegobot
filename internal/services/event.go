@@ -124,17 +124,56 @@ func (s *EventService) CanManage(event *models.Event, profile models.Profile) bo
 	return NewEventHandler(event).CanManage(profile)
 }
 
-// SettingsUpdate updates event settings.
-func (s *EventService) SettingsUpdate(
+// SettingsAutoPairingToggle toggles auto-pairing using current settings inside the transaction.
+func (s *EventService) SettingsAutoPairingToggle(
 	ctx context.Context,
 	eventID string,
 	initiator models.Profile,
-	settings models.EventSettings,
+) (*models.Event, error) {
+	return s.settingsUpdate(ctx, eventID, func(h *EventHandler) error {
+		return h.SettingsAutoPairingToggle(initiator)
+	})
+}
+
+// SettingsClosedToggle toggles registration closure using current settings inside the transaction.
+func (s *EventService) SettingsClosedToggle(
+	ctx context.Context,
+	eventID string,
+	initiator models.Profile,
+) (*models.Event, error) {
+	return s.settingsUpdate(ctx, eventID, func(h *EventHandler) error {
+		return h.SettingsClosedToggle(initiator)
+	})
+}
+
+// SettingsLimitSet sets the couple limit and returns its previous value from the same transaction.
+func (s *EventService) SettingsLimitSet(
+	ctx context.Context,
+	eventID string,
+	initiator models.Profile,
+	limit int,
+) (*models.Event, int, error) {
+	var oldLimit int
+	event, err := s.settingsUpdate(ctx, eventID, func(h *EventHandler) error {
+		oldLimit = h.Event().Settings.Limit
+		return h.SettingsLimitSet(initiator, limit)
+	})
+	if err != nil {
+		return nil, 0, err
+	}
+	return event, oldLimit, nil
+}
+
+// settingsUpdate changes settings only after reading the event inside the transaction.
+func (s *EventService) settingsUpdate(
+	ctx context.Context,
+	eventID string,
+	updateFunc func(*EventHandler) error,
 ) (*models.Event, error) {
 	var event *models.Event
 	err := s.update(ctx, eventID, func(h *EventHandler) error {
 		event = h.Event()
-		return h.SettingsUpdate(initiator, settings)
+		return updateFunc(h)
 	})
 	if err != nil {
 		return nil, fmt.Errorf("failed to update event settings: %w", err)

@@ -74,30 +74,18 @@ func (h *Handlers) CbEventSettingsToggles(c tele.Context) error {
 	eventID := c.Args()[0]
 	offset, _ := strconv.Atoi(c.Args()[1])
 
-	event, err := h.eventService.Get(h.ctx(c), eventID)
-	if err != nil {
-		h.log.Error("[handlers] event settings toggle callback: "+err.Error(),
-			"event_id", eventID,
-			telelog.Trace(c))
-		return h.respondErr(c, locale.ErrSomethingWrong)
-	}
-	if event == nil {
-		h.log.Error("[handlers] event settings toggle callback: event not found",
-			"event_id", eventID,
-			telelog.Trace(c))
-		return h.respondErr(c, locale.ErrSomethingWrong)
-	}
-
 	var unique string
 	if c.Callback() != nil {
 		unique = c.Callback().Unique
 	}
 
+	var event *models.Event
+	var err error
 	switch unique {
 	case views.BtnEventSettingsAutoPair.Unique:
-		event.Settings.AutoPairing = !event.Settings.AutoPairing
+		event, err = h.eventService.SettingsAutoPairingToggle(h.ctx(c), eventID, u.Profile)
 	case views.BtnEventSettingsClose.Unique:
-		event.Settings.Closed = !event.Settings.Closed
+		event, err = h.eventService.SettingsClosedToggle(h.ctx(c), eventID, u.Profile)
 	default:
 		h.log.Error("[handlers] event settings toggle callback: unknown unique",
 			"unique", unique,
@@ -105,7 +93,7 @@ func (h *Handlers) CbEventSettingsToggles(c tele.Context) error {
 		return h.respondErr(c, locale.ErrSomethingWrong)
 	}
 
-	if event, err = h.eventService.SettingsUpdate(h.ctx(c), event.ID, u.Profile, event.Settings); err != nil {
+	if err != nil {
 		h.log.Error("[handlers] event settings toggle callback: "+err.Error(),
 			"event_id", eventID,
 			telelog.Trace(c))
@@ -195,23 +183,8 @@ func (h *Handlers) CbEventSettingsLimitNum(c tele.Context) error {
 	}
 	offset, _ := strconv.Atoi(c.Args()[2])
 
-	event, err := h.eventService.Get(h.ctx(c), eventID)
+	event, oldLimit, err := h.eventService.SettingsLimitSet(h.ctx(c), eventID, h.userGet(c).Profile, limit)
 	if err != nil {
-		h.log.Error("[handlers] event settings limit number callback: "+err.Error(),
-			"event_id", eventID,
-			telelog.Trace(c))
-		return h.respondErr(c, locale.ErrSomethingWrong)
-	}
-	if event == nil {
-		h.log.Error("[handlers] event settings limit number callback: event not found",
-			"event_id", eventID,
-			telelog.Trace(c))
-		return h.respondErr(c, locale.ErrSomethingWrong)
-	}
-
-	oldLimit := event.Settings.Limit
-	event.Settings.Limit = limit
-	if event, err = h.eventService.SettingsUpdate(h.ctx(c), event.ID, h.userGet(c).Profile, event.Settings); err != nil {
 		h.log.Error("[handlers] event settings limit number callback: "+err.Error(),
 			"event_id", eventID,
 			telelog.Trace(c))

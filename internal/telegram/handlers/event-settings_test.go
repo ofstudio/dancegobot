@@ -67,6 +67,14 @@ func TestEventSettingsUnavailable(t *testing.T) {
 					require.Equal(t, []models.Session{{}}, st.sessions)
 					require.Equal(t, models.Session{}, user.Session)
 					require.Equal(t, []string{locale.ErrSomethingWrong}, c.alerts)
+					if cb.unique == views.BtnEventSettingsAutoPair.Unique ||
+						cb.unique == views.BtnEventSettingsClose.Unique ||
+						cb.unique == views.BtnEventSettingsLimitNum.Unique {
+						require.Equal(t, 1, st.begins)
+						require.Equal(t, 1, st.rollbacks)
+					} else {
+						require.Zero(t, st.begins)
+					}
 				})
 			}
 		})
@@ -112,6 +120,7 @@ func TestEventSettingsInvalidLimitParameters(t *testing.T) {
 						require.NoError(t, tc.handler(h, c))
 					})
 					require.Empty(t, st.eventIDs)
+					require.Zero(t, st.begins)
 					require.Equal(t, []models.Session{{}}, st.sessions)
 					require.Equal(t, models.Session{}, user.Session)
 					require.Equal(t, []string{locale.ErrSomethingWrong}, c.alerts)
@@ -124,9 +133,21 @@ func TestEventSettingsInvalidLimitParameters(t *testing.T) {
 // Unimplemented store methods fail the test if an error path attempts further work.
 type eventSettingsErrorStore struct {
 	store.Store
-	err      error
-	eventIDs []string
-	sessions []models.Session
+	err       error
+	eventIDs  []string
+	sessions  []models.Session
+	begins    int
+	rollbacks int
+}
+
+func (s *eventSettingsErrorStore) Begin(context.Context) (store.Store, error) {
+	s.begins++
+	return s, nil
+}
+
+func (s *eventSettingsErrorStore) Rollback() error {
+	s.rollbacks++
+	return nil
 }
 
 func (s *eventSettingsErrorStore) EventGet(_ context.Context, id string) (*models.Event, error) {

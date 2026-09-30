@@ -46,8 +46,29 @@ func (h *EventHandler) CanManage(profile models.Profile) bool {
 	return profile.ID == h.event.Owner.ID
 }
 
-// SettingsUpdate updates the event settings.
-func (h *EventHandler) SettingsUpdate(initiator models.Profile, settings models.EventSettings) error {
+// SettingsAutoPairingToggle toggles auto-pairing without changing other event settings.
+func (h *EventHandler) SettingsAutoPairingToggle(initiator models.Profile) error {
+	settings := h.event.Settings
+	settings.AutoPairing = !settings.AutoPairing
+	return h.settingsUpdate(initiator, settings)
+}
+
+// SettingsClosedToggle toggles registration closure without changing other event settings.
+func (h *EventHandler) SettingsClosedToggle(initiator models.Profile) error {
+	settings := h.event.Settings
+	settings.Closed = !settings.Closed
+	return h.settingsUpdate(initiator, settings)
+}
+
+// SettingsLimitSet sets the couple limit without changing other event settings.
+func (h *EventHandler) SettingsLimitSet(initiator models.Profile, limit int) error {
+	settings := h.event.Settings
+	settings.Limit = limit
+	return h.settingsUpdate(initiator, settings)
+}
+
+// settingsUpdate validates and records the updated event settings.
+func (h *EventHandler) settingsUpdate(initiator models.Profile, settings models.EventSettings) error {
 	if !h.CanManage(initiator) {
 		return fmt.Errorf("profile is not allowed to update the event settings")
 	}

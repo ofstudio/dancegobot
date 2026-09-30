@@ -28,9 +28,23 @@ func TestEventServiceMissingEvent(t *testing.T) {
 		run  func() error
 	}{
 		{
-			name: "settings update",
+			name: "settings limit",
 			run: func() error {
-				_, err := service.SettingsUpdate(ctx, "missing_event", owner, models.EventSettings{Limit: 1})
+				_, _, err := service.SettingsLimitSet(ctx, "missing_event", owner, 1)
+				return err
+			},
+		},
+		{
+			name: "settings auto pairing",
+			run: func() error {
+				_, err := service.SettingsAutoPairingToggle(ctx, "missing_event", owner)
+				return err
+			},
+		},
+		{
+			name: "settings closure",
+			run: func() error {
+				_, err := service.SettingsClosedToggle(ctx, "missing_event", owner)
 				return err
 			},
 		},
@@ -169,10 +183,10 @@ func TestEventServiceRejectsInvalidSettingsUpdate(t *testing.T) {
 			before, err := st.EventGet(ctx, event.ID)
 			require.NoError(t, err)
 
-			updated, err := service.SettingsUpdate(ctx, event.ID, tc.initiator,
-				models.EventSettings{Limit: tc.limit, AutoPairing: true, Closed: true})
+			updated, oldLimit, err := service.SettingsLimitSet(ctx, event.ID, tc.initiator, tc.limit)
 			require.ErrorContains(t, err, tc.errorText)
 			require.Nil(t, updated)
+			require.Zero(t, oldLimit)
 			stored, err := st.EventGet(ctx, event.ID)
 			require.NoError(t, err)
 			require.Equal(t, before, stored)
@@ -188,15 +202,17 @@ func TestEventServiceNonNegativeLimits(t *testing.T) {
 			service, st := newEventServiceTest(t)
 			ctx := context.Background()
 			owner := models.Profile{ID: 1, FirstName: "Owner"}
-			event, err := service.Create(ctx, "abc", owner, models.EventSettings{Limit: limit})
+			event, err := service.Create(ctx, "abc", owner,
+				models.EventSettings{Limit: limit, AutoPairing: true, Closed: true})
 			require.NoError(t, err)
 			stored, err := st.EventGet(ctx, event.ID)
 			require.NoError(t, err)
 			require.Equal(t, limit, stored.Settings.Limit)
 
 			settings := models.EventSettings{Limit: limit, AutoPairing: true, Closed: true}
-			updated, err := service.SettingsUpdate(ctx, event.ID, owner, settings)
+			updated, oldLimit, err := service.SettingsLimitSet(ctx, event.ID, owner, limit)
 			require.NoError(t, err)
+			require.Equal(t, limit, oldLimit)
 			require.Equal(t, settings, updated.Settings)
 			stored, err = st.EventGet(ctx, event.ID)
 			require.NoError(t, err)

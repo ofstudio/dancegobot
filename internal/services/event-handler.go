@@ -51,6 +51,9 @@ func (h *EventHandler) SettingsUpdate(initiator models.Profile, settings models.
 	if !h.CanManage(initiator) {
 		return fmt.Errorf("profile is not allowed to update the event settings")
 	}
+	if settings.Limit < 0 {
+		return fmt.Errorf("event limit must not be negative, got %d", settings.Limit)
+	}
 	h.event.Settings = settings
 	h.hist = append(h.hist, &models.HistoryItem{
 		Action:    models.HistoryEventSettingsUpdated,

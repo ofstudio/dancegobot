@@ -73,6 +73,54 @@ func TestEventSettingsUnavailable(t *testing.T) {
 	}
 }
 
+func TestEventSettingsInvalidLimitParameters(t *testing.T) {
+	cases := []struct {
+		name    string
+		unique  string
+		values  []string
+		handler func(*Handlers, tele.Context) error
+	}{
+		{"limit", views.BtnEventSettingsLimitNum.Unique,
+			[]string{"-1", "21", "", "abc", "1.5", "999999999999999999999999999999"},
+			(*Handlers).CbEventSettingsLimitNum},
+		{"page", views.BtnEventSettingsLimit.Unique,
+			[]string{"-1", "2", "", "abc", "1.5", "999999999999999999999999999999"},
+			(*Handlers).CbEventSettingsLimitScene},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			for _, value := range tc.values {
+				t.Run(value, func(t *testing.T) {
+					st := &eventSettingsErrorStore{}
+					cfg := config.Default().Settings
+					h := NewHandlers(cfg,
+						services.NewEventService(cfg, st, nil, nil),
+						services.NewUserService(cfg, st), nil)
+					c := &eventSettingsErrorContext{
+						Context: tele.NewContext(nil, tele.Update{Callback: &tele.Callback{
+							Unique: tc.unique,
+							Data:   "event|" + value + "|0|rand",
+						}}),
+					}
+					user := &models.User{
+						Profile: models.Profile{ID: 1},
+						Session: models.Session{Action: models.SessionSignup, EventID: "previous"},
+					}
+					c.Set("user", user)
+
+					require.NotPanics(t, func() {
+						require.NoError(t, tc.handler(h, c))
+					})
+					require.Empty(t, st.eventIDs)
+					require.Equal(t, []models.Session{{}}, st.sessions)
+					require.Equal(t, models.Session{}, user.Session)
+					require.Equal(t, []string{locale.ErrSomethingWrong}, c.alerts)
+				})
+			}
+		})
+	}
+}
+
 // Unimplemented store methods fail the test if an error path attempts further work.
 type eventSettingsErrorStore struct {
 	store.Store

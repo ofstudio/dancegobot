@@ -100,6 +100,16 @@ func TestEventDraft(t *testing.T) {
 		require.Equal(t, 0, env.eventGet(eventID).Settings.Limit)
 	})
 
+	t.Run("maximum inline limit", func(t *testing.T) {
+		env := newEnv(t)
+		env.process(env.inlineQuery(tele.Query{Sender: userJohn, Text: "Large event /99", ChatType: "supergroup"}))
+
+		req := env.tg.Wait("answerInlineQuery")
+		eventID := req.JSON.Get("results.0.id").String()
+		require.Equal(t, "Large event", req.JSON.Get("results.0.title").String())
+		require.Equal(t, 99, env.eventGet(eventID).Settings.Limit)
+	})
+
 	t.Run("unsupported limit shortcuts are ordinary text", func(t *testing.T) {
 		env := newEnv(t)
 		env.process(env.inlineQuery(tele.Query{Sender: userJohn, Text: "Limited event /0 /100", ChatType: "supergroup"}))

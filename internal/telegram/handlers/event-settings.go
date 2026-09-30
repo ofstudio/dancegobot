@@ -132,7 +132,21 @@ func (h *Handlers) CbEventSettingsLimitScene(c tele.Context) error {
 	}
 
 	eventID := c.Args()[0]
-	page, _ := strconv.Atoi(c.Args()[1])
+	page, err := strconv.Atoi(c.Args()[1])
+	if err != nil {
+		h.log.Error("[handlers] event settings limit scene callback: "+err.Error(),
+			"event_id", eventID,
+			"page", c.Args()[1],
+			telelog.Trace(c))
+		return h.respondErr(c, locale.ErrSomethingWrong)
+	}
+	if page < 0 || page > 1 {
+		h.log.Error("[handlers] event settings limit scene callback: invalid page",
+			"event_id", eventID,
+			"page", c.Args()[1],
+			telelog.Trace(c))
+		return h.respondErr(c, locale.ErrSomethingWrong)
+	}
 	offset := c.Args()[2]
 
 	event, err := h.eventService.Get(h.ctx(c), eventID)
@@ -164,7 +178,21 @@ func (h *Handlers) CbEventSettingsLimitNum(c tele.Context) error {
 	}
 
 	eventID := c.Args()[0]
-	limit, _ := strconv.Atoi(c.Args()[1])
+	limit, err := strconv.Atoi(c.Args()[1])
+	if err != nil {
+		h.log.Error("[handlers] event settings limit number callback: "+err.Error(),
+			"event_id", eventID,
+			"limit", c.Args()[1],
+			telelog.Trace(c))
+		return h.respondErr(c, locale.ErrSomethingWrong)
+	}
+	if limit < 0 || limit > 20 {
+		h.log.Error("[handlers] event settings limit number callback: invalid limit",
+			"event_id", eventID,
+			"limit", c.Args()[1],
+			telelog.Trace(c))
+		return h.respondErr(c, locale.ErrSomethingWrong)
+	}
 	offset, _ := strconv.Atoi(c.Args()[2])
 
 	event, err := h.eventService.Get(h.ctx(c), eventID)

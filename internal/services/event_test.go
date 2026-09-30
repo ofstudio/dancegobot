@@ -2,6 +2,7 @@ package services
 
 import (
 	"context"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -132,6 +133,80 @@ func TestEventServiceInputValidation(t *testing.T) {
 		require.Error(t, err)
 		require.Contains(t, err.Error(), "full name must be between")
 	})
+}
+
+func TestEventServiceRejectsNegativeLimitOnCreate(t *testing.T) {
+	service, st := newEventServiceTest(t)
+	event, err := service.Create(context.Background(), "abc",
+		models.Profile{ID: 1, FirstName: "Owner"}, models.EventSettings{Limit: -1})
+	require.ErrorContains(t, err, "event limit must not be negative")
+	require.Nil(t, event)
+	var count int
+	require.NoError(t, st.DB().QueryRow("SELECT COUNT(*) FROM events").Scan(&count))
+	require.Zero(t, count)
+	require.Zero(t, historyActionCount(t, st, models.HistoryEventCreated))
+	require.Zero(t, historyActionCount(t, st, models.HistoryNotificationSent))
+}
+
+func TestEventServiceRejectsInvalidSettingsUpdate(t *testing.T) {
+	for _, tc := range []struct {
+		name      string
+		initiator models.Profile
+		limit     int
+		errorText string
+	}{
+		{"negative limit", models.Profile{ID: 1}, -1, "event limit must not be negative"},
+		{"not owner", models.Profile{ID: 2}, 0, "profile is not allowed"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			service, st := newEventServiceTest(t)
+			ctx := context.Background()
+			event := sampleEvent()
+			event.Owner = models.Profile{ID: 1, FirstName: "Owner"}
+			event.Settings = models.EventSettings{Limit: 1}
+			event.Post = nil
+			require.NoError(t, st.EventUpsert(ctx, &event))
+			before, err := st.EventGet(ctx, event.ID)
+			require.NoError(t, err)
+
+			updated, err := service.SettingsUpdate(ctx, event.ID, tc.initiator,
+				models.EventSettings{Limit: tc.limit, AutoPairing: true, Closed: true})
+			require.ErrorContains(t, err, tc.errorText)
+			require.Nil(t, updated)
+			stored, err := st.EventGet(ctx, event.ID)
+			require.NoError(t, err)
+			require.Equal(t, before, stored)
+			require.Zero(t, historyActionCount(t, st, models.HistoryEventSettingsUpdated))
+			require.Zero(t, historyActionCount(t, st, models.HistoryNotificationSent))
+		})
+	}
+}
+
+func TestEventServiceNonNegativeLimits(t *testing.T) {
+	for _, limit := range []int{0, 1, 20, 21, 99} {
+		t.Run(strconv.Itoa(limit), func(t *testing.T) {
+			service, st := newEventServiceTest(t)
+			ctx := context.Background()
+			owner := models.Profile{ID: 1, FirstName: "Owner"}
+			event, err := service.Create(ctx, "abc", owner, models.EventSettings{Limit: limit})
+			require.NoError(t, err)
+			stored, err := st.EventGet(ctx, event.ID)
+			require.NoError(t, err)
+			require.Equal(t, limit, stored.Settings.Limit)
+
+			settings := models.EventSettings{Limit: limit, AutoPairing: true, Closed: true}
+			updated, err := service.SettingsUpdate(ctx, event.ID, owner, settings)
+			require.NoError(t, err)
+			require.Equal(t, settings, updated.Settings)
+			stored, err = st.EventGet(ctx, event.ID)
+			require.NoError(t, err)
+			require.Equal(t, settings, stored.Settings)
+			require.Eventually(t, func() bool {
+				return historyActionCount(t, st, models.HistoryEventCreated) == 1 &&
+					historyActionCount(t, st, models.HistoryEventSettingsUpdated) == 1
+			}, time.Second, 10*time.Millisecond)
+		})
+	}
 }
 
 func TestEventServicePostChatAddIsIdempotentAndImmutable(t *testing.T) {

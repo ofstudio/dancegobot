@@ -19,6 +19,45 @@ type TestEventHandlerSuite struct {
 	suite.Suite
 }
 
+func (suite *TestEventHandlerSuite) TestSettingsUpdateValidation() {
+	for _, limit := range []int{-1, 0, 1, 20, 21, 99} {
+		event := models.Event{
+			ID:       "event",
+			Owner:    models.Profile{ID: 1, FirstName: "Owner"},
+			Settings: models.EventSettings{Limit: 2},
+		}
+		before := event
+		handler := NewEventHandler(&event)
+		settings := models.EventSettings{Limit: limit, AutoPairing: true, Closed: true}
+
+		err := handler.SettingsUpdate(event.Owner, settings)
+		if limit < 0 {
+			suite.Require().ErrorContains(err, "event limit must not be negative")
+			suite.Equal(before, event)
+			suite.Empty(handler.History())
+			suite.Empty(handler.Notifications())
+			continue
+		}
+		suite.Require().NoError(err)
+		suite.Equal(settings, event.Settings)
+		suite.Require().Len(handler.History(), 1)
+		suite.Equal(models.HistoryEventSettingsUpdated, handler.History()[0].Action)
+	}
+
+	event := models.Event{
+		ID:       "event",
+		Owner:    models.Profile{ID: 1, FirstName: "Owner"},
+		Settings: models.EventSettings{Limit: 2},
+	}
+	before := event
+	handler := NewEventHandler(&event)
+	err := handler.SettingsUpdate(models.Profile{ID: 2}, models.EventSettings{Limit: 1})
+	suite.Require().ErrorContains(err, "profile is not allowed")
+	suite.Equal(before, event)
+	suite.Empty(handler.History())
+	suite.Empty(handler.Notifications())
+}
+
 func (suite *TestEventHandlerSuite) TestDancerRegistrationGet() {
 	suite.Run("dancer is not registered", func() {
 		event := sampleEvent()

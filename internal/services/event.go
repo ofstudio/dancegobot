@@ -513,6 +513,9 @@ func (s *EventService) draftsCleanup(ctx context.Context) {
 // validateEvent validates the event.
 func (s *EventService) validateEvent(e *models.Event) error {
 	var err error
+	if e.Settings.Limit < 0 {
+		err = errutil.Append(err, fmt.Errorf("event limit must not be negative, got %d", e.Settings.Limit))
+	}
 	if strings.TrimSpace(e.Caption) == "" {
 		err = errutil.Append(err, fmt.Errorf("event text must be provided"))
 	}

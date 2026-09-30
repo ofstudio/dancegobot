@@ -207,6 +207,7 @@ func (s *EventService) RegistrationGet(
 }
 
 // PostAdd adds information about the post where the event is published.
+// The first inline message ID is immutable; the same ID may trigger another render.
 func (s *EventService) PostAdd(
 	ctx context.Context,
 	eventID string,
@@ -220,6 +221,13 @@ func (s *EventService) PostAdd(
 	err := s.update(ctx, eventID, func(h *EventHandler) error {
 		if h.Event().Post == nil {
 			h.Event().Post = &models.Post{}
+		}
+		if h.Event().Post.InlineMessageID != "" {
+			if h.Event().Post.InlineMessageID != inlineMessageID {
+				return fmt.Errorf("event post inline message ID is already set")
+			}
+			event = h.Event()
+			return nil
 		}
 		h.Event().Post.InlineMessageID = inlineMessageID
 		event = h.Event()

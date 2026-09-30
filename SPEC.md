@@ -497,6 +497,11 @@ the original publication of an event. Repeated updates for the same chat and
 message are idempotent and may enrich chat metadata, but they must not replace
 the original publication with another chat or message.
 
+The first non-empty `Post.InlineMessageID` is immutable. Repeating the same ID
+may re-render the original post without another `HistoryPostAdded` entry;
+attempts to replace it with a different ID are rejected. Chat information and
+the inline message ID may arrive in either order and enrich the same `Post`.
+
 New-event notification fanout has at-most-once semantics per event. Before
 calling `NotifierService`, the subscription consumer atomically changes
 `Event.SubscribersNotified` from false to true; this flag is monotonic and cannot

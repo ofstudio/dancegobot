@@ -13,6 +13,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Prevent crashes when event settings callbacks reference missing events.
 - Reject invalid event limit callbacks and negative event limits.
 - Preserve concurrent changes to individual event settings.
+- Preserve the original event post's inline message ID.
 
 ## [3.1.0] - 2026-08-19
 

@@ -29,10 +29,10 @@ func MyScene(
 	reg models.Registration,
 	canManage bool,
 	subscription services.SubscriptionStatus,
-	offset, next int,
+	offset, next, nameMaxLen int,
 ) error {
 	date := reg.Event.CreatedAt.Format("02.01.2006")
-	msg := fmt.Sprintf(locale.MyEventHeader, date) + postTextBuilder(reg.Event).String()
+	msg := fmt.Sprintf(locale.MyEventHeader, date) + postTextBuilder(reg.Event, nameMaxLen).String()
 	rm := btnMyScene(reg, canManage, subscription, offset, next)
 	err := c.EditOrSend(msg, rm, tele.ModeHTML, tele.RemoveKeyboard, tele.NoPreview)
 	if editErrorIsSuccess(err) {

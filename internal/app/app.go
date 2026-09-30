@@ -60,8 +60,8 @@ func (a *App) Init(ctx context.Context) error {
 	a.Services = services.NewServices(
 		a.cfg.Settings,
 		a.Store,
-		views.Render(a.Bot),
-		views.Notify(a.Bot),
+		views.Render(a.Bot, a.cfg.DancerNameMaxLen),
+		views.Notify(a.Bot, a.cfg.DancerNameMaxLen),
 		telegram.Membership(a.Bot),
 	).WithLogger(a.log)
 

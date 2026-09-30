@@ -12,7 +12,7 @@ import (
 )
 
 // SignupScene renders the event signup scene to the user.
-func SignupScene(c tele.Context, reg models.Registration, singles []models.SessionSingle) error {
+func SignupScene(c tele.Context, reg models.Registration, singles []models.SessionSingle, nameMaxLen int) error {
 	opts := &tele.SendOptions{
 		ReplyMarkup:           btnSignupScene(reg, singles),
 		DisableWebPagePreview: true,
@@ -25,7 +25,7 @@ func SignupScene(c tele.Context, reg models.Registration, singles []models.Sessi
 	case models.StatusAsSingle:
 		return c.Send(fmt.Sprintf(locale.SignupSingle, locale.IconSingle[reg.Role]), opts)
 	case models.StatusInCouple:
-		return c.Send(fmt.Sprintf(locale.SignupInCouple, fmtDancer(*reg.Partner)), opts)
+		return c.Send(fmt.Sprintf(locale.SignupInCouple, fmtDancer(*reg.Partner, nameMaxLen)), opts)
 	case models.StatusForbidden:
 		return c.Send(locale.SignupForbidden, opts)
 	default:
@@ -35,7 +35,7 @@ func SignupScene(c tele.Context, reg models.Registration, singles []models.Sessi
 }
 
 // SendResult sends a message on user signup result.
-func SendResult(c tele.Context, reg models.Registration, singles []models.SessionSingle, subscribeURL string) error {
+func SendResult(c tele.Context, reg models.Registration, singles []models.SessionSingle, subscribeURL string, nameMaxLen int) error {
 	opts := &tele.SendOptions{
 		DisableWebPagePreview: true,
 		ParseMode:             tele.ModeHTML,
@@ -51,7 +51,7 @@ func SendResult(c tele.Context, reg models.Registration, singles []models.Sessio
 		msg := fmt.Sprintf(locale.ResultSuccessSingle, locale.IconSingle[reg.Role])
 		return c.Send(withSubscribeLink(msg, subscribeURL), opts)
 	case models.ResultRegisteredInCouple:
-		msg := fmt.Sprintf(locale.ResultSuccessCouple, fmtDancer(*reg.Partner))
+		msg := fmt.Sprintf(locale.ResultSuccessCouple, fmtDancer(*reg.Partner, nameMaxLen))
 		if reg.WaitList {
 			msg += locale.ResultCoupleWaitlist
 		}
@@ -62,11 +62,11 @@ func SendResult(c tele.Context, reg models.Registration, singles []models.Sessio
 	case models.ResultAlreadyAsSingle:
 		return c.Send(fmt.Sprintf(locale.ResultAlreadyAsSingle, locale.IconSingle[reg.Role]), opts)
 	case models.ResultAlreadyInCouple:
-		return c.Send(fmt.Sprintf(locale.ResultAlreadyInCouple, fmtDancer(*reg.Partner)), opts)
+		return c.Send(fmt.Sprintf(locale.ResultAlreadyInCouple, fmtDancer(*reg.Partner, nameMaxLen)), opts)
 	case models.ResultAlreadyInSameCouple:
 		return c.Send(locale.ResultAlreadyInSameCouple, opts)
 	case models.ResultPartnerTaken:
-		return c.Send(fmt.Sprintf(locale.ResultPartnerTaken, fmtDancer(reg.Related.Dancer)), opts)
+		return c.Send(fmt.Sprintf(locale.ResultPartnerTaken, fmtDancer(reg.Related.Dancer, nameMaxLen)), opts)
 	case models.ResultPartnerSameRole:
 		return c.Send(locale.ResultPartnerSameRole, opts)
 	case models.ResultSelfNotAllowed:

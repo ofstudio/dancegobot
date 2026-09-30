@@ -290,7 +290,7 @@ func (h *Handlers) limitChangedNotice(c tele.Context, event *models.Event, oldLi
 	// Update user session with the affected couples
 	h.userSessionUpdateAffected(c, event.ID, &affected)
 
-	return views.SendLimitChanged(c, event, affected)
+	return views.SendLimitChanged(c, event, affected, h.cfg.DancerNameMaxLen)
 }
 
 // userSessionUpdateAffected updates the user session with the affected couples.

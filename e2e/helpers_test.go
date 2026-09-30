@@ -26,6 +26,11 @@ type testEnv struct {
 
 func newEnv(t *testing.T, opts ...teletest.Option) *testEnv {
 	t.Helper()
+	return newEnvWithConfig(t, nil, opts...)
+}
+
+func newEnvWithConfig(t *testing.T, configure func(*config.Config), opts ...teletest.Option) *testEnv {
+	t.Helper()
 
 	serverOpts := []teletest.Option{teletest.WithBotUser(botUser)}
 	serverOpts = append(serverOpts, opts...)
@@ -44,6 +49,9 @@ func newEnv(t *testing.T, opts ...teletest.Option) *testEnv {
 	cfg.ReRenderOnStartup = 0
 	cfg.DraftCleanupEvery = 0
 	cfg.DraftCleanupOlderThan = 0
+	if configure != nil {
+		configure(&cfg)
+	}
 
 	a := app.New(cfg)
 	require.NoError(t, a.Init(ctx))

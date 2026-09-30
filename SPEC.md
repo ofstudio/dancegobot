@@ -72,6 +72,15 @@ user when the username matches their current Telegram username. Telegram
 username matching is case-insensitive. Plain manually entered names are not
 claimable by the real Telegram user.
 
+Manual partner names are limited by `DancerNameMaxLen` (64 runes by default).
+This input limit does not apply to names obtained from Telegram profiles.
+Profile first and last names and the dancer's full name are stored unchanged.
+All displayed dancer and profile names use the same `DancerNameMaxLen` setting:
+longer names are shortened to the first `DancerNameMaxLen - 1` runes followed
+by an ellipsis, before HTML escaping. Button numbers, usernames, profile links,
+history, and logs retain their original values. Single partner selection uses
+the button number, so identical shortened names do not affect identity.
+
 ### Couple
 
 A couple contains exactly two dancers:

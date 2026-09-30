@@ -5,6 +5,7 @@ import (
 	"html"
 	"strconv"
 	"strings"
+	"unicode/utf8"
 
 	tele "gopkg.in/telebot.v4"
 
@@ -15,9 +16,9 @@ import (
 
 // Render returns services.RenderFunc function for services.RenderService
 // that renders the event post with the given inline message ID.
-func Render(api tele.API) func(*models.Event, string) error {
+func Render(api tele.API, nameMaxLen int) func(*models.Event, string) error {
 	return func(event *models.Event, inlineMessageID string) error {
-		return render(api, event, inlineMessageID)
+		return render(api, event, inlineMessageID, nameMaxLen)
 	}
 }
 
@@ -27,7 +28,7 @@ func EventSignupURL(eventID string, role models.Role) string {
 }
 
 // render renders the event post with the given inline message ID.
-func render(api tele.API, event *models.Event, inlineMessageID string) error {
+func render(api tele.API, event *models.Event, inlineMessageID string, nameMaxLen int) error {
 	var rm *tele.ReplyMarkup
 	if event.Settings.Closed {
 		rm = btnEventClosed()
@@ -42,7 +43,7 @@ func render(api tele.API, event *models.Event, inlineMessageID string) error {
 		ParseMode:             tele.ModeHTML,
 	}
 
-	_, err := api.Edit(msg, postTextBuilder(event).String(), opts)
+	_, err := api.Edit(msg, postTextBuilder(event, nameMaxLen).String(), opts)
 	// An unchanged Telegram message means the requested render is already applied.
 	if editErrorIsSuccess(err) {
 		return nil
@@ -57,7 +58,7 @@ func editErrorIsSuccess(err error) bool {
 }
 
 // postTextBuilder returns strings.Builder with the event post text.
-func postTextBuilder(event *models.Event) *strings.Builder {
+func postTextBuilder(event *models.Event, nameMaxLen int) *strings.Builder {
 	sb := &strings.Builder{}
 	if event.Settings.Closed {
 		sb.WriteString(locale.IconPostClosed)
@@ -67,7 +68,7 @@ func postTextBuilder(event *models.Event) *strings.Builder {
 
 	if len(event.Couples) > 0 {
 		sb.WriteString(locale.PostCouples)
-		postCouplesBuild(sb, event.Couples, event.Settings.Limit)
+		postCouplesBuild(sb, event.Couples, event.Settings.Limit, nameMaxLen)
 		sb.WriteByte('\n')
 	}
 
@@ -75,10 +76,10 @@ func postTextBuilder(event *models.Event) *strings.Builder {
 		leaders, followers := singlesByRole(event.Singles)
 		if len(leaders) > len(followers) {
 			sb.WriteString(locale.PostSingles[models.RoleLeader])
-			postSinglesBuild(sb, leaders, followers)
+			postSinglesBuild(sb, leaders, followers, nameMaxLen)
 		} else {
 			sb.WriteString(locale.PostSingles[models.RoleFollower])
-			postSinglesBuild(sb, followers, leaders)
+			postSinglesBuild(sb, followers, leaders, nameMaxLen)
 		}
 	}
 	return sb
@@ -87,7 +88,7 @@ func postTextBuilder(event *models.Event) *strings.Builder {
 // postCouplesBuild appends the couples list to the strings.Builder.
 // The limit parameter is used to separate the list into two parts: the second part is shown as a waitlist.
 // The optional start parameter is used to set the index of the first couple.
-func postCouplesBuild(sb *strings.Builder, couples []models.Couple, limit int, start ...int) {
+func postCouplesBuild(sb *strings.Builder, couples []models.Couple, limit, nameMaxLen int, start ...int) {
 	var startIndex int
 	if len(start) > 0 {
 		startIndex = start[0]
@@ -98,31 +99,31 @@ func postCouplesBuild(sb *strings.Builder, couples []models.Couple, limit int, s
 		}
 		sb.WriteString(strconv.Itoa(startIndex + i + 1))
 		sb.WriteString(". ")
-		sb.WriteString(fmtDancer(c.Dancers[0]))
+		sb.WriteString(fmtDancer(c.Dancers[0], nameMaxLen))
 		sb.WriteString(" – ")
-		sb.WriteString(fmtDancer(c.Dancers[1]))
+		sb.WriteString(fmtDancer(c.Dancers[1], nameMaxLen))
 		sb.WriteByte('\n')
 	}
 }
 
 // postSinglesBuild appends the singles lists s1 and s2 to the strings.Builder.
-func postSinglesBuild(sb *strings.Builder, s1, s2 []models.Dancer) {
+func postSinglesBuild(sb *strings.Builder, s1, s2 []models.Dancer, nameMaxLen int) {
 	for i, s := range s1 {
-		singleBuild(sb, i+1, s)
+		singleBuild(sb, i+1, s, nameMaxLen)
 	}
 	if len(s1) > 0 && len(s2) > 0 {
 		sb.WriteByte('\n')
 	}
 	for i, s := range s2 {
-		singleBuild(sb, i+1, s)
+		singleBuild(sb, i+1, s, nameMaxLen)
 	}
 }
 
 // singleBuild appends the single dancer to the strings.Builder.
-func singleBuild(sb *strings.Builder, i int, single models.Dancer) {
+func singleBuild(sb *strings.Builder, i int, single models.Dancer, nameMaxLen int) {
 	sb.WriteString(strconv.Itoa(i))
 	sb.WriteString(". ")
-	sb.WriteString(fmtDancer(single))
+	sb.WriteString(fmtDancer(single, nameMaxLen))
 	sb.WriteByte('\n')
 }
 
@@ -169,8 +170,8 @@ func fmtCaption(caption string) string {
 }
 
 // fmtDancer formats the dancer with a link to the Telegram profile.
-func fmtDancer(d models.Dancer) string {
-	name := html.EscapeString(d.FullName)
+func fmtDancer(d models.Dancer, nameMaxLen int) string {
+	name := html.EscapeString(DisplayName(d.FullName, nameMaxLen))
 	if d.Profile == nil {
 		return name
 	}
@@ -178,11 +179,24 @@ func fmtDancer(d models.Dancer) string {
 }
 
 // fmtProfile formats the profile with a link to Telegram profile.
-func fmtProfile(p *models.Profile) string {
+func fmtProfile(p *models.Profile, nameMaxLen int) string {
 	if p == nil {
 		return ""
 	}
-	return `<a href="` + html.EscapeString(profileURL(p)) + `">` + html.EscapeString(p.FullName()) + "</a>"
+	return `<a href="` + html.EscapeString(profileURL(p)) + `">` + html.EscapeString(DisplayName(p.FullName(), nameMaxLen)) + "</a>"
+}
+
+// DisplayName shortens names for output without changing the stored profile or dancer.
+// Apply it before HTML escaping, and only to the name, not links or button numbers.
+// The limit is the same DancerNameMaxLen setting used to validate manual input.
+func DisplayName(name string, nameMaxLen int) string {
+	if nameMaxLen < 1 {
+		return ""
+	}
+	if utf8.RuneCountInString(name) <= nameMaxLen {
+		return name
+	}
+	return string([]rune(name)[:nameMaxLen-1]) + locale.NameEllipsis
 }
 
 // profileURL formats the Telegram profile URL.

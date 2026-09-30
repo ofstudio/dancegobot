@@ -26,7 +26,7 @@ type Settings struct {
 	QueryThumbUrl         string          `env:"THUMBNAIL_URL"` // URL for thumbnail image for query answer
 	EventIDLen            int             // Length of event ID
 	EventTextMaxLen       int             // Maximum length for event text in runes
-	DancerNameMaxLen      int             // Maximum length for dancer name in runes
+	DancerNameMaxLen      int             // Maximum length for manually entered and displayed dancer names in runes
 	RenderFailsMax        int             // Maximum number of failed event rendering attempts
 	RendererRepeats       []time.Duration // Time intervals for event rendering repeats
 	ReRenderOnStartup     time.Duration   // Re-render on startup the recent events that were updated not older than this duration

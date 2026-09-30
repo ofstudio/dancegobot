@@ -12,24 +12,20 @@ import (
 	"github.com/ofstudio/dancegobot/internal/models"
 )
 
-var notifyT *template.Template
-
 var BtnNotificationUnsubscribe = tele.Btn{Unique: "notification_unsubscribe"}
 
-// initialize notification templates
-func init() {
-	var err error
-
+// newNotifyTemplate binds the configured name length to notification templates.
+func newNotifyTemplate(nameMaxLen int) *template.Template {
 	// Parse notification base template
-	notifyT, err = template.New("").Funcs(template.FuncMap{
+	notifyT, err := template.New("").Funcs(template.FuncMap{
 		"fmtDancer": func(dancer *models.Dancer) template.HTML {
 			if dancer == nil {
 				return ""
 			}
-			return template.HTML(fmtDancer(*dancer))
+			return template.HTML(fmtDancer(*dancer, nameMaxLen))
 		},
 		"fmtProfile": func(p *models.Profile) template.HTML {
-			return template.HTML(fmtProfile(p))
+			return template.HTML(fmtProfile(p, nameMaxLen))
 		},
 	}).Parse(locale.NotificationsBase)
 	if err != nil {
@@ -43,13 +39,15 @@ func init() {
 			panic(fmt.Sprintf("failed to parse notification template '%s': %v", name, err))
 		}
 	}
+	return notifyT
 }
 
 // Notify returns services.NotifyFunc function for services.NotifierService
 // that sends notifications to the user.
-func Notify(api tele.API) func(n *models.Notification) error {
+func Notify(api tele.API, nameMaxLen int) func(n *models.Notification) error {
+	notifyT := newNotifyTemplate(nameMaxLen)
 	return func(n *models.Notification) error {
-		textSb, err := notifyTextBuilder(n)
+		textSb, err := notifyTextBuilder(notifyT, n)
 		if err != nil {
 			return err
 		}
@@ -69,7 +67,7 @@ func Notify(api tele.API) func(n *models.Notification) error {
 }
 
 // notifyTextBuilder returns strings.Builder with the text for the given notification
-func notifyTextBuilder(n *models.Notification) (*strings.Builder, error) {
+func notifyTextBuilder(notifyT *template.Template, n *models.Notification) (*strings.Builder, error) {
 	sb := &strings.Builder{}
 	err := notifyT.ExecuteTemplate(sb, n.TmplCode.String(), n.Payload)
 	if err != nil {

@@ -35,7 +35,7 @@ func Test_renderEditResult(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			err := render(editAPI{err: tt.err}, &models.Event{ID: "eventID"}, "inlineMessageID")
+			err := render(editAPI{err: tt.err}, &models.Event{ID: "eventID"}, "inlineMessageID", testNameMaxLen)
 
 			if tt.want == nil {
 				assert.NoError(t, err)
@@ -72,7 +72,7 @@ func Test_fmtDancerEscapesHTML(t *testing.T) {
 	t.Run("manual name", func(t *testing.T) {
 		got := fmtDancer(models.Dancer{
 			FullName: "Мария <Follower> & Co",
-		})
+		}, testNameMaxLen)
 
 		assert.Equal(t, "Мария &lt;Follower&gt; &amp; Co", got)
 	})
@@ -86,7 +86,7 @@ func Test_fmtDancerEscapesHTML(t *testing.T) {
 		got := fmtDancer(models.Dancer{
 			Profile:  profile,
 			FullName: profile.FullName(),
-		})
+		}, testNameMaxLen)
 
 		assert.Equal(t, `<a href="tg://user?id=42">Иван &lt;Lead&gt; &amp; Co</a>`, got)
 	})
@@ -115,7 +115,7 @@ func Test_postTextBuilderEscapesDancerNames(t *testing.T) {
 		}},
 	}
 
-	text := postTextBuilder(event).String()
+	text := postTextBuilder(event, testNameMaxLen).String()
 
 	assert.Contains(t, text, locale.PostCouples)
 	assert.Contains(t, text, `<a href="tg://user?id=42">Иван &lt;Lead&gt; &amp; Co</a>`)
@@ -129,7 +129,7 @@ func Test_postTextBuilderEscapesCaption(t *testing.T) {
 		Caption: "Танцы <tag> & friends",
 	}
 
-	text := postTextBuilder(event).String()
+	text := postTextBuilder(event, testNameMaxLen).String()
 
 	assert.Contains(t, text, "Танцы &lt;tag&gt; &amp; friends")
 	assert.NotContains(t, text, "Танцы <tag> & friends")

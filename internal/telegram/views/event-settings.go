@@ -56,7 +56,7 @@ func EventSettingsLimitScene(c tele.Context, eventID string, page int, offset st
 // The oldLimit parameter is the previous limit value for the event.
 // The increased parameter indicates whether the limit was increased or decreased.
 // The idx parameter is the index of the first affected couple in the event couples list.
-func SendLimitChanged(c tele.Context, event *models.Event, affected models.AffectedCouples) error {
+func SendLimitChanged(c tele.Context, event *models.Event, affected models.AffectedCouples, nameMaxLen int) error {
 	sb := &strings.Builder{}
 
 	// Add notice about the limit change
@@ -81,7 +81,7 @@ func SendLimitChanged(c tele.Context, event *models.Event, affected models.Affec
 	}
 
 	// Add affected couples
-	postCouplesBuild(sb, affected.Couples, 0, affected.Position)
+	postCouplesBuild(sb, affected.Couples, 0, nameMaxLen, affected.Position)
 
 	rm := btnLimitChanged(event.ID)
 	return c.Send(sb.String(), rm, tele.RemoveKeyboard, tele.NoPreview, tele.ModeHTML)

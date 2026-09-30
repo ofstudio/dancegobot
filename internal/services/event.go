@@ -578,8 +578,10 @@ func (s *EventService) validateDancer(d models.Dancer) error {
 	var err error
 	if d.Profile != nil {
 		err = errutil.Append(err, s.validateProfile(*d.Profile))
+	} else {
+		// The name length limit applies only to manual input, not Telegram profiles.
+		err = errutil.Append(err, s.validateFullname(d.FullName))
 	}
-	err = errutil.Append(err, s.validateFullname(d.FullName))
 	err = errutil.Append(err, s.validateRole(d.Role))
 	return err
 }

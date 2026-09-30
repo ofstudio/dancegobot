@@ -110,7 +110,7 @@ func (h *Handlers) signupScene(c tele.Context, eventID string, role models.Role)
 	}
 
 	h.log.Info("[handlers] signup scene", "", reg.LogValue(), telelog.Trace(c))
-	return views.SignupScene(c, reg, singles)
+	return views.SignupScene(c, reg, singles, h.cfg.DancerNameMaxLen)
 }
 
 // coupleAdd handles the couple signup action
@@ -136,7 +136,7 @@ func (h *Handlers) coupleAdd(c tele.Context, eventID string, role models.Role, o
 		// otherwise, reset the session
 		h.userSessionResetSignup(c)
 	}
-	return views.SendResult(c, reg, singles, h.subscriptionURL(c, reg))
+	return views.SendResult(c, reg, singles, h.subscriptionURL(c, reg), h.cfg.DancerNameMaxLen)
 }
 
 // singleAdd handles the single signup action
@@ -162,7 +162,7 @@ func (h *Handlers) singleAdd(c tele.Context, eventID string, role models.Role) e
 		// otherwise, reset the session
 		h.userSessionResetSignup(c)
 	}
-	return views.SendResult(c, reg, singles, h.subscriptionURL(c, reg))
+	return views.SendResult(c, reg, singles, h.subscriptionURL(c, reg), h.cfg.DancerNameMaxLen)
 }
 
 // dancerRemove handles the dancer remove action
@@ -179,7 +179,7 @@ func (h *Handlers) dancerRemove(c tele.Context, eventID string) error {
 	h.log.Info("[handlers] dancer remove", "", reg.LogValue(), telelog.Trace(c))
 
 	h.userSessionResetSignup(c)
-	return views.SendResult(c, reg, nil, "")
+	return views.SendResult(c, reg, nil, "", h.cfg.DancerNameMaxLen)
 }
 
 // userSessionUpdateSignup updates the user event signup session.
@@ -218,7 +218,7 @@ func (h *Handlers) fmtSingles(singles []models.Dancer, role models.Role) []model
 			continue
 		}
 		if d.Role == role {
-			caption := strconv.Itoa(len(s)+1) + ". " + d.FullName
+			caption := strconv.Itoa(len(s)+1) + ". " + views.DisplayName(d.FullName, h.cfg.DancerNameMaxLen)
 			if d.Profile.Username != "" {
 				caption += " (@" + d.Profile.Username + ")"
 			}

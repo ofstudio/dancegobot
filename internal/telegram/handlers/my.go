@@ -124,7 +124,7 @@ func (h *Handlers) myScene(c tele.Context, offset int) error {
 			"event_id", event.ID,
 			telelog.Trace(c))
 	}
-	return views.MyScene(c, reg, canManage, subscription, offset, next)
+	return views.MyScene(c, reg, canManage, subscription, offset, next, h.cfg.DancerNameMaxLen)
 }
 
 // CbMySubscription handles the subscription toggle in the /my scene.

@@ -10,13 +10,15 @@ import (
 	"github.com/ofstudio/dancegobot/internal/models"
 )
 
+var testNotifyTemplate = newNotifyTemplate(testNameMaxLen)
+
 func Test_notifyText(t *testing.T) {
 	t.Run("TmplNewEvent", func(t *testing.T) {
 		n := &models.Notification{
 			TmplCode: models.TmplNewEvent,
 			Payload:  testPayload,
 		}
-		text, err := notifyTextBuilder(n)
+		text, err := notifyTextBuilder(testNotifyTemplate, n)
 		require.NoError(t, err)
 		assert.Equal(t, "🔔 Новая запись в Test Chat.", text.String())
 	})
@@ -26,7 +28,7 @@ func Test_notifyText(t *testing.T) {
 			TmplCode: models.TmplRegisteredWithSingle,
 			Payload:  testPayload,
 		}
-		text, err := notifyTextBuilder(n)
+		text, err := notifyTextBuilder(testNotifyTemplate, n)
 		require.NoError(t, err)
 		assert.Equal(t,
 			"🔔 Test Event\n\n<a href=\"tg://user?id=1\">Test Partner</a> зарегистрировался с тобой в паре! 🎉",
@@ -39,7 +41,7 @@ func Test_notifyText(t *testing.T) {
 			TmplCode: models.TmplRegisteredWithSingle,
 			Payload:  payload,
 		}
-		text, err := notifyTextBuilder(n)
+		text, err := notifyTextBuilder(testNotifyTemplate, n)
 		require.NoError(t, err)
 		assert.Equal(t,
 			"🔔 Test Event\n\n<a href=\"tg://user?id=1\">Test Partner</a> зарегистрировался с тобой в паре! 🎉"+
@@ -52,7 +54,7 @@ func Test_notifyText(t *testing.T) {
 			TmplCode: models.TmplCanceledWithSingle,
 			Payload:  testPayload,
 		}
-		text, err := notifyTextBuilder(n)
+		text, err := notifyTextBuilder(testNotifyTemplate, n)
 		require.NoError(t, err)
 		assert.Equal(t,
 			"🔔 Test Event\n\n<a href=\"tg://user?id=1\">Test Partner</a> отменил вашу регистрацию. Я вернул тебя в список ищущих пару 🤗",
@@ -64,7 +66,7 @@ func Test_notifyText(t *testing.T) {
 			TmplCode: models.TmplCanceledByPartner,
 			Payload:  testPayload,
 		}
-		text, err := notifyTextBuilder(n)
+		text, err := notifyTextBuilder(testNotifyTemplate, n)
 		require.NoError(t, err)
 		assert.Equal(t,
 			"🔔 Test Event\n\n<a href=\"tg://user?id=1\">Test Partner</a> отменил вашу регистрацию.",
@@ -76,7 +78,7 @@ func Test_notifyText(t *testing.T) {
 			TmplCode: models.TmplAutoPairPartnerFound,
 			Payload:  testPayload,
 		}
-		text, err := notifyTextBuilder(n)
+		text, err := notifyTextBuilder(testNotifyTemplate, n)
 		require.NoError(t, err)
 		assert.Equal(t,
 			"🔔 Test Event\n\nЯ подобрал тебе в пару <a href=\"tg://user?id=1\">Test Partner</a> 👌",
@@ -90,7 +92,7 @@ func Test_notifyText(t *testing.T) {
 			TmplCode: models.TmplAutoPairPartnerFound,
 			Payload:  payload,
 		}
-		text, err := notifyTextBuilder(n)
+		text, err := notifyTextBuilder(testNotifyTemplate, n)
 		require.NoError(t, err)
 		assert.Equal(t,
 			"🔔 Test Event\n\nЯ подобрал тебе в пару <a href=\"tg://user?id=1\">Test Partner</a> 👌"+
@@ -103,7 +105,7 @@ func Test_notifyText(t *testing.T) {
 			TmplCode: models.TmplAutoPairPartnerChanged,
 			Payload:  testPayload,
 		}
-		text, err := notifyTextBuilder(n)
+		text, err := notifyTextBuilder(testNotifyTemplate, n)
 		require.NoError(t, err)
 		assert.Equal(t,
 			"🔔 Test Event\n\n<a href=\"tg://user?id=1\">Test Partner</a> отменил вашу регистрацию. \nЯ записал тебя вместе с <a href=\"https://t.me/new_partner\">Another</a> 👌",
@@ -117,7 +119,7 @@ func Test_notifyText(t *testing.T) {
 			TmplCode: models.TmplAutoPairPartnerChanged,
 			Payload:  payload,
 		}
-		text, err := notifyTextBuilder(n)
+		text, err := notifyTextBuilder(testNotifyTemplate, n)
 		require.NoError(t, err)
 		assert.Equal(t,
 			"🔔 Test Event\n\n<a href=\"tg://user?id=1\">Test Partner</a> отменил вашу регистрацию. \nЯ записал тебя вместе с <a href=\"https://t.me/new_partner\">Another</a> 👌"+
@@ -130,7 +132,7 @@ func Test_notifyText(t *testing.T) {
 			TmplCode: models.TmplCoupleWaitListLeft,
 			Payload:  testPayload,
 		}
-		text, err := notifyTextBuilder(n)
+		text, err := notifyTextBuilder(testNotifyTemplate, n)
 		require.NoError(t, err)
 		assert.Equal(t,
 			"🔔 Test Event\n\nВы вместе с <a href=\"tg://user?id=1\">Test Partner</a> вышли из списка ожидания 🎉\n\nЕсли планы изменились, и вы не сможете принять участие, пожалуйста, отмените вашу регистрацию.",
@@ -142,7 +144,7 @@ func Test_notifyText(t *testing.T) {
 			TmplCode: models.TmplEventLimitIncreased,
 			Payload:  testPayload,
 		}
-		text, err := notifyTextBuilder(n)
+		text, err := notifyTextBuilder(testNotifyTemplate, n)
 		require.NoError(t, err)
 		assert.Equal(t,
 			"🔔 Test Event\n\n<a href=\"tg://user?id=100\">Test Owner</a> увеличил лимит пар и вы вместе с <a href=\"tg://user?id=1\">Test Partner</a> вышли из списка ожидания 🎉\n\nЕсли планы изменились, и вы не сможете принять участие, пожалуйста, отмените вашу регистрацию.",
@@ -154,7 +156,7 @@ func Test_notifyText(t *testing.T) {
 			TmplCode: models.TmplEventLimitDecreased,
 			Payload:  testPayload,
 		}
-		text, err := notifyTextBuilder(n)
+		text, err := notifyTextBuilder(testNotifyTemplate, n)
 		require.NoError(t, err)
 		assert.Equal(t,
 			"🔔 Test Event\n\n<a href=\"tg://user?id=100\">Test Owner</a> уменьшил лимит пар и вы вместе с <a href=\"tg://user?id=1\">Test Partner</a> теперь в списке ожидания.\n\nЕсли кто-то отменит регистрацию и вы попадете в список участников, то я сообщу об этом 🤗",
@@ -193,7 +195,7 @@ func TestNotifyTextNewEventChatName(t *testing.T) {
 					Chat: &tt.chat,
 				}}},
 			}
-			text, err := notifyTextBuilder(n)
+			text, err := notifyTextBuilder(testNotifyTemplate, n)
 			require.NoError(t, err)
 			require.Equal(t, tt.want, text.String())
 		})
@@ -237,7 +239,7 @@ func Test_notifyTextEscapesDancerAndProfileNames(t *testing.T) {
 		Payload:  payload,
 	}
 
-	text, err := notifyTextBuilder(n)
+	text, err := notifyTextBuilder(testNotifyTemplate, n)
 	require.NoError(t, err)
 	got := text.String()
 

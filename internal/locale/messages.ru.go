@@ -19,7 +19,8 @@ const (
 
 …и нажми «Опубликовать»
 `
-	Ok = "Ок"
+	Ok           = "Ок"
+	NameEllipsis = "…"
 
 	CmdDescriptionStart    = "📖 Справка"
 	CmdDescriptionSettings = "🔧️ Настройки"

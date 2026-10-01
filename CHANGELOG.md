@@ -16,6 +16,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Preserve the original event post's inline message ID.
 - Skip outdated limit-change notifications.
 - Support long Telegram profile names.
+- Generate tokens with cryptographically secure randomness.
 
 ## [3.1.0] - 2026-08-19
 

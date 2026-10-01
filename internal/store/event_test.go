@@ -151,6 +151,49 @@ VALUES ('event_1', 1, '{"id": "event_1", "post": {"inline_message_id": "qwe"} }'
 	})
 }
 
+func (suite *TestStoreSuite) TestEventGetUpdatedAfterBoundary() {
+	base := time.Date(2026, 10, 1, 0, 0, 0, 0, time.UTC)
+	zones := []*time.Location{
+		time.UTC,
+		time.FixedZone("UTC+03", 3*60*60),
+		time.FixedZone("UTC-05:30", -(5*60+30)*60),
+	}
+	tests := []struct {
+		name   string
+		offset time.Duration
+		want   []string
+	}{
+		{name: "before whole second", offset: -time.Nanosecond, want: []string{"equal", "after"}},
+		{name: "equal whole second", want: []string{"after"}},
+		{name: "after whole second", offset: time.Nanosecond, want: []string{"after"}},
+		{name: "fractional second", offset: 500 * time.Millisecond, want: []string{"after"}},
+	}
+	for _, zone := range zones {
+		for _, tt := range tests {
+			suite.Run(zone.String()+"/"+tt.name, func() {
+				_, err := suite.store.db.Exec(`
+INSERT INTO events (id, owner_id, data, updated_at)
+VALUES ('before', 1, '{"id":"before","post":{"inline_message_id":"first"}}', '2026-09-30 23:59:59'),
+       ('equal', 1, '{"id":"equal","post":{"inline_message_id":"second"}}', '2026-10-01 00:00:00'),
+       ('after', 1, '{"id":"after","post":{"inline_message_id":"third"}}', '2026-10-01 00:00:01'),
+       ('draft_missing', 1, '{"id":"draft_missing"}', '2026-10-01 00:00:01'),
+       ('draft_null', 1, '{"id":"draft_null","post":null}', '2026-10-01 00:00:01'),
+       ('draft_empty', 1, '{"id":"draft_empty","post":{}}', '2026-10-01 00:00:01')
+`)
+				suite.Require().NoError(err)
+
+				events, err := suite.store.EventGetUpdatedAfter(context.Background(), base.Add(tt.offset).In(zone))
+				suite.Require().NoError(err)
+				var ids []string
+				for _, event := range events {
+					ids = append(ids, event.ID)
+				}
+				suite.ElementsMatch(tt.want, ids)
+			})
+		}
+	}
+}
+
 func (suite *TestStoreSuite) TestEventRemoveDraftsBefore() {
 	suite.Run("success", func() {
 		_, err := suite.store.db.Exec(`
@@ -194,6 +237,51 @@ VALUES ('event_1', 1, '{"post": {"inline_message_id": "qwe"} }', '2021-01-01 00:
 		suite.Contains(idsFromDB, "event_7")
 		suite.Contains(idsFromDB, "event_8")
 	})
+}
+
+func (suite *TestStoreSuite) TestEventRemoveDraftsBeforeBoundary() {
+	base := time.Date(2026, 10, 1, 0, 0, 0, 0, time.UTC)
+	zones := []*time.Location{
+		time.UTC,
+		time.FixedZone("UTC+03", 3*60*60),
+		time.FixedZone("UTC-05:30", -(5*60+30)*60),
+	}
+	tests := []struct {
+		name   string
+		offset time.Duration
+		want   []string
+		keep   []string
+	}{
+		{name: "before whole second", offset: -time.Nanosecond, want: []string{"before"}, keep: []string{"equal", "after"}},
+		{name: "equal whole second", want: []string{"before"}, keep: []string{"equal", "after"}},
+		{name: "after whole second", offset: time.Nanosecond, want: []string{"before", "equal"}, keep: []string{"after"}},
+		{name: "fractional second", offset: 500 * time.Millisecond, want: []string{"before", "equal"}, keep: []string{"after"}},
+	}
+	for _, zone := range zones {
+		for _, tt := range tests {
+			suite.Run(zone.String()+"/"+tt.name, func() {
+				_, err := suite.store.db.Exec(`
+INSERT INTO events (id, owner_id, data, updated_at)
+VALUES ('before', 1, '{}', '2026-09-30 23:59:59'),
+       ('equal', 1, '{}', '2026-10-01 00:00:00'),
+       ('after', 1, '{}', '2026-10-01 00:00:01'),
+       ('published', 1, '{"post":{"inline_message_id":"first"}}', '2026-09-30 23:59:59'),
+       ('couples', 1, '{"couples":[{"dancers":[]}]}', '2026-09-30 23:59:59'),
+       ('singles', 1, '{"singles":[{"full_name":"Test"}]}', '2026-09-30 23:59:59')
+`)
+				suite.Require().NoError(err)
+
+				ids, err := suite.store.EventRemoveDraftsBefore(context.Background(), base.Add(tt.offset).In(zone))
+				suite.Require().NoError(err)
+				suite.ElementsMatch(tt.want, ids)
+
+				var remaining []string
+				suite.Require().NoError(suite.store.db.Select(&remaining, "SELECT id FROM events"))
+				wantRemaining := append([]string{"published", "couples", "singles"}, tt.keep...)
+				suite.ElementsMatch(wantRemaining, remaining)
+			})
+		}
+	}
 }
 
 func (suite *TestStoreSuite) TestEventGetMy() {

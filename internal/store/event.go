@@ -103,7 +103,7 @@ WHERE updated_at > ?1
 		return nil, fmt.Errorf("%w: %w", ErrStmtPrepare, err)
 	}
 
-	rows, err := stmt.QueryxContext(ctx, after)
+	rows, err := stmt.QueryxContext(ctx, sqliteTimeBoundary(after))
 	if err != nil {
 		return nil, fmt.Errorf("%w: %w", ErrScan, err)
 	}
@@ -144,7 +144,7 @@ RETURNING id;`
 		return nil, fmt.Errorf("%w: %w", ErrStmtPrepare, err)
 	}
 
-	rows, err := stmt.QueryxContext(ctx, before)
+	rows, err := stmt.QueryxContext(ctx, sqliteTimeBoundary(before))
 	if err != nil {
 		return nil, fmt.Errorf("%w: %w", ErrStmtExec, err)
 	}

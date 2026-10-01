@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"sync"
+	"time"
 
 	"github.com/jmoiron/sqlx"
 )
@@ -125,6 +126,27 @@ func (s *SQLiteStore) closeAllStmts() {
 		_ = stmt.Close()
 		delete(s.namedStmtsIdx, query)
 	}
+}
+
+// sqliteTimeBoundary formats a query boundary for comparison with SQLite timestamps.
+// SQLite CURRENT_TIMESTAMP stores UTC text as "YYYY-MM-DD HH:MM:SS".
+// A TIMESTAMP column does not make these comparisons timezone-aware:
+// the < and > operators compare the stored text with the bound parameter.
+//
+// By default, the SQLite driver binds time.Time using its String representation.
+// For example, "2026-10-01 14:00:00 +0300 MSK" means 11:00 UTC,
+// but compares greater than the stored "2026-10-01 12:00:00".
+// This can exclude recent events or delete drafts before they actually expire.
+//
+// Converting to UTC alone is insufficient: the driver still appends "+0000 UTC".
+// The stored "2026-10-01 12:00:00" then compares less than the parameter
+// "2026-10-01 12:00:00 +0000 UTC", incorrectly satisfying a strict < comparison.
+//
+// Use UTC text without a timezone suffix and retain optional fractional seconds.
+// Whole-second boundaries match CURRENT_TIMESTAMP exactly; fractional boundaries
+// remain precise without changing how timestamps are stored.
+func sqliteTimeBoundary(t time.Time) string {
+	return t.UTC().Format("2006-01-02 15:04:05.999999999")
 }
 
 func (s *SQLiteStore) marshal(filedName string, field any) ([]byte, error) {

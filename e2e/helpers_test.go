@@ -46,6 +46,7 @@ func newEnvWithConfig(t *testing.T, configure func(*config.Config), opts ...tele
 	cfg.Bot.Timeout = 5 * time.Second
 	cfg.DB.Filepath = t.TempDir() + "/app_test.db"
 	cfg.RendererRepeats = []time.Duration{}
+	cfg.NotifierRepeats = []time.Duration{}
 	cfg.ReRenderOnStartup = 0
 	cfg.DraftCleanupEvery = 0
 	cfg.DraftCleanupOlderThan = 0

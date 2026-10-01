@@ -18,6 +18,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Support long Telegram profile names.
 - Generate tokens with cryptographically secure randomness.
 - Normalize SQLite query time boundaries to UTC.
+- Retry failed notification delivery.
 
 ## [3.1.0] - 2026-08-19
 

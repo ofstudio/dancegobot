@@ -572,6 +572,40 @@ Notifications may include a link to the original event post when:
 - The bot knows the original chat and message.
 - Telegram can produce a usable link for that chat type.
 
+### Delivery Retries
+
+`NotifierService` attempts delivery immediately. After any sending error, it
+schedules technical retries using `pkg/repeater` and `Settings.NotifierRepeats`.
+The default retry offsets are 1 minute, 5 minutes, 10 minutes, 30 minutes,
+1 hour, 2 hours, 6 hours, and 12 hours from scheduling after the initial failure.
+These are offsets, not cumulative delays between attempts. Delivery has at most
+nine attempts, including the initial one; an empty schedule disables retries.
+
+All sending errors are retried, including permanent Telegram errors such as a
+blocked bot. Error types and Telegram `retry_after` are not analyzed: the
+configured schedule is the only retry policy. Attempts for one notification
+are serialized, and a successful send cancels all remaining retries. If a
+network failure occurs after Telegram accepts a message but before the bot
+receives the response, a retry may produce a duplicate message.
+
+Every `Notify` call starts an independent delivery using the original
+notification snapshot. Technical retries do not reevaluate business eligibility
+or subscriptions. Business deduplication remains the consumer's responsibility;
+the at-most-once fanout through `Event.SubscribersNotified` is unchanged.
+
+Each actual attempt is logged. A single final `HistoryNotificationSent` item is
+recorded after success or exhaustion of all attempts; on exhaustion it contains
+the last sending error. A history write failure is logged but must not trigger
+another send of an already delivered notification.
+
+Notification delivery and retry state are kept only in process memory; there
+is no persistent delivery queue. If the process crashes or stops before a
+notification is successfully sent, that notification is lost and will not be
+sent automatically after restart. Neither `HistoryNotificationSent` nor
+`Event.SubscribersNotified` is used to recover pending deliveries. Application
+context cancellation discards pending retries, and no final history item is
+guaranteed for an interrupted delivery.
+
 ## Removed Events
 
 An event can be marked as removed when the bot repeatedly fails to render the

@@ -130,7 +130,12 @@ func (s *Server) Respond(method string, result any) {
 
 // RespondError queues an error Bot API response for method.
 func (s *Server) RespondError(method string, code int, description string) {
-	s.queueResponse(method, Response{OK: false, ErrorCode: code, Description: description})
+	s.RespondErrorWithParameters(method, code, description, nil)
+}
+
+// RespondErrorWithParameters queues an error Bot API response with response parameters.
+func (s *Server) RespondErrorWithParameters(method string, code int, description string, parameters map[string]any) {
+	s.queueResponse(method, Response{OK: false, ErrorCode: code, Description: description, Parameters: parameters})
 }
 
 func (s *Server) queueResponse(method string, resp Response) {
@@ -379,10 +384,11 @@ type waiter struct {
 
 // Response is a Telegram Bot API response.
 type Response struct {
-	OK          bool   `json:"ok"`
-	Result      any    `json:"result,omitempty"`
-	ErrorCode   int    `json:"error_code,omitempty"`
-	Description string `json:"description,omitempty"`
+	OK          bool           `json:"ok"`
+	Result      any            `json:"result,omitempty"`
+	ErrorCode   int            `json:"error_code,omitempty"`
+	Description string         `json:"description,omitempty"`
+	Parameters  map[string]any `json:"parameters,omitempty"`
 }
 
 // Request is a recorded Telegram Bot API request.

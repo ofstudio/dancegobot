@@ -83,6 +83,22 @@ func TestServerQueuedErrorResponse(t *testing.T) {
 	tg.AssertNoUnexpected()
 }
 
+func TestServerQueuedErrorResponseWithParameters(t *testing.T) {
+	tg := New(t)
+	tg.Ignore("getMe")
+	tg.RespondErrorWithParameters("sendMessage", 429, "Too Many Requests: retry after 3600", map[string]any{
+		"retry_after": 3600,
+	})
+	bot, err := tele.NewBot(tele.Settings{URL: tg.URL(), Token: "123:ABC", Synchronous: true})
+	require.NoError(t, err)
+	_, err = bot.Send(&tele.User{ID: 42}, "Hello")
+	var flood tele.FloodError
+	require.ErrorAs(t, err, &flood)
+	require.Equal(t, 3600, flood.RetryAfter)
+	tg.Wait("sendMessage")
+	tg.AssertNoUnexpected()
+}
+
 func TestServerBotAdministratorOption(t *testing.T) {
 	tg := New(t, WithBotAdministrator(false))
 	tg.Ignore("getMe", "getChatMember")

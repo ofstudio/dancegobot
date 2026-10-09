@@ -79,6 +79,8 @@ func newRenderTestService(t *testing.T, renderFailsMax int) (*RenderService, *st
 	cfg := config.Default()
 	cfg.Settings.RenderFailsMax = renderFailsMax
 	cfg.Settings.RendererRepeats = []time.Duration{}
+	// Disable the experimental missing-post delay outside its tests: https://github.com/ofstudio/dancegobot/issues/21
+	cfg.Settings.RendererInitialDelay = 0
 
 	db, err := storepkg.NewSQLite(":memory:", cfg.DB.Version)
 	require.NoError(t, err)

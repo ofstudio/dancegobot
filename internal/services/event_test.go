@@ -329,6 +329,8 @@ func newEventServiceTest(t *testing.T) (*EventService, *storepkg.SQLiteStore) {
 
 	cfg := config.Default()
 	cfg.Settings.RendererRepeats = []time.Duration{}
+	// Disable the experimental missing-post delay outside its tests: https://github.com/ofstudio/dancegobot/issues/21
+	cfg.Settings.RendererInitialDelay = 0
 	cfg.Settings.ReRenderOnStartup = 0
 	cfg.Settings.DraftCleanupEvery = 0
 	cfg.Settings.EventTextMaxLen = 3
@@ -342,6 +344,9 @@ func newEventServiceTest(t *testing.T) (*EventService, *storepkg.SQLiteStore) {
 	render := NewRenderService(cfg.Settings, st, func(*models.Event, string) error {
 		return nil
 	})
+	ctx, cancel := context.WithCancel(context.Background())
+	t.Cleanup(cancel)
+	render.Start(ctx)
 	notifier := NewNotifierService(cfg.Settings, st, func(*models.Notification) error {
 		return nil
 	})

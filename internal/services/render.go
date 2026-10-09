@@ -4,6 +4,7 @@ import (
 	"context"
 	"log/slog"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/ofstudio/dancegobot/internal/config"
@@ -24,7 +25,13 @@ type RenderService struct {
 	renderFunc RenderFunc
 	queue      chan queueItem
 	repeater   *repeater.Repeater
+	ctx        context.Context
 	log        *slog.Logger
+
+	// Independent initial delay may reduce missing mobile posts: https://github.com/ofstudio/dancegobot/issues/21
+	initialRepeater *repeater.Repeater
+	initialMu       sync.Mutex
+	initialDone     map[string]bool
 }
 
 func NewRenderService(cfg config.Settings, store store.Store, renderFunc RenderFunc) *RenderService {
@@ -34,7 +41,10 @@ func NewRenderService(cfg config.Settings, store store.Store, renderFunc RenderF
 		renderFunc: renderFunc,
 		queue:      make(chan queueItem),
 		repeater:   repeater.NewRepeater(cfg.RendererRepeats),
-		log:        noplog.Logger(),
+		// One-shot delay may reduce missing mobile posts: https://github.com/ofstudio/dancegobot/issues/21
+		initialRepeater: repeater.NewRepeater([]time.Duration{cfg.RendererInitialDelay}),
+		initialDone:     make(map[string]bool),
+		log:             noplog.Logger(),
 	}
 }
 
@@ -45,6 +55,7 @@ func (s *RenderService) WithLogger(l *slog.Logger) *RenderService {
 
 // Start starts the render queue and re-renders recent events at startup.
 func (s *RenderService) Start(ctx context.Context) {
+	s.ctx = ctx
 	go s.queueHandler(trace.Context(ctx, "render_queue_handler"))
 	go s.renderAtStartup(trace.Context(ctx, "render_at_startup"))
 }
@@ -73,26 +84,92 @@ func (s *RenderService) renderRepeat(ctx context.Context, eventID string) {
 	s.render(ctx, event)
 }
 
-// render adds the event to the render queue.
-func (s *RenderService) render(ctx context.Context, event *models.Event) {
+// renderable checks whether the event has an editable post.
+func (s *RenderService) renderable(ctx context.Context, event *models.Event) bool {
 	switch {
 	case event == nil:
 		s.log.Error("[render service] failed to render event: event is nil", trace.Attr(ctx))
-		return
+		return false
 	case event.Post == nil || event.Post.InlineMessageID == "":
 		s.log.Info("[render service] skipping render: inline message ID is not set",
 			"event", event.LogValue(),
 			trace.Attr(ctx))
-		return
+		return false
 	case event.Removed:
 		s.log.Info("[render service] skipping render: event marked as removed",
 			"event", event.LogValue(), trace.Attr(ctx))
-		return
-	default:
-		// Add event to the rendering queue.
-		// This will wait for the previous rendering to complete
-		s.queue <- queueItem{event: event, ctx: ctx}
+		return false
 	}
+	return true
+}
+
+// render adds the event to the render queue.
+func (s *RenderService) render(ctx context.Context, event *models.Event) {
+	if !s.renderable(ctx, event) {
+		return
+	}
+	// Gate every render path to potentially reduce missing posts: https://github.com/ofstudio/dancegobot/issues/21
+	if s.delayInitialRender(ctx, event.ID) {
+		return
+	}
+	s.enqueue(queueItem{event: event, ctx: ctx})
+}
+
+// delayInitialRender gives mobile clients time to receive the original inline post
+// before its first edit, which may reduce missing posts. This is only a hypothesis:
+// https://github.com/ofstudio/dancegobot/issues/21
+// State is process-local: a restart also delays the first edit of existing posts.
+func (s *RenderService) delayInitialRender(ctx context.Context, eventID string) bool {
+	if s.cfg.RendererInitialDelay <= 0 {
+		return false
+	}
+	s.initialMu.Lock()
+	defer s.initialMu.Unlock()
+	if done, exists := s.initialDone[eventID]; exists {
+		return !done
+	}
+	s.initialDone[eventID] = false
+	s.log.Info("[render service] initial render scheduled",
+		"event_id", eventID, "delay", s.cfg.RendererInitialDelay, trace.Attr(ctx))
+	s.initialRepeater.AddTask(s.ctx, eventID, func(_ context.Context, id string) {
+		// Repeater cancels its callback context on completion. The queued read
+		// must instead use the service lifetime, independently of render repeats.
+		s.enqueue(queueItem{eventID: id, ctx: trace.Context(s.ctx, "render_initial")})
+	})
+	return true
+}
+
+// enqueue waits for the previous render to finish without blocking shutdown.
+func (s *RenderService) enqueue(item queueItem) {
+	if s.ctx.Err() != nil {
+		return
+	}
+	if item.ctx.Err() != nil {
+		return
+	}
+	select {
+	case s.queue <- item:
+	case <-s.ctx.Done():
+	case <-item.ctx.Done():
+	}
+}
+
+// initialEvent completes the delay before reading the latest state. Changes made
+// during this read must queue normally so they cannot be lost at the boundary.
+// The delay may reduce missing mobile posts: https://github.com/ofstudio/dancegobot/issues/21
+func (s *RenderService) initialEvent(ctx context.Context, eventID string) *models.Event {
+	s.initialMu.Lock()
+	s.initialDone[eventID] = true
+	s.initialMu.Unlock()
+	s.log.Info("[render service] initial render executing",
+		"event_id", eventID, "delay", s.cfg.RendererInitialDelay, trace.Attr(ctx))
+	event, err := s.store.EventGet(ctx, eventID)
+	if err != nil {
+		s.log.Error("[render service] failed to get event: "+err.Error(),
+			"event_id", eventID, trace.Attr(ctx))
+		return nil
+	}
+	return event
 }
 
 // renderAtStartup re-renders recent events on startup.
@@ -127,6 +204,16 @@ func (s *RenderService) queueHandler(ctx context.Context) {
 	for {
 		select {
 		case item := <-s.queue:
+			if ctx.Err() != nil {
+				return
+			}
+			if item.eventID != "" {
+				// Finish the experimental delay for missing posts: https://github.com/ofstudio/dancegobot/issues/21
+				item.event = s.initialEvent(item.ctx, item.eventID)
+				if !s.renderable(item.ctx, item.event) {
+					continue
+				}
+			}
 			if err := s.renderFunc(item.event, item.event.Post.InlineMessageID); err != nil {
 				if s.errIsPostRemoved(err) {
 					s.log.Error("[render service] event post was probably removed: "+err.Error(),
@@ -206,6 +293,7 @@ func (s *RenderService) errIsPostRemoved(err error) bool {
 
 // queueItem - rendering queue item.
 type queueItem struct {
-	event *models.Event
-	ctx   context.Context
+	event   *models.Event
+	eventID string // Deferred initial renders carry only the ID, never a stale snapshot.
+	ctx     context.Context
 }

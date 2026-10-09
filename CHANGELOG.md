@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- Add a five-second initial post rendering delay that may reduce [invisible posts on mobile Telegram clients](https://github.com/ofstudio/dancegobot/issues/21).
+
 ## [3.1.1] - 2026-10-01
 
 ### Fixed

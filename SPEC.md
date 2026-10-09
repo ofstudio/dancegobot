@@ -365,6 +365,29 @@ When registration is reopened:
 
 ## Event Post Rendering
 
+The first eligible post edit for each event in a process is delayed by
+`RendererInitialDelay` (5 seconds by default, configured in code only; zero or
+negative values disable the delay). This is an experiment that may reduce
+[posts missing in mobile Telegram clients](https://github.com/ofstudio/dancegobot/issues/21),
+not a confirmed fix.
+
+The delay begins when rendering first sees a non-removed event with a post and
+an inline message ID, not when the draft is created. Render requests during the
+delay do not extend it. At the deadline, a single render is queued; it reads the
+latest event state from storage when processed. Later renders and ordinary
+render repeats retain their existing behavior. Other events do not wait for
+this event's timer.
+
+Only post edits are delayed: registrations, callback responses, private
+confirmations, subscription notifications, and registration restrictions take
+effect immediately. Early registrations may therefore be confirmed before they
+appear in the post, and a recently closed post may briefly retain its original
+buttons even though new registrations are already rejected.
+
+Delay state is held only in memory. After a process restart, the first edit of
+an existing post is delayed again, including startup re-rendering. No new
+publication timestamps or delay state are stored in the database.
+
 The event post contains:
 
 - Announcement text.

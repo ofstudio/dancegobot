@@ -33,6 +33,9 @@ type Settings struct {
 	ReRenderOnStartup     time.Duration   // Re-render on startup the recent events that were updated not older than this duration
 	DraftCleanupOlderThan time.Duration   // Cleanup event drafts that were created older than this duration
 	DraftCleanupEvery     time.Duration   // Cleanup event drafts every this duration since startup
+
+	// Initial delay may reduce missing mobile posts: https://github.com/ofstudio/dancegobot/issues/21
+	RendererInitialDelay time.Duration // First render per process; nonpositive disables it; no environment override
 }
 
 // Bot is Telegram bot configuration

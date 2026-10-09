@@ -44,6 +44,8 @@ func Default() Config {
 			EventTextMaxLen:  2048,
 			DancerNameMaxLen: 64,
 			RenderFailsMax:   3,
+			// Experimental delay may reduce missing mobile posts: https://github.com/ofstudio/dancegobot/issues/21
+			RendererInitialDelay: 5 * time.Second,
 			RendererRepeats: []time.Duration{
 				03 * time.Second,
 				10 * time.Second,

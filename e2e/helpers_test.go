@@ -46,6 +46,8 @@ func newEnvWithConfig(t *testing.T, configure func(*config.Config), opts ...tele
 	cfg.Bot.Timeout = 5 * time.Second
 	cfg.DB.Filepath = t.TempDir() + "/app_test.db"
 	cfg.RendererRepeats = []time.Duration{}
+	// Disable the experimental missing-post delay outside its tests: https://github.com/ofstudio/dancegobot/issues/21
+	cfg.RendererInitialDelay = 0
 	cfg.NotifierRepeats = []time.Duration{}
 	cfg.ReRenderOnStartup = 0
 	cfg.DraftCleanupEvery = 0

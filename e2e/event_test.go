@@ -349,6 +349,8 @@ func TestLongPollerSmoke(t *testing.T) {
 	cfg.Bot.Timeout = 50 * time.Millisecond
 	cfg.DB.Filepath = t.TempDir() + "/app_test.db"
 	cfg.RendererRepeats = []time.Duration{}
+	// Disable the experimental missing-post delay outside its tests: https://github.com/ofstudio/dancegobot/issues/21
+	cfg.RendererInitialDelay = 0
 	cfg.ReRenderOnStartup = 0
 	cfg.DraftCleanupEvery = 0
 	cfg.DraftCleanupOlderThan = 0
